@@ -89,6 +89,18 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
 
       if (userError) throw userError;
 
+      // Vytvořit dočasnou zprávu asistenta pro UI
+      const tempAssistantId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: tempAssistantId,
+          role: "assistant",
+          content: "",
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
       // Volání AI
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -104,12 +116,18 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
               { role: "user", content: userMessageContent },
             ],
             mode,
+            conversationId,
           }),
         }
       );
 
-      if (!response.ok || !response.body) {
-        throw new Error("Chyba při volání AI");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Chyba při volání AI");
+      }
+
+      if (!response.body) {
+        throw new Error("Prázdná odpověď");
       }
 
       const reader = response.body.getReader();
@@ -117,12 +135,11 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
       let assistantContent = "";
       let textBuffer = "";
       let streamDone = false;
-      let assistantMessageId: string | null = null;
 
       while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         textBuffer += decoder.decode(value, { stream: true });
 
         let newlineIndex: number;
@@ -142,54 +159,54 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            
+            const content = parsed.choices?.[0]?.delta?.content as
+              | string
+              | undefined;
+
             if (content) {
               assistantContent += content;
-              
-              // Aktualizovat nebo vytvořit zprávu asistenta
-              if (!assistantMessageId) {
-                const { data, error } = await supabase
-                  .from("messages")
-                  .insert({
-                    conversation_id: conversationId,
-                    role: "assistant",
-                    content: assistantContent,
-                  })
-                  .select()
-                  .single();
 
-                if (error) throw error;
-                assistantMessageId = data.id;
-              } else {
-                await supabase
-                  .from("messages")
-                  .update({ content: assistantContent })
-                  .eq("id", assistantMessageId);
-              }
+              // Aktualizovat UI s novým obsahem
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === tempAssistantId
+                    ? { ...m, content: assistantContent }
+                    : m
+                )
+              );
             }
           } catch {
+            // Neúplný JSON, vrátit řádek do bufferu
             textBuffer = line + "\n" + textBuffer;
             break;
           }
         }
       }
+
+      // Po dokončení streamu smazat dočasnou zprávu a nechat realtime subscription načíst finální
+      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
     } catch (error: any) {
       toast.error(error.message || "Chyba při odesílání zprávy");
+      // Odstranit dočasnou zprávu při chybě
+      setMessages((prev) =>
+        prev.filter((m) => m.role !== "assistant" || m.content !== "")
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVoiceInput = () => {
-    if (!("webkitSpeechRecognition" in window)) {
-      toast.error("Rozpoznávání řeči není podporováno v tomto prohlížeči");
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+      toast.error("Rozpoznávání řeči vyžaduje Chrome/Edge prohlížeč a HTTPS");
       return;
     }
 
-    const recognition = new (window as any).webkitSpeechRecognition();
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const recognition = new SpeechRecognition();
     recognition.lang = "cs-CZ";
     recognition.continuous = false;
+    recognition.interimResults = false;
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -199,19 +216,33 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
-      setIsListening(false);
+      toast.success("Rozpoznáno: " + transcript);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
       setIsListening(false);
-      toast.error("Chyba při rozpoznávání řeči");
+      console.error("Speech recognition error:", event.error);
+      
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        toast.error("Povolte přístup k mikrofonu v nastavení prohlížeče");
+      } else if (event.error === "no-speech") {
+        toast.error("Nebylo zachyceno žádné slovo");
+      } else {
+        toast.error("Chyba při rozpoznávání řeči: " + event.error);
+      }
     };
 
     recognition.onend = () => {
       setIsListening(false);
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      setIsListening(false);
+      toast.error("Nelze spustit rozpoznávání řeči");
+      console.error("Recognition start error:", error);
+    }
   };
 
   const speakText = (text: string) => {
