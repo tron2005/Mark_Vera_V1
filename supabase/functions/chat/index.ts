@@ -24,14 +24,31 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Získat user_id z Authorization hlavičky
+    // Získat user_id z Authorization hlavičky nebo z konverzace jako fallback
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
-    const { data: { user } } = await supabase.auth.getUser(token || "");
-    const userId = user?.id;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser(token || "");
+
+    let userId: string | null = user?.id ?? null;
+
+    if (!userId && conversationId) {
+      const { data: conv, error: convErr } = await supabase
+        .from("conversations")
+        .select("user_id")
+        .eq("id", conversationId)
+        .single();
+      if (!convErr) {
+        userId = (conv as any)?.user_id ?? null;
+      }
+    }
 
     if (!userId) {
-      throw new Error("Nepřihlášený uživatel");
+      return new Response(
+        JSON.stringify({ error: "Nepřihlášený uživatel" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Nástroje pro správu poznámek
