@@ -131,6 +131,21 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
 
     console.log(`Chat request - mode: ${mode}, messages: ${messages.length}`);
 
+    // Načíst celou historii konverzace z databáze
+    let conversationHistory: any[] = [];
+    if (conversationId) {
+      const { data: dbMessages } = await supabase
+        .from("messages")
+        .select("role, content")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      
+      conversationHistory = dbMessages || [];
+    }
+
+    // Poslední zpráva od uživatele (z requestu)
+    const lastUserMessage = messages[messages.length - 1]?.content || "";
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -141,7 +156,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages,
+          ...conversationHistory,
+          { role: "user", content: lastUserMessage },
         ],
         tools,
         stream: true,
@@ -221,10 +237,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
             }
           }
 
-          // Zpracovat tool calls
+          // Zpracovat tool calls a poslat výsledky zpět do AI
           if (toolCalls.length > 0) {
             console.log("Processing tool calls:", toolCalls);
             
+            const toolMessages = [];
             for (const tc of toolCalls) {
               if (!tc.name) continue;
 
@@ -261,32 +278,94 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
                   }
                 }
 
-                // Poslat výsledek zpět do streamu
-                let resultText = "";
-                if (tc.name === "get_notes" && result.notes) {
-                  if (result.notes.length === 0) {
-                    resultText = "\n\nNemáš žádné uložené poznámky.";
-                  } else {
-                    resultText = `\n\nMáš ${result.notes.length} ${result.notes.length === 1 ? 'poznámku' : result.notes.length < 5 ? 'poznámky' : 'poznámek'}:\n\n`;
-                    result.notes.forEach((note: any, idx: number) => {
-                      const important = note.is_important ? "⭐ " : "";
-                      resultText += `${idx + 1}. ${important}${note.text} (${note.category})\n`;
-                    });
-                  }
-                } else if (result.success) {
-                  resultText = `\n\n✓ ${result.message}`;
-                } else if (result.error) {
-                  resultText = `\n\n✗ Chyba: ${result.error}`;
-                }
-                
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  choices: [{ delta: { content: resultText } }]
-                })}\n\n`));
+                toolMessages.push({
+                  role: "tool",
+                  tool_call_id: tc.id,
+                  name: tc.name,
+                  content: JSON.stringify(result)
+                });
 
               } catch (e) {
                 console.error("Tool execution error:", e);
+                toolMessages.push({
+                  role: "tool",
+                  tool_call_id: tc.id,
+                  name: tc.name,
+                  content: JSON.stringify({ error: "Chyba při volání nástroje" })
+                });
               }
             }
+
+            // Poslat výsledky tool calls zpátky do AI pro finální odpověď
+            const followUpMessages = [
+              { role: "system", content: systemPrompt },
+              ...conversationHistory,
+              { role: "user", content: lastUserMessage },
+              {
+                role: "assistant",
+                content: fullResponse || null,
+                tool_calls: toolCalls.map(tc => ({
+                  id: tc.id,
+                  type: "function",
+                  function: {
+                    name: tc.name,
+                    arguments: tc.arguments
+                  }
+                }))
+              },
+              ...toolMessages
+            ];
+
+            const followUpResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: followUpMessages,
+                stream: true,
+              }),
+            });
+
+            if (!followUpResponse.ok) {
+              throw new Error(`AI follow-up error: ${followUpResponse.status}`);
+            }
+
+            const followUpReader = followUpResponse.body!.getReader();
+            let followUpBuffer = "";
+            let followUpResponse2 = "";
+
+            while (true) {
+              const { done, value } = await followUpReader.read();
+              if (done) break;
+
+              followUpBuffer += decoder.decode(value, { stream: true });
+              const lines = followUpBuffer.split("\n");
+              followUpBuffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.trim() || line.startsWith(":")) continue;
+                if (!line.startsWith("data: ")) continue;
+
+                const data = line.slice(6).trim();
+                if (data === "[DONE]") continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    followUpResponse2 += content;
+                    controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                  }
+                } catch (e) {
+                  console.error("Parse error in follow-up:", e);
+                }
+              }
+            }
+
+            fullResponse += followUpResponse2;
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));

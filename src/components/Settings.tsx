@@ -174,7 +174,7 @@ export default function Settings() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Hlas pro syntézu řeči asistenta (OpenAI hlasy, použije se při generování audio odpovědí)
+              Hlas pro syntézu řeči asistenta (OpenAI hlasy - alloy, echo, shimmer). Poznámka: Test hlasu používá systémové hlasy prohlížeče, skutečný hlas se použije při generování audio odpovědí.
             </p>
           </div>
 
