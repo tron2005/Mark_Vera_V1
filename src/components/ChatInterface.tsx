@@ -101,6 +101,12 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
         },
       ]);
 
+      // Získat session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Nejste přihlášeni");
+      }
+
       // Volání AI
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -108,7 +114,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             messages: [
