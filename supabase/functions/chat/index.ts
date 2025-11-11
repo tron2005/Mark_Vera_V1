@@ -261,10 +261,26 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
                   }
                 }
 
-                // Poslat potvrzení zpět jako zprávu
-                const confirmMsg = JSON.stringify(result);
+                // Poslat výsledek zpět do streamu
+                let resultText = "";
+                if (tc.name === "get_notes" && result.notes) {
+                  if (result.notes.length === 0) {
+                    resultText = "\n\nNemáš žádné uložené poznámky.";
+                  } else {
+                    resultText = `\n\nMáš ${result.notes.length} ${result.notes.length === 1 ? 'poznámku' : result.notes.length < 5 ? 'poznámky' : 'poznámek'}:\n\n`;
+                    result.notes.forEach((note: any, idx: number) => {
+                      const important = note.is_important ? "⭐ " : "";
+                      resultText += `${idx + 1}. ${important}${note.text} (${note.category})\n`;
+                    });
+                  }
+                } else if (result.success) {
+                  resultText = `\n\n✓ ${result.message}`;
+                } else if (result.error) {
+                  resultText = `\n\n✗ Chyba: ${result.error}`;
+                }
+                
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  choices: [{ delta: { content: ` [${confirmMsg}]` } }]
+                  choices: [{ delta: { content: resultText } }]
                 })}\n\n`));
 
               } catch (e) {

@@ -57,15 +57,38 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nejste přihlášeni");
 
-      const { error } = await supabase
+      // Nejprve zkontrolovat, zda profil existuje
+      const { data: existingProfile } = await supabase
         .from("profiles")
-        .upsert({
-          user_id: user.id,
-          email,
-          voice_preference: voicePreference,
-          custom_instructions: customInstructions,
-          updated_at: new Date().toISOString(),
-        });
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let error;
+      if (existingProfile) {
+        // Update existujícího profilu
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            email,
+            voice_preference: voicePreference,
+            custom_instructions: customInstructions,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+        error = updateError;
+      } else {
+        // Insert nového profilu
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: user.id,
+            email,
+            voice_preference: voicePreference,
+            custom_instructions: customInstructions,
+          });
+        error = insertError;
+      }
 
       if (error) throw error;
 
@@ -82,6 +105,28 @@ export default function Settings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const testVoice = () => {
+    const utterance = new SpeechSynthesisUtterance("Ahoj, toto je testovací věta. Jak zní můj hlas?");
+    utterance.lang = "cs-CZ";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    
+    // Note: Web Speech API nemá přímou podporu pro výběr konkrétního hlasu "alloy", "echo" atd.
+    // Tyto názvy jsou z OpenAI API. Web Speech API používá systémové hlasy.
+    const voices = speechSynthesis.getVoices();
+    const czechVoice = voices.find(v => v.lang.startsWith("cs"));
+    if (czechVoice) {
+      utterance.voice = czechVoice;
+    }
+    
+    speechSynthesis.speak(utterance);
+    
+    toast({
+      title: "Test hlasu",
+      description: "Přehrávám testovací větu...",
+    });
   };
 
   if (loading) {
@@ -110,7 +155,12 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="voice">Preferovaný hlas</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="voice">Preferovaný hlas</Label>
+              <Button type="button" variant="outline" size="sm" onClick={testVoice}>
+                Vyzkoušet hlas
+              </Button>
+            </div>
             <Select value={voicePreference} onValueChange={setVoicePreference}>
               <SelectTrigger id="voice">
                 <SelectValue />
@@ -124,7 +174,7 @@ export default function Settings() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Hlas pro syntézu řeči asistenta
+              Hlas pro syntézu řeči asistenta (OpenAI hlasy, použije se při generování audio odpovědí)
             </p>
           </div>
 
