@@ -103,27 +103,36 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          custom_instructions: string | null
           display_name: string | null
+          email: string | null
           id: string
           preferred_mode: string | null
           updated_at: string | null
           user_id: string
+          voice_preference: string | null
         }
         Insert: {
           created_at?: string | null
+          custom_instructions?: string | null
           display_name?: string | null
+          email?: string | null
           id?: string
           preferred_mode?: string | null
           updated_at?: string | null
           user_id: string
+          voice_preference?: string | null
         }
         Update: {
           created_at?: string | null
+          custom_instructions?: string | null
           display_name?: string | null
+          email?: string | null
           id?: string
           preferred_mode?: string | null
           updated_at?: string | null
           user_id?: string
+          voice_preference?: string | null
         }
         Relationships: []
       }

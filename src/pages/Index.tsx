@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Auth } from "@/components/Auth";
 import { ChatInterface } from "@/components/ChatInterface";
 import { NotesList } from "@/components/NotesList";
+import Settings from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, MessageSquare, StickyNote } from "lucide-react";
+import { LogOut, MessageSquare, StickyNote, Settings as SettingsIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -147,6 +148,10 @@ const Index = () => {
                 <StickyNote className="mr-2 h-4 w-4" />
                 Poznámky
               </TabsTrigger>
+              <TabsTrigger value="settings" className="flex-1">
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Nastavení
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -160,6 +165,10 @@ const Index = () => {
 
               <TabsContent value="notes" className="h-full m-0 overflow-y-auto">
                 <NotesList />
+              </TabsContent>
+
+              <TabsContent value="settings" className="h-full m-0 overflow-y-auto">
+                <Settings />
               </TabsContent>
             </div>
           </div>

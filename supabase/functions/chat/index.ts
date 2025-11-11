@@ -51,6 +51,15 @@ serve(async (req) => {
       );
     }
 
+    // Načíst vlastní instrukce z profilu uživatele
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("custom_instructions")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const customInstructions = profile?.custom_instructions || "";
+
     // Nástroje pro správu poznámek
     const tools = [
       {
@@ -103,7 +112,7 @@ serve(async (req) => {
     ];
 
     // Systémový prompt podle režimu
-    const systemPrompt = mode === "vera"
+    let systemPrompt = mode === "vera"
       ? `Jsi V.E.R.A. (Voice Enhanced Raspberry Assistant) - pokročilý hlasový asistent. Mluvíš česky, jsi přátelská a inteligentní. 
       
 Umíš spravovat poznámky uživatele pomocí nástrojů:
@@ -115,6 +124,10 @@ Když uživatel řekne "zapiš poznámku" nebo "ulož poznámku", použij nástr
       : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. Když tě uživatel požádá o uložení poznámky, použij add_note.`;
+    
+    if (customInstructions) {
+      systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
+    }
 
     console.log(`Chat request - mode: ${mode}, messages: ${messages.length}`);
 
