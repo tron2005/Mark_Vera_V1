@@ -112,6 +112,51 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_notes_by_date",
+          description: "Načte poznámky s termínem dokončení pro konkrétní den nebo období",
+          parameters: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Datum ve formátu YYYY-MM-DD (např. 2025-11-13)" },
+              days_ahead: { type: "number", description: "Kolik dní dopředu zahrnout (např. 1 pro zítřek, 7 pro tento týden)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_summary",
+          description: "Vytvoří sumár poznámek - přehled všech poznámek nebo poznámek s termínem",
+          parameters: {
+            type: "object",
+            properties: {
+              include_all: { type: "boolean", description: "Zahrnout všechny poznámky (true) nebo jen s termínem dokončení (false)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "reschedule_note",
+          description: "Přeplánuje poznámku na nový termín",
+          parameters: {
+            type: "object",
+            properties: {
+              text_contains: { type: "string", description: "Část textu poznámky k identifikaci" },
+              new_due_date: { type: "string", description: "Nový termín dokončení (ISO 8601 formát)" }
+            },
+            required: ["text_contains", "new_due_date"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -120,14 +165,17 @@ serve(async (req) => {
       ? `Jsi V.E.R.A. (Voice Enhanced Raspberry Assistant) - pokročilý hlasový asistent. Mluvíš česky, jsi přátelská a inteligentní. 
       
 Umíš spravovat poznámky uživatele pomocí nástrojů:
-- add_note: Pro uložení nové poznámky
+- add_note: Pro uložení nové poznámky (s možností nastavit termín dokončení, místo, upomínku a opakování)
 - get_notes: Pro zobrazení poznámek
 - delete_note: Pro smazání poznámky
+- get_notes_by_date: Pro zobrazení poznámek s termínem na konkrétní den (např. "co mám zítra", "co mám tento týden")
+- create_summary: Pro vytvoření sumáru poznámek
+- reschedule_note: Pro přeplánování poznámky na jiný termín
 
-Když uživatel řekne "zapiš poznámku" nebo "ulož poznámku", použij nástroj add_note. Když řekne "zobraz poznámky" nebo "co mám v poznámkách", použij get_notes. Pro smazání použij delete_note.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note.`
       : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. Když tě uživatel požádá o uložení poznámky, použij add_note.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date.`;
     
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
@@ -298,6 +346,104 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
                   if (notes && notes.length > 0) {
                     const { error } = await supabase.from("notes").delete().eq("id", notes[0].id);
                     result = error ? { error: error.message } : { success: true, message: "Poznámka byla smazána" };
+                  } else {
+                    result = { error: "Poznámka nebyla nalezena" };
+                  }
+                } else if (tc.name === "get_notes_by_date") {
+                  const targetDate = args.date ? new Date(args.date) : new Date();
+                  const daysAhead = args.days_ahead || 0;
+                  
+                  const startDate = new Date(targetDate);
+                  startDate.setHours(0, 0, 0, 0);
+                  
+                  const endDate = new Date(targetDate);
+                  endDate.setDate(endDate.getDate() + daysAhead);
+                  endDate.setHours(23, 59, 59, 999);
+                  
+                  const { data, error } = await supabase
+                    .from("notes")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("due_date", startDate.toISOString())
+                    .lte("due_date", endDate.toISOString())
+                    .order("due_date", { ascending: true });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    const dateStr = daysAhead === 0 
+                      ? new Date(targetDate).toLocaleDateString("cs-CZ")
+                      : `od ${new Date(startDate).toLocaleDateString("cs-CZ")} do ${new Date(endDate).toLocaleDateString("cs-CZ")}`;
+                    result = { message: `Pro období ${dateStr} nemáš žádné naplánované poznámky.` };
+                  } else {
+                    const notesList = data.map((note: any, idx: number) => {
+                      let details = `${idx + 1}. ${note.text}`;
+                      if (note.due_date) details += ` - ${new Date(note.due_date).toLocaleString("cs-CZ")}`;
+                      if (note.location) details += ` (${note.location})`;
+                      if (note.category) details += ` [${note.category}]`;
+                      return details;
+                    }).join("\n");
+                    result = { 
+                      message: `Máš naplánováno ${data.length} úkolů:\n\n${notesList}` 
+                    };
+                  }
+                } else if (tc.name === "create_summary") {
+                  let query = supabase.from("notes").select("*").eq("user_id", userId);
+                  
+                  if (!args.include_all) {
+                    query = query.not("due_date", "is", null);
+                  }
+                  
+                  const { data, error } = await query.order("due_date", { ascending: true, nullsFirst: false });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Nemáš žádné poznámky k sumáru." };
+                  } else {
+                    const byCategory: any = {};
+                    data.forEach((note: any) => {
+                      const cat = note.category || "ostatní";
+                      if (!byCategory[cat]) byCategory[cat] = [];
+                      byCategory[cat].push(note);
+                    });
+                    
+                    let summary = `📊 SUMÁR POZNÁMEK (celkem ${data.length}):\n\n`;
+                    
+                    Object.keys(byCategory).forEach(cat => {
+                      summary += `\n${cat.toUpperCase()} (${byCategory[cat].length}):\n`;
+                      byCategory[cat].forEach((note: any, idx: number) => {
+                        summary += `${idx + 1}. ${note.text}`;
+                        if (note.due_date) summary += ` - ${new Date(note.due_date).toLocaleDateString("cs-CZ")}`;
+                        if (note.is_important) summary += ` ⭐`;
+                        summary += "\n";
+                      });
+                    });
+                    
+                    result = { message: summary };
+                  }
+                } else if (tc.name === "reschedule_note") {
+                  const { data: notes } = await supabase
+                    .from("notes")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .ilike("text", `%${args.text_contains}%`);
+                  
+                  if (notes && notes.length > 0) {
+                    const { error } = await supabase
+                      .from("notes")
+                      .update({ due_date: args.new_due_date })
+                      .eq("id", notes[0].id);
+                    
+                    if (error) {
+                      result = { error: error.message };
+                    } else {
+                      const newDate = new Date(args.new_due_date).toLocaleString("cs-CZ");
+                      result = { 
+                        success: true, 
+                        message: `Poznámka "${notes[0].text}" byla přeplánována na ${newDate}` 
+                      };
+                    }
                   } else {
                     result = { error: "Poznámka nebyla nalezena" };
                   }
