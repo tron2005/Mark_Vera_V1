@@ -301,6 +301,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           ...formattedMessages,
         ],
         tools,
+        tool_choice: "auto",
         stream: true,
       }),
     });
@@ -653,6 +654,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: followUpMessages,
+                tool_choice: "auto",
                 stream: true,
               }),
             });
