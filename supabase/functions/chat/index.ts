@@ -288,6 +288,29 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       return { role: msg.role, content: msg.content };
     });
 
+    // Detekce požadavku na vytvoření kalendářní události (CZ klíčová slova)
+    const lastUserMsg = [...formattedMessages].reverse().find((m: any) => m.role === "user");
+    let lastUserText = "";
+    if (lastUserMsg) {
+      if (typeof (lastUserMsg as any).content === "string") {
+        lastUserText = (lastUserMsg as any).content.toLowerCase();
+      } else if (Array.isArray((lastUserMsg as any).content)) {
+        const textPart = (lastUserMsg as any).content.find((c: any) => c.type === "text")?.text;
+        if (textPart) lastUserText = String(textPart).toLowerCase();
+      }
+    }
+    const calendarKeywords = [
+      "vytvoř v kalendáři",
+      "přidej do kalendáře",
+      "naplánuj",
+      "upomeň",
+      "upomínku",
+      "vytvoř událost",
+      "přidej schůzku",
+    ];
+    const shouldForceCalendar = !!lastUserText && calendarKeywords.some(k => lastUserText.includes(k));
+    console.log("AI tool_choice:", shouldForceCalendar ? "force:create_calendar_event" : "auto");
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -301,7 +324,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           ...formattedMessages,
         ],
         tools,
-        tool_choice: "auto",
+        tool_choice: shouldForceCalendar ? { type: "function", function: { name: "create_calendar_event" } } : "auto",
         stream: true,
       }),
     });
@@ -654,7 +677,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: followUpMessages,
-                tool_choice: "auto",
+                tool_choice: shouldForceCalendar ? { type: "function", function: { name: "create_calendar_event" } } : "auto",
                 stream: true,
               }),
             });
