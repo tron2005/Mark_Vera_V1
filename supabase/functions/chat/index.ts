@@ -192,6 +192,25 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_calendar_event",
+          description: "Vytvoří událost v Google Calendar uživatele (pokud má připojený Google Calendar)",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: { type: "string", description: "Název události" },
+              start: { type: "string", description: "Datum a čas začátku (ISO 8601 formát)" },
+              end: { type: "string", description: "Datum a čas konce (ISO 8601 formát) - volitelné" },
+              location: { type: "string", description: "Místo konání - volitelné" },
+              description: { type: "string", description: "Popis události - volitelné" }
+            },
+            required: ["summary", "start"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -214,15 +233,16 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - create_summary: Pro vytvoření sumáru poznámek
 - reschedule_note: Pro přeplánování poznámky na jiný termín
 - send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
+- create_calendar_event: Pro vytvoření události v Google Calendar (pokud má uživatel připojený Google Calendar)
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pokud chce uživatel vytvořit událost v kalendáři, použij create_calendar_event.`
       : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
 ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
     
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
@@ -547,6 +567,34 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     } catch (error: any) {
                       result = { error: error.message };
                     }
+                  }
+                } else if (tc.name === "create_calendar_event") {
+                  const args = JSON.parse(tc.arguments);
+                  
+                  try {
+                    const calendarResponse = await supabase.functions.invoke("create-calendar-event", {
+                      headers: {
+                        Authorization: authHeader || ""
+                      },
+                      body: {
+                        summary: args.summary,
+                        start: args.start,
+                        end: args.end,
+                        location: args.location,
+                        description: args.description
+                      }
+                    });
+
+                    if (calendarResponse.error) {
+                      result = { error: calendarResponse.error.message };
+                    } else {
+                      result = { 
+                        success: true, 
+                        message: `Událost "${args.summary}" vytvořena v Google Calendar` 
+                      };
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
                   }
                 }
 

@@ -121,6 +121,9 @@ export type Database = {
           custom_instructions: string | null
           display_name: string | null
           email: string | null
+          google_access_token: string | null
+          google_refresh_token: string | null
+          google_token_expiry: string | null
           id: string
           preferred_mode: string | null
           updated_at: string | null
@@ -132,6 +135,9 @@ export type Database = {
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
           id?: string
           preferred_mode?: string | null
           updated_at?: string | null
@@ -143,6 +149,9 @@ export type Database = {
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
           id?: string
           preferred_mode?: string | null
           updated_at?: string | null

@@ -69,3 +69,9 @@ verify_jwt = true
 
 [functions.send-notes-email]
 verify_jwt = true
+
+[functions.google-auth-callback]
+verify_jwt = true
+
+[functions.create-calendar-event]
+verify_jwt = true

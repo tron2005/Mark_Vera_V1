@@ -21,6 +21,7 @@ export default function Settings() {
   const [email, setEmail] = useState("");
   const [voicePreference, setVoicePreference] = useState("alloy");
   const [customInstructions, setCustomInstructions] = useState("");
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -33,7 +34,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions")
+        .select("email, voice_preference, custom_instructions, google_refresh_token")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -43,6 +44,7 @@ export default function Settings() {
         setEmail(data.email || "");
         setVoicePreference(data.voice_preference || "alloy");
         setCustomInstructions(data.custom_instructions || "");
+        setGoogleCalendarConnected(!!data.google_refresh_token);
       }
     } catch (error) {
       console.error("Chyba při načítání nastavení:", error);
@@ -129,6 +131,63 @@ export default function Settings() {
     });
   };
 
+  const connectGoogleCalendar = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    
+    if (!clientId) {
+      toast({
+        title: "Chyba konfigurace",
+        description: "Google Client ID není nastaven",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const scope = "https://www.googleapis.com/auth/calendar.events";
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: scope,
+      access_type: "offline",
+      prompt: "consent",
+    })}`;
+    
+    window.location.href = authUrl;
+  };
+
+  const disconnectGoogleCalendar = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nejste přihlášeni");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          google_access_token: null,
+          google_refresh_token: null,
+          google_token_expiry: null,
+        })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      setGoogleCalendarConnected(false);
+      toast({
+        title: "Google Calendar odpojen",
+        description: "Integrace byla úspěšně odpojena",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Chyba",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="p-8">Načítání nastavení...</div>;
   }
@@ -189,6 +248,35 @@ export default function Settings() {
             />
             <p className="text-sm text-muted-foreground">
               Definujte, jak má asistent komunikovat (styl, tón, preference)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Google Calendar</Label>
+            {googleCalendarConnected ? (
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-green-600 dark:text-green-400">✓ Připojeno</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={disconnectGoogleCalendar}
+                >
+                  Odpojit
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={connectGoogleCalendar}
+                className="w-full"
+              >
+                Připojit Google Calendar
+              </Button>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Umožní asistentovi vytvářet události ve vašem Google kalendáři
             </p>
           </div>
 
