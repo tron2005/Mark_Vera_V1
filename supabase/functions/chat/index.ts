@@ -157,6 +157,41 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "send_notes_email",
+          description: "Odeslat poznámky emailem - můžeš poslat jednu poznámku, sumář všech poznámek, nebo poznámky za konkrétní datum/kategorii",
+          parameters: {
+            type: "object",
+            properties: {
+              recipientEmail: {
+                type: "string",
+                description: "Email adresa příjemce (pokud není zadaná, použije se email z profilu)"
+              },
+              type: {
+                type: "string",
+                enum: ["single", "summary"],
+                description: "single = jedna poznámka, summary = sumář poznámek"
+              },
+              noteId: {
+                type: "string",
+                description: "ID poznámky (povinné jen pro type=single)"
+              },
+              filterDate: {
+                type: "string",
+                description: "Datum pro filtrování (YYYY-MM-DD) - volitelné, jen pro summary"
+              },
+              filterCategory: {
+                type: "string",
+                description: "Kategorie pro filtrování - volitelné, jen pro summary"
+              }
+            },
+            required: ["type"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -178,15 +213,16 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - get_notes_by_date: Pro zobrazení poznámek s termínem na konkrétní den (např. "co mám zítra", "co mám tento týden")
 - create_summary: Pro vytvoření sumáru poznámek
 - reschedule_note: Pro přeplánování poznámky na jiný termín
+- send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email.`
       : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
 ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email.`;
     
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
@@ -470,6 +506,44 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     }
                   } else {
                     result = { error: "Poznámka nebyla nalezena" };
+                  }
+                } else if (tc.name === "send_notes_email") {
+                  const args = JSON.parse(tc.arguments);
+                  
+                  // Get user's email from profile
+                  const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("email")
+                    .eq("user_id", userId)
+                    .single();
+                  
+                  const recipientEmail = args.recipientEmail || profile?.email;
+                  
+                  if (!recipientEmail) {
+                    result = { error: "Email adresa není nastavena v profilu" };
+                  } else {
+                    try {
+                      const emailResponse = await supabase.functions.invoke("send-notes-email", {
+                        body: {
+                          recipientEmail,
+                          type: args.type,
+                          noteId: args.noteId,
+                          filterDate: args.filterDate,
+                          filterCategory: args.filterCategory
+                        }
+                      });
+
+                      if (emailResponse.error) {
+                        result = { error: emailResponse.error.message };
+                      } else {
+                        result = { 
+                          success: true, 
+                          message: `Email odeslán na ${recipientEmail}` 
+                        };
+                      }
+                    } catch (error: any) {
+                      result = { error: error.message };
+                    }
                   }
                 }
 
