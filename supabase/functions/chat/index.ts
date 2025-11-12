@@ -181,9 +181,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
     }
 
-    console.log(`Chat request - mode: ${mode}, messages: ${messages.length}`);
+    console.log(`Chat request - mode: ${mode}, conversationId: ${conversationId}`);
 
-    // Načíst celou historii konverzace z databáze
+    // Načíst celou historii konverzace z databáze (včetně právě odeslané zprávy)
     let conversationHistory: any[] = [];
     if (conversationId) {
       const { data: dbMessages } = await supabase
@@ -193,10 +193,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         .order("created_at", { ascending: true });
       
       conversationHistory = dbMessages || [];
+      console.log(`Loaded ${conversationHistory.length} messages from conversation history`);
     }
-
-    // Poslední zpráva od uživatele (z requestu)
-    const lastUserMessage = messages[messages.length - 1]?.content || "";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -209,7 +207,6 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         messages: [
           { role: "system", content: systemPrompt },
           ...conversationHistory,
-          { role: "user", content: lastUserMessage },
         ],
         tools,
         stream: true,
@@ -471,7 +468,6 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
             const followUpMessages = [
               { role: "system", content: systemPrompt },
               ...conversationHistory,
-              { role: "user", content: lastUserMessage },
               {
                 role: "assistant",
                 content: fullResponse || null,
