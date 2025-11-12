@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      health_logs: {
+        Row: {
+          condition_type: string
+          created_at: string
+          id: string
+          log_date: string
+          notes: string | null
+          severity: number | null
+          user_id: string
+        }
+        Insert: {
+          condition_type: string
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          severity?: number | null
+          user_id: string
+        }
+        Update: {
+          condition_type?: string
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          severity?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -117,46 +147,118 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
+          bmi: number | null
           created_at: string | null
           custom_instructions: string | null
           display_name: string | null
           email: string | null
+          garmin_access_token: string | null
+          garmin_refresh_token: string | null
+          garmin_token_expiry: string | null
           google_access_token: string | null
           google_refresh_token: string | null
           google_token_expiry: string | null
+          height_cm: number | null
           id: string
           preferred_mode: string | null
+          strava_access_token: string | null
+          strava_refresh_token: string | null
+          strava_token_expiry: string | null
           updated_at: string | null
           user_id: string
           voice_preference: string | null
+          weight_kg: number | null
         }
         Insert: {
+          age?: number | null
+          bmi?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          garmin_access_token?: string | null
+          garmin_refresh_token?: string | null
+          garmin_token_expiry?: string | null
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
+          height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          strava_access_token?: string | null
+          strava_refresh_token?: string | null
+          strava_token_expiry?: string | null
           updated_at?: string | null
           user_id: string
           voice_preference?: string | null
+          weight_kg?: number | null
         }
         Update: {
+          age?: number | null
+          bmi?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          garmin_access_token?: string | null
+          garmin_refresh_token?: string | null
+          garmin_token_expiry?: string | null
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
+          height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          strava_access_token?: string | null
+          strava_refresh_token?: string | null
+          strava_token_expiry?: string | null
           updated_at?: string | null
           user_id?: string
           voice_preference?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      race_goals: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          id: string
+          notes: string | null
+          preparation_plan: string | null
+          race_date: string
+          race_name: string
+          race_type: string
+          target_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          preparation_plan?: string | null
+          race_date: string
+          race_name: string
+          race_type: string
+          target_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          preparation_plan?: string | null
+          race_date?: string
+          race_name?: string
+          race_type?: string
+          target_time?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
