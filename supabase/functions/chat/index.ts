@@ -211,6 +211,20 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "list_calendar_events",
+          description: "Načte a přečte události z Google Kalendáře pro daný den (výchozí dnes). Použij, když se uživatel ptá 'co mám dnes', 'přečti dnešní kalendář', 'co mám zítra' apod.",
+          parameters: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Datum ve formátu YYYY-MM-DD. Pokud není, použij dnešek." }
+            },
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -241,15 +255,18 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - reschedule_note: Pro přeplánování poznámky na jiný termín
 - send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
 - create_calendar_event: Pro vytvoření události v Google Calendar - použij VŽDY když uživatel chce vytvořit událost/upomínku/schůzku
+- list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
-      : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
+: `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
 ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
 
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
+
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event, list_calendar_events. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
 
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
     
@@ -440,12 +457,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 body: { summary, start: startIso }
               });
 
-              if (calResp.error) {
-                console.error("Calendar fallback error:", calResp.error);
+              if (calResp.error || !(calResp.data as any)?.success) {
+                console.error("Calendar fallback error:", calResp.error || (calResp.data as any)?.error);
               } else {
-                const note = `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}).`;
+                const note = `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")} ).`;
                 fullResponse += `\n\n${note}`;
-                // pošleme jeden delta chunk do streamu, aby to uživatel uviděl
                 const delta = {
                   id: `gen-${Date.now()}`,
                   provider: "internal",
@@ -663,33 +679,108 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   const args = JSON.parse(tc.arguments);
                   
                   try {
+                    // Normalizace data/času
+                    let startIso: string | undefined = args.start;
+                    const now = new Date();
+                    const text = (lastUserText || "").toLowerCase();
+                    const timeFromText = (t: string) => {
+                      const m = t.match(/(\d{1,2})(?::|\.|\s?h)?(\d{2})?/);
+                      if (!m) return { h: 9, m: 0 };
+                      const h = Math.min(23, parseInt(m[1], 10));
+                      const mm = m[2] ? Math.min(59, parseInt(m[2], 10)) : 0;
+                      return { h, m: mm };
+                    };
+                    const buildDate = (offsetDays: number, tm?: { h: number; m: number }) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + offsetDays);
+                      d.setHours(tm?.h ?? 9, tm?.m ?? 0, 0, 0);
+                      return d;
+                    };
+
+                    let intended: Date | null = null;
+                    if (text.includes("dnes")) intended = buildDate(0, timeFromText(text));
+                    else if (text.includes("zítra")) intended = buildDate(1, timeFromText(text));
+
+                    if (intended) {
+                      startIso = intended.toISOString();
+                    } else if (startIso) {
+                      const d = new Date(startIso);
+                      if (isNaN(d.getTime())) {
+                        intended = buildDate(0, timeFromText(text));
+                        startIso = intended.toISOString();
+                      } else {
+                        const diff = d.getTime() - now.getTime();
+                        if (diff < -30 * 24 * 3600 * 1000 && (text.includes("dnes") || text.includes("zítra"))) {
+                          const tm = { h: d.getHours(), m: d.getMinutes() };
+                          intended = buildDate(text.includes("zítra") ? 1 : 0, tm);
+                          startIso = intended.toISOString();
+                        }
+                      }
+                    } else {
+                      intended = buildDate(0, timeFromText(text));
+                      startIso = intended.toISOString();
+                    }
+
+                    const endIso = (() => {
+                      const s = new Date(startIso!);
+                      const e = new Date(s.getTime() + 60 * 60 * 1000);
+                      return e.toISOString();
+                    })();
+
                     const calendarResponse = await supabase.functions.invoke("create-calendar-event", {
                       headers: {
                         Authorization: authHeader || ""
                       },
                       body: {
-                        summary: args.summary,
-                        start: args.start,
-                        end: args.end,
+                        summary: args.summary || "Událost",
+                        start: startIso!,
+                        end: args.end || endIso,
                         location: args.location,
                         description: args.description
                       }
                     });
 
-                    if (calendarResponse.error) {
-                      result = { error: calendarResponse.error.message };
+                    if (calendarResponse.error || !(calendarResponse.data as any)?.success) {
+                      result = { error: calendarResponse.error?.message || (calendarResponse.data as any)?.error || "Nepodařilo se vytvořit událost" };
                     } else {
+                      const link = (calendarResponse.data as any)?.eventLink;
                       result = { 
                         success: true, 
-                        message: `Událost "${args.summary}" vytvořena v Google Calendar` 
+                        message: `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři`,
+                        link
                       };
                     }
                   } catch (error: any) {
                     result = { error: error.message };
                   }
-                }
+                } else if (tc.name === "list_calendar_events") {
+                  const args = JSON.parse(tc.arguments);
+                  const date = args.date;
+                  try {
+                    const listResp = await supabase.functions.invoke("list-calendar-events", {
+                      headers: { Authorization: authHeader || "" },
+                      body: { date }
+                    });
 
-                toolMessages.push({
+                    if (listResp.error) {
+                      result = { error: listResp.error.message };
+                    } else {
+                      const items = (listResp.data as any)?.items || [];
+                      if (items.length === 0) {
+                        result = { message: "Dnes nemáš žádné události." };
+                      } else {
+                        const formatted = items.map((ev: any, i: number) => {
+                          const start = ev.start?.dateTime || ev.start?.date;
+                          const time = start ? new Date(start).toLocaleTimeString("cs-CZ", { hour: '2-digit', minute: '2-digit' }) : "";
+                          return `${i + 1}. ${time} ${ev.summary || 'Bez názvu'}`.trim();
+                        }).join("\n");
+                        result = { message: `📅 Dnešní události:\n${formatted}` };
+                      }
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
+                  }
+                }
                   role: "tool",
                   tool_call_id: tc.id,
                   name: tc.name,
