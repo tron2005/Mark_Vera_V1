@@ -524,6 +524,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   } else {
                     try {
                       const emailResponse = await supabase.functions.invoke("send-notes-email", {
+                        headers: {
+                          Authorization: authHeader || ""
+                        },
                         body: {
                           recipientEmail,
                           type: args.type,
