@@ -403,6 +403,64 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           }
 
           // Zpracovat tool calls a poslat výsledky zpět do AI
+          // Fallback: pokud AI nevygenerovala tool call a přitom jde o kalendářní příkaz, vytvoř událost přímo
+          if (toolCalls.length === 0 && shouldForceCalendar && lastUserText) {
+            try {
+              console.log("Calendar fallback triggered for:", lastUserText);
+              // velmi jednoduchý parser: dnes/zítra + čas (HH nebo HH:MM) + název za dvojtečkou
+              const nowLocal = new Date();
+              let base = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate(), 9, 0, 0, 0);
+              if (lastUserText.includes("zítra")) {
+                base.setDate(base.getDate() + 1);
+              }
+              // pokud není "zítra", bereme implicitně dnes
+              const timeMatch = lastUserText.match(/(\d{1,2})(?::|(\.)|\s?)(\d{2})?/);
+              let hour = 9;
+              let minute = 0;
+              if (timeMatch) {
+                hour = parseInt(timeMatch[1], 10);
+                if (timeMatch[3]) minute = parseInt(timeMatch[3], 10) || 0;
+              }
+              base.setHours(hour, minute, 0, 0);
+              const startIso = new Date(base).toISOString();
+
+              let summary = "Upomínka";
+              const colonIdx = lastUserText.indexOf(":");
+              if (colonIdx !== -1) {
+                const s = lastUserText.slice(colonIdx + 1).trim();
+                if (s) summary = s;
+              } else if (lastUserText.includes("upom")) {
+                summary = "Upomínka";
+              } else if (lastUserText.includes("schůz")) {
+                summary = "Schůzka";
+              }
+
+              const calResp = await supabase.functions.invoke("create-calendar-event", {
+                headers: { Authorization: authHeader || "" },
+                body: { summary, start: startIso }
+              });
+
+              if (calResp.error) {
+                console.error("Calendar fallback error:", calResp.error);
+              } else {
+                const note = `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}).`;
+                fullResponse += `\n\n${note}`;
+                // pošleme jeden delta chunk do streamu, aby to uživatel uviděl
+                const delta = {
+                  id: `gen-${Date.now()}`,
+                  provider: "internal",
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n${note}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+              }
+            } catch (e) {
+              console.error("Calendar fallback failed:", e);
+            }
+          }
+
           if (toolCalls.length > 0) {
             console.log("Processing tool calls:", toolCalls);
             
