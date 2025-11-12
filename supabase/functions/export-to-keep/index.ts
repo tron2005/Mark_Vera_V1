@@ -115,7 +115,9 @@ Deno.serve(async (req) => {
     );
 
     if (!taskListsResponse.ok) {
-      throw new Error("Nepodařilo se načíst Google Tasks seznamy");
+      const errorText = await taskListsResponse.text();
+      console.error("Google Tasks API error:", taskListsResponse.status, errorText);
+      throw new Error(`Google Tasks API chyba (${taskListsResponse.status}): ${errorText}. Zkontrolujte, zda máte aktivované Tasks API v Google Cloud Console a zda jste se znovu přihlásili s správnými oprávněními.`);
     }
 
     const taskListsData = await taskListsResponse.json();
