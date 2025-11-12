@@ -42,12 +42,29 @@ const Index = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Vytvořit novou konverzaci
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Zkusit najít poslední konverzaci v tomto režimu za posledních 5 dní
+    const { data: existing, error: fetchErr } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("mode", mode)
+      .gte("created_at", fiveDaysAgo)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!fetchErr && existing && existing.length > 0) {
+      setConversationId(existing[0].id);
+      return;
+    }
+
+    // Jinak založit novou
     const { data, error } = await supabase
       .from("conversations")
       .insert({
         user_id: user.id,
-        mode: "mark",
+        mode: mode,
         title: "Nová konverzace",
       })
       .select()
@@ -68,11 +85,28 @@ const Index = () => {
 
   const switchMode = async (newMode: "mark" | "vera") => {
     setMode(newMode);
-    
-    // Vytvořit novou konverzaci pro nový režim
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Nejprve zkusit znovu použít poslední konverzaci v daném režimu (posledních 5 dní)
+    const { data: existing, error: fetchErr } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("mode", newMode)
+      .gte("created_at", fiveDaysAgo)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!fetchErr && existing && existing.length > 0) {
+      setConversationId(existing[0].id);
+      toast.success(`Přepnuto na ${newMode === "vera" ? "V.E.R.A." : "M.A.R.K."}`);
+      return;
+    }
+
+    // Jinak založit novou konverzaci
     const { data, error } = await supabase
       .from("conversations")
       .insert({

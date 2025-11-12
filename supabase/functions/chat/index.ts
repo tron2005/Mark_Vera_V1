@@ -190,14 +190,16 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     // Načíst celou historii konverzace z databáze (včetně právě odeslané zprávy)
     let conversationHistory: any[] = [];
     if (conversationId) {
+      const fiveDaysAgoIso = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
       const { data: dbMessages } = await supabase
         .from("messages")
         .select("role, content")
         .eq("conversation_id", conversationId)
+        .gte("created_at", fiveDaysAgoIso)
         .order("created_at", { ascending: true });
       
       conversationHistory = dbMessages || [];
-      console.log(`Loaded ${conversationHistory.length} messages from conversation history`);
+      console.log(`Loaded ${conversationHistory.length} messages from conversation history (since ${fiveDaysAgoIso})`);
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
