@@ -197,13 +197,13 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "create_calendar_event",
-          description: "Vytvoří událost v Google Calendar uživatele (pokud má připojený Google Calendar)",
+          description: "Vytvoří událost/upomínku/schůzku v Google Calendar uživatele. Použij VŽDY když uživatel řekne 'vytvoř v kalendáři', 'přidej do kalendáře', 'naplánuj', 'upomeň mě', 'vytvoř událost', 'přidej schůzku' nebo podobně.",
           parameters: {
             type: "object",
             properties: {
-              summary: { type: "string", description: "Název události" },
-              start: { type: "string", description: "Datum a čas začátku (ISO 8601 formát)" },
-              end: { type: "string", description: "Datum a čas konce (ISO 8601 formát) - volitelné" },
+              summary: { type: "string", description: "Název události/upomínky" },
+              start: { type: "string", description: "Datum a čas začátku ve formátu ISO 8601 (např. '2025-11-12T21:00:00')" },
+              end: { type: "string", description: "Datum a čas konce (ISO 8601 formát) - volitelné, defaultně +1 hodina" },
               location: { type: "string", description: "Místo konání - volitelné" },
               description: { type: "string", description: "Popis události - volitelné" }
             },
@@ -225,6 +225,13 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, VŽDY ji důkladně analyzuj a:
 2. Automaticky extrahuj důležité informace (texty na cedulích, datumy, jména, úkoly...)
 3. Pokud foto obsahuje něco, co by se dalo uložit jako poznámka (úkol, termín, kontakt...), AUTOMATICKY to ulož pomocí add_note
 
+VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě", "vytvoř událost", "přidej schůzku" nebo cokoliv podobného, VŽDY použij create_calendar_event tool.
+Příklady příkazů, které MUSÍ vyvolat create_calendar_event:
+- "vytvoř v kalendáři na dnes 21 hodin upomínku: připomeň" → create_calendar_event(summary="připomeň", start="2025-11-12T21:00:00")
+- "přidej schůzku zítra v 10" → create_calendar_event(summary="Schůzka", start="2025-11-13T10:00:00")
+- "naplánuj oběd ve čtvrtek ve 12" → create_calendar_event(summary="Oběd", start="2025-11-14T12:00:00")
+- "upomeň mě v pondělí ráno" → create_calendar_event(summary="Upomínka", start="2025-11-18T09:00:00")
+
 Umíš spravovat poznámky uživatele pomocí nástrojů:
 - add_note: Pro uložení nové poznámky (s možností nastavit termín dokončení, místo, upomínku a opakování)
 - get_notes: Pro zobrazení poznámek
@@ -233,14 +240,16 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - create_summary: Pro vytvoření sumáru poznámek
 - reschedule_note: Pro přeplánování poznámky na jiný termín
 - send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
-- create_calendar_event: Pro vytvoření události v Google Calendar (pokud má uživatel připojený Google Calendar)
+- create_calendar_event: Pro vytvoření události v Google Calendar - použij VŽDY když uživatel chce vytvořit událost/upomínku/schůzku
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pokud chce uživatel vytvořit událost v kalendáři, použij create_calendar_event.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
       : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
 ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
+
+VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
     
