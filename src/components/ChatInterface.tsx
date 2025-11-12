@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Send, Volume2, Loader2 } from "lucide-react";
+import { Mic, Send, Volume2, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  image_url?: string;
 };
 
 type ChatInterfaceProps = {
@@ -24,7 +25,9 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadMessages();
@@ -72,19 +75,48 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     setMessages((data || []) as Message[]);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Prosím vyberte obrázek");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setSelectedImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() && !selectedImage) return;
 
     setIsLoading(true);
-    const userMessageContent = text.trim();
+    const userMessageContent = text.trim() || "📷 Fotka";
+    const imageToSend = selectedImage;
     setInput("");
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
     try {
-      // Uložit uživatelskou zprávu
+      // Uložit uživatelskou zprávu (s obrázkem, pokud existuje)
       const { error: userError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         role: "user",
         content: userMessageContent,
+        image_url: imageToSend || null,
       });
 
       if (userError) throw userError;
@@ -118,8 +150,16 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
           },
           body: JSON.stringify({
             messages: [
-              ...messages.map((m) => ({ role: m.role, content: m.content })),
-              { role: "user", content: userMessageContent },
+              ...messages.map((m) => ({ 
+                role: m.role, 
+                content: m.content,
+                image_url: m.image_url 
+              })),
+              { 
+                role: "user", 
+                content: userMessageContent,
+                image_url: imageToSend 
+              },
             ],
             mode,
             conversationId,
@@ -279,18 +319,28 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
                 : "mr-auto bg-muted"
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm">{msg.content}</p>
-              {msg.role === "assistant" && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 shrink-0"
-                  onClick={() => speakText(msg.content)}
-                >
-                  <Volume2 className="h-4 w-4" />
-                </Button>
+            <div className="flex flex-col gap-2">
+              {msg.image_url && (
+                <img 
+                  src={msg.image_url} 
+                  alt="Nahraný obrázek" 
+                  className="max-w-full rounded-md"
+                  style={{ maxHeight: "300px", objectFit: "contain" }}
+                />
               )}
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm">{msg.content}</p>
+                {msg.role === "assistant" && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => speakText(msg.content)}
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         ))}
@@ -303,6 +353,25 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
       </div>
 
       <div className="p-4 border-t bg-card">
+        {selectedImage && (
+          <div className="mb-2 relative inline-block">
+            <img 
+              src={selectedImage} 
+              alt="Náhled" 
+              className="max-h-32 rounded-md border"
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="destructive"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -320,6 +389,23 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
             <Mic className={isListening ? "animate-pulse" : ""} />
           </Button>
           
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <ImageIcon />
+          </Button>
+          
           <Input
             placeholder="Napište zprávu..."
             value={input}
@@ -327,7 +413,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
             disabled={isLoading}
           />
           
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+          <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !selectedImage)}>
             <Send />
           </Button>
         </form>

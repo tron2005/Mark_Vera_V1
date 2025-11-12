@@ -179,6 +179,8 @@ Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánová
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
+ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
+
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date.`;
     
     if (customInstructions) {
@@ -193,7 +195,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       const fiveDaysAgoIso = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
       const { data: dbMessages } = await supabase
         .from("messages")
-        .select("role, content")
+        .select("role, content, image_url")
         .eq("conversation_id", conversationId)
         .gte("created_at", fiveDaysAgoIso)
         .order("created_at", { ascending: true });
@@ -201,6 +203,20 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       conversationHistory = dbMessages || [];
       console.log(`Loaded ${conversationHistory.length} messages from conversation history (since ${fiveDaysAgoIso})`);
     }
+
+    // Připravit zprávy pro AI - pokud zpráva obsahuje obrázek, formátovat jako multimodální content
+    const formattedMessages = conversationHistory.map((msg: any) => {
+      if (msg.image_url) {
+        return {
+          role: msg.role,
+          content: [
+            { type: "text", text: msg.content },
+            { type: "image_url", image_url: { url: msg.image_url } }
+          ]
+        };
+      }
+      return { role: msg.role, content: msg.content };
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -212,7 +228,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          ...conversationHistory,
+          ...formattedMessages,
         ],
         tools,
         stream: true,
@@ -473,7 +489,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
             // Poslat výsledky tool calls zpátky do AI pro finální odpověď
             const followUpMessages = [
               { role: "system", content: systemPrompt },
-              ...conversationHistory,
+              ...formattedMessages,
               {
                 role: "assistant",
                 content: fullResponse || null,
