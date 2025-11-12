@@ -144,7 +144,7 @@ export default function Settings() {
     }
     
     const redirectUri = `${window.location.origin}/auth/callback`;
-    const scope = "https://www.googleapis.com/auth/calendar.events";
+    const scope = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks";
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: clientId,
@@ -252,7 +252,7 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <Label>Google Calendar</Label>
+            <Label>Google Integrace</Label>
             {googleCalendarConnected ? (
               <div className="flex items-center gap-2">
                 <p className="text-sm text-green-600 dark:text-green-400">✓ Připojeno</p>
@@ -272,11 +272,12 @@ export default function Settings() {
                 onClick={connectGoogleCalendar}
                 className="w-full"
               >
-                Připojit Google Calendar
+                Připojit Google služby
               </Button>
             )}
             <p className="text-sm text-muted-foreground">
-              Umožní asistentovi vytvářet události ve vašem Google kalendáři
+              Umožní asistentovi vytvářet události v Google Calendar a exportovat poznámky do Google Tasks (Keep alternativa). 
+              <span className="block mt-1 text-xs">Poznámka: V testovacím režimu platí tokeny 7 dní. Pro trvalé připojení je potřeba publikovat aplikaci v Google Cloud Console.</span>
             </p>
           </div>
 

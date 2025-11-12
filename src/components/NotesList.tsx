@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Star } from "lucide-react";
+import { Trash2, Star, Upload, CheckSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Note = {
   id: string;
@@ -27,6 +28,8 @@ export const NotesList = () => {
   const [location, setLocation] = useState("");
   const [reminderDate, setReminderDate] = useState("");
   const [recurrence, setRecurrence] = useState("");
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -103,10 +106,100 @@ export const NotesList = () => {
     loadNotes();
   };
 
+  const toggleNoteSelection = (noteId: string) => {
+    const newSelection = new Set(selectedNotes);
+    if (newSelection.has(noteId)) {
+      newSelection.delete(noteId);
+    } else {
+      newSelection.add(noteId);
+    }
+    setSelectedNotes(newSelection);
+  };
+
+  const selectAllNotes = () => {
+    if (selectedNotes.size === notes.length) {
+      setSelectedNotes(new Set());
+    } else {
+      setSelectedNotes(new Set(notes.map(n => n.id)));
+    }
+  };
+
+  const exportToKeep = async (noteIds?: string[]) => {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Nejste přihlášeni");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("export-to-keep", {
+        body: {
+          noteIds: noteIds,
+          exportAll: !noteIds,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(data.message || "Poznámky exportovány do Google Tasks");
+        setSelectedNotes(new Set());
+      }
+    } catch (error: any) {
+      console.error("Chyba při exportu:", error);
+      toast.error("Nepodařilo se exportovat poznámky");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div className="space-y-3">
-        <h2 className="text-2xl font-bold">📝 Poznámky</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">📝 Poznámky</h2>
+          
+          <div className="flex gap-2">
+            {notes.length > 0 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllNotes}
+                  disabled={exporting}
+                >
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  {selectedNotes.size === notes.length ? "Zrušit výběr" : "Vybrat vše"}
+                </Button>
+                
+                {selectedNotes.size > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => exportToKeep(Array.from(selectedNotes))}
+                    disabled={exporting}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Export do Keep ({selectedNotes.size})
+                  </Button>
+                )}
+                
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => exportToKeep()}
+                  disabled={exporting || notes.length === 0}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Export všech
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
         
         <div className="space-y-2">
           <div className="flex gap-2">
@@ -179,7 +272,14 @@ export const NotesList = () => {
           notes.map((note) => (
             <Card key={note.id} className="p-4">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-2">
+                <div className="flex items-start gap-3 flex-1">
+                  <Checkbox
+                    checked={selectedNotes.has(note.id)}
+                    onCheckedChange={() => toggleNoteSelection(note.id)}
+                    className="mt-1"
+                  />
+                  
+                  <div className="flex-1 space-y-2">
                   <p className="text-sm font-medium">{note.text}</p>
                   
                   <div className="flex flex-wrap gap-2">
@@ -213,9 +313,10 @@ export const NotesList = () => {
                     )}
                   </div>
                   
-                  <span className="text-xs text-muted-foreground">
-                    Vytvořeno: {new Date(note.created_at).toLocaleString("cs-CZ")}
-                  </span>
+                    <span className="text-xs text-muted-foreground">
+                      Vytvořeno: {new Date(note.created_at).toLocaleString("cs-CZ")}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="flex gap-1">
