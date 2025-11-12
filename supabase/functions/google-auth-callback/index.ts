@@ -31,11 +31,11 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { code } = await req.json();
+    const { code, redirectUri } = await req.json();
     
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
     const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
-    const redirectUri = `${new URL(req.url).origin}/auth/callback`;
+    const resolvedRedirectUri = redirectUri ?? `${new URL(req.url).origin}/auth/callback`;
 
     // Exchange code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -45,7 +45,7 @@ serve(async (req) => {
         code,
         client_id: googleClientId,
         client_secret: googleClientSecret,
-        redirect_uri: redirectUri,
+        redirect_uri: resolvedRedirectUri,
         grant_type: "authorization_code",
       }),
     });

@@ -37,7 +37,7 @@ const AuthCallback = () => {
         const { error: callbackError } = await supabase.functions.invoke(
           "google-auth-callback",
           {
-            body: { code },
+            body: { code, redirectUri: `${window.location.origin}/auth/callback` },
           }
         );
 
