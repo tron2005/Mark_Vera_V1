@@ -258,7 +258,7 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
 
 Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
-: `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
+      : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
@@ -267,8 +267,7 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event, list_calendar_events. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
-
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
+    
     
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
@@ -781,6 +780,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     result = { error: error.message };
                   }
                 }
+
+                toolMessages.push({
                   role: "tool",
                   tool_call_id: tc.id,
                   name: tc.name,
