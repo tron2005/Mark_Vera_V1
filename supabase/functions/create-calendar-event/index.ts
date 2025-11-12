@@ -108,18 +108,29 @@ serve(async (req) => {
 
     // Create calendar event
     const startDateTime = new Date(start);
-    const endDateTime = end ? new Date(end) : new Date(startDateTime.getTime() + 60 * 60 * 1000); // Default 1 hour
+    const endDateTime = end ? new Date(end) : new Date(startDateTime.getTime() + 60 * 60 * 1000);
+
+    // Format as local Prague time without converting to UTC
+    const formatPragueTime = (d: Date): string => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hour = String(d.getHours()).padStart(2, '0');
+      const minute = String(d.getMinutes()).padStart(2, '0');
+      const second = String(d.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    };
 
     const event = {
       summary,
       location,
       description,
       start: {
-        dateTime: startDateTime.toISOString(),
+        dateTime: formatPragueTime(startDateTime),
         timeZone: "Europe/Prague",
       },
       end: {
-        dateTime: endDateTime.toISOString(),
+        dateTime: formatPragueTime(endDateTime),
         timeZone: "Europe/Prague",
       },
     };

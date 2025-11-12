@@ -429,7 +429,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               if (lastUserText.includes("zítra")) {
                 base.setDate(base.getDate() + 1);
               }
-              // pokud není "zítra", bereme implicitně dnes
+              // Pokud není "zítra", bereme implicitně dnes
               const timeMatch = lastUserText.match(/(\d{1,2})(?::|(\.)|\s?)(\d{2})?/);
               let hour = 9;
               let minute = 0;
@@ -437,8 +437,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 hour = parseInt(timeMatch[1], 10);
                 if (timeMatch[3]) minute = parseInt(timeMatch[3], 10) || 0;
               }
-              base.setHours(hour, minute, 0, 0);
-              const startIso = new Date(base).toISOString();
+              
+              // Create Prague local time string without timezone
+              const year = base.getFullYear();
+              const month = String(base.getMonth() + 1).padStart(2, '0');
+              const day = String(base.getDate()).padStart(2, '0');
+              const hourStr = String(hour).padStart(2, '0');
+              const minuteStr = String(minute).padStart(2, '0');
+              const startIso = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00`;
 
               let summary = "Upomínka";
               const colonIdx = lastUserText.indexOf(":");
@@ -678,9 +684,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   const args = JSON.parse(tc.arguments);
                   
                   try {
-                    // Normalizace data/času
-                    let startIso: string | undefined = args.start;
-                    const now = new Date();
+                    // Helper: Parse Prague local time from user text
                     const text = (lastUserText || "").toLowerCase();
                     const timeFromText = (t: string) => {
                       const m = t.match(/(\d{1,2})(?::|\.|\s?h)?(\d{2})?/);
@@ -689,51 +693,34 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       const mm = m[2] ? Math.min(59, parseInt(m[2], 10)) : 0;
                       return { h, m: mm };
                     };
-                    const buildDate = (offsetDays: number, tm?: { h: number; m: number }) => {
+                    const buildPragueDate = (offsetDays: number, tm?: { h: number; m: number }): string => {
                       const d = new Date();
                       d.setDate(d.getDate() + offsetDays);
-                      d.setHours(tm?.h ?? 9, tm?.m ?? 0, 0, 0);
-                      return d;
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const hour = String(tm?.h ?? 9).padStart(2, '0');
+                      const minute = String(tm?.m ?? 0).padStart(2, '0');
+                      return `${year}-${month}-${day}T${hour}:${minute}:00`;
                     };
 
-                    let intended: Date | null = null;
-                    if (text.includes("dnes")) intended = buildDate(0, timeFromText(text));
-                    else if (text.includes("zítra")) intended = buildDate(1, timeFromText(text));
-
-                    if (intended) {
-                      startIso = intended.toISOString();
-                    } else if (startIso) {
-                      const d = new Date(startIso);
-                      if (isNaN(d.getTime())) {
-                        intended = buildDate(0, timeFromText(text));
-                        startIso = intended.toISOString();
-                      } else {
-                        const diff = d.getTime() - now.getTime();
-                        if (diff < -30 * 24 * 3600 * 1000 && (text.includes("dnes") || text.includes("zítra"))) {
-                          const tm = { h: d.getHours(), m: d.getMinutes() };
-                          intended = buildDate(text.includes("zítra") ? 1 : 0, tm);
-                          startIso = intended.toISOString();
-                        }
-                      }
+                    let startIso: string;
+                    if (text.includes("dnes")) {
+                      startIso = buildPragueDate(0, timeFromText(text));
+                    } else if (text.includes("zítra")) {
+                      startIso = buildPragueDate(1, timeFromText(text));
+                    } else if (args.start) {
+                      startIso = args.start;
                     } else {
-                      intended = buildDate(0, timeFromText(text));
-                      startIso = intended.toISOString();
+                      startIso = buildPragueDate(0, timeFromText(text));
                     }
 
-                    const endIso = (() => {
-                      const s = new Date(startIso!);
-                      const e = new Date(s.getTime() + 60 * 60 * 1000);
-                      return e.toISOString();
-                    })();
-
                     const calendarResponse = await supabase.functions.invoke("create-calendar-event", {
-                      headers: {
-                        Authorization: authHeader || ""
-                      },
+                      headers: { Authorization: authHeader || "" },
                       body: {
                         summary: args.summary || "Událost",
-                        start: startIso!,
-                        end: args.end || endIso,
+                        start: startIso,
+                        end: args.end,
                         location: args.location,
                         description: args.description
                       }
