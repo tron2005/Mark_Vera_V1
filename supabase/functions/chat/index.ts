@@ -72,7 +72,11 @@ serve(async (req) => {
             properties: {
               text: { type: "string", description: "Text poznámky" },
               category: { type: "string", description: "Kategorie (osobní/práce/nákup/další)" },
-              is_important: { type: "boolean", description: "Je poznámka důležitá?" }
+              is_important: { type: "boolean", description: "Je poznámka důležitá?" },
+              due_date: { type: "string", description: "Datum a čas dokončení (ISO 8601 formát)" },
+              location: { type: "string", description: "Místo konání" },
+              reminder_date: { type: "string", description: "Datum a čas upomínky (ISO 8601 formát)" },
+              recurrence: { type: "string", description: "Opakování (daily/weekly/monthly)" }
             },
             required: ["text"],
             additionalProperties: false
@@ -255,6 +259,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
                     text: args.text,
                     category: args.category || "další",
                     is_important: args.is_important || false,
+                    due_date: args.due_date || null,
+                    location: args.location || null,
+                    reminder_date: args.reminder_date || null,
+                    recurrence: args.recurrence || null,
                   });
                   result = error ? { error: error.message } : { success: true, message: "Poznámka byla uložena" };
                 } else if (tc.name === "get_notes") {
@@ -262,7 +270,24 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note. 
                   if (args.category) query = query.eq("category", args.category);
                   if (args.important_only) query = query.eq("is_important", true);
                   const { data, error } = await query.order("created_at", { ascending: false });
-                  result = error ? { error: error.message } : { notes: data };
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Nemáš žádné poznámky." };
+                  } else {
+                    const notesList = data.map((note: any, idx: number) => {
+                      let details = `${idx + 1}. ${note.text} (${note.category}${note.is_important ? ', důležité' : ''})`;
+                      if (note.due_date) details += `\n   📅 Dokončit: ${new Date(note.due_date).toLocaleString("cs-CZ")}`;
+                      if (note.location) details += `\n   📍 Místo: ${note.location}`;
+                      if (note.reminder_date) details += `\n   🔔 Upomínka: ${new Date(note.reminder_date).toLocaleString("cs-CZ")}`;
+                      if (note.recurrence) details += `\n   🔄 Opakování: ${note.recurrence}`;
+                      return details;
+                    }).join("\n\n");
+                    result = { 
+                      message: `Máš celkem ${data.length} poznámek:\n\n${notesList}` 
+                    };
+                  }
                 } else if (tc.name === "delete_note") {
                   const { data: notes } = await supabase
                     .from("notes")

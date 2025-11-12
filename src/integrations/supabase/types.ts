@@ -77,24 +77,36 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string | null
+          due_date: string | null
           id: string
           is_important: boolean | null
+          location: string | null
+          recurrence: string | null
+          reminder_date: string | null
           text: string
           user_id: string
         }
         Insert: {
           category?: string | null
           created_at?: string | null
+          due_date?: string | null
           id?: string
           is_important?: boolean | null
+          location?: string | null
+          recurrence?: string | null
+          reminder_date?: string | null
           text: string
           user_id: string
         }
         Update: {
           category?: string | null
           created_at?: string | null
+          due_date?: string | null
           id?: string
           is_important?: boolean | null
+          location?: string | null
+          recurrence?: string | null
+          reminder_date?: string | null
           text?: string
           user_id?: string
         }
