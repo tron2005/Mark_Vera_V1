@@ -166,6 +166,11 @@ serve(async (req) => {
       
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
+ANALÝZA FOTEK: Když uživatel pošle fotku, VŽDY ji důkladně analyzuj a:
+1. Popiš co na ní vidíš (objekty, lidé, text, místa...)
+2. Automaticky extrahuj důležité informace (texty na cedulích, datumy, jména, úkoly...)
+3. Pokud foto obsahuje něco, co by se dalo uložit jako poznámka (úkol, termín, kontakt...), AUTOMATICKY to ulož pomocí add_note
+
 Umíš spravovat poznámky uživatele pomocí nástrojů:
 - add_note: Pro uložení nové poznámky (s možností nastavit termín dokončení, místo, upomínku a opakování)
 - get_notes: Pro zobrazení poznámek
