@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Auth } from "@/components/Auth";
 import { ChatInterface } from "@/components/ChatInterface";
 import { NotesList } from "@/components/NotesList";
+import { FitnessTrainer } from "@/components/FitnessTrainer";
 import Settings from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, MessageSquare, StickyNote, Settings as SettingsIcon } from "lucide-react";
+import { LogOut, MessageSquare, StickyNote, Settings as SettingsIcon, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -178,6 +179,10 @@ const Index = () => {
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Chat
               </TabsTrigger>
+              <TabsTrigger value="trainer" className="flex-1">
+                <Activity className="mr-2 h-4 w-4" />
+                Trenér
+              </TabsTrigger>
               <TabsTrigger value="notes" className="flex-1">
                 <StickyNote className="mr-2 h-4 w-4" />
                 Poznámky
@@ -195,6 +200,10 @@ const Index = () => {
                 {conversationId && (
                   <ChatInterface conversationId={conversationId} mode={mode} />
                 )}
+              </TabsContent>
+
+              <TabsContent value="trainer" className="h-full m-0 overflow-y-auto">
+                <FitnessTrainer />
               </TabsContent>
 
               <TabsContent value="notes" className="h-full m-0 overflow-y-auto">
