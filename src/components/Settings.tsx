@@ -22,6 +22,7 @@ export default function Settings() {
   const [voicePreference, setVoicePreference] = useState("alloy");
   const [customInstructions, setCustomInstructions] = useState("");
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+  const [stravaConnected, setStravaConnected] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -34,7 +35,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions, google_refresh_token")
+        .select("email, voice_preference, custom_instructions, google_refresh_token, strava_refresh_token")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -45,6 +46,7 @@ export default function Settings() {
         setVoicePreference(data.voice_preference || "alloy");
         setCustomInstructions(data.custom_instructions || "");
         setGoogleCalendarConnected(!!data.google_refresh_token);
+        setStravaConnected(!!data.strava_refresh_token);
       }
     } catch (error) {
       console.error("Chyba při načítání nastavení:", error);
@@ -188,6 +190,62 @@ export default function Settings() {
     }
   };
 
+  const connectStrava = () => {
+    const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
+    
+    if (!clientId) {
+      toast({
+        title: "Chyba konfigurace",
+        description: "Strava Client ID není nastaven v .env",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const redirectUri = `${window.location.origin}/auth/strava-callback`;
+    const scope = "read,activity:read_all,profile:read_all";
+    
+    const authUrl = `https://www.strava.com/oauth/authorize?${new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: scope,
+      approval_prompt: "force",
+    })}`;
+    
+    window.location.href = authUrl;
+  };
+
+  const disconnectStrava = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nejste přihlášeni");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          strava_access_token: null,
+          strava_refresh_token: null,
+          strava_token_expiry: null,
+        })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      setStravaConnected(false);
+      toast({
+        title: "Strava odpojena",
+        description: "Integrace byla úspěšně odpojena",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Chyba",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="p-8">Načítání nastavení...</div>;
   }
@@ -278,6 +336,35 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">
               Umožní asistentovi vytvářet události v Google Calendar a exportovat poznámky do Google Tasks (Keep alternativa). 
               <span className="block mt-1 text-xs">Poznámka: V testovacím režimu platí tokeny 7 dní. Pro trvalé připojení je potřeba publikovat aplikaci v Google Cloud Console.</span>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Strava Integrace</Label>
+            {stravaConnected ? (
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-green-600 dark:text-green-400">✓ Připojeno</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={disconnectStrava}
+                >
+                  Odpojit
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={connectStrava}
+                className="w-full"
+              >
+                Připojit Strava
+              </Button>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Umožní asistentovi přístup k vašim aktivitám, běhům, cyklistickým výkonům a segmentům pro fitness koučování.
             </p>
           </div>
 

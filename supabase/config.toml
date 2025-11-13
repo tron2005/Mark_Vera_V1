@@ -75,3 +75,15 @@ verify_jwt = true
 
 [functions.create-calendar-event]
 verify_jwt = true
+
+[functions.list-calendar-events]
+verify_jwt = true
+
+[functions.export-to-keep]
+verify_jwt = true
+
+[functions.strava-auth-callback]
+verify_jwt = true
+
+[functions.get-strava-activities]
+verify_jwt = true
