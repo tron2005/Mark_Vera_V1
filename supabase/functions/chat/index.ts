@@ -651,6 +651,23 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       "kvalita spánku"
     ];
 
+    // Gmail klíčová slova (CZ/EN) pro vyhledávání v emailech
+    const gmailKeywords = [
+      "email",
+      "e-mail",
+      "e-maily",
+      "emails",
+      "gmail",
+      "pošta",
+      "schránka",
+      "najdi email",
+      "v emailech",
+      "od banky",
+      "banky",
+      "faktury",
+      "objednávky"
+    ];
+
     const normIncludes = (text: string, words: string[]) => {
       const t = normalizeText(text);
       return words.some(w => t.includes(normalizeText(w)));
@@ -659,6 +676,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     const shouldForceCalendar = !!lastUserText && normIncludes(lastUserText, calendarKeywords);
     const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
     const shouldForceStrava = !!lastUserText && hasStravaConnected && !shouldForceSleep && normIncludes(lastUserText, stravaKeywords);
+    const shouldForceGmail = !!lastUserText && normIncludes(lastUserText, gmailKeywords);
 
     // Předpočítané timestampy pro fallback: posledních 7 dní
     let stravaAfterTs: string | null = null;
@@ -674,7 +692,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
     else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
     else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
-    console.log("AI tool_choice:", toolChoiceLog, { shouldForceCalendar, shouldForceSleep, shouldForceStrava });
+    else if (shouldForceGmail) toolChoiceLog = "force:search_gmail";
+    console.log("AI tool_choice:", toolChoiceLog, { shouldForceCalendar, shouldForceSleep, shouldForceStrava, shouldForceGmail });
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -696,7 +715,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               ? { type: "function", function: { name: "get_strava_activities" } }
               : (shouldForceSleep
                   ? { type: "function", function: { name: "get_sleep_data" } }
-                  : "auto")),
+                  : (shouldForceGmail
+                      ? { type: "function", function: { name: "search_gmail" } }
+                      : "auto"))),
         stream: true,
       }),
     });
@@ -835,6 +856,35 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               }
             } catch (e) {
               console.error("Calendar fallback failed:", e);
+            }
+          }
+
+          // GMAIL FALLBACK: pokud AI nevydala tool call a uživatel se ptá na emaily
+          if (toolCalls.length === 0 && shouldForceGmail && lastUserText) {
+            try {
+              console.log("Gmail fallback triggered for:", lastUserText);
+              const { data: gmailData, error: gmailError } = await supabase.functions.invoke("search-gmail", {
+                headers: { Authorization: authHeader || "" },
+                body: { query: lastUserText, maxResults: 10 }
+              });
+              if (gmailError) {
+                console.error("Gmail fallback error:", gmailError);
+              } else if ((gmailData as any)?.messages?.length) {
+                const cnt = (gmailData as any).count || (gmailData as any).messages.length;
+                const note = `Nalezeno ${cnt} e-mailů.`;
+                fullResponse += `\n\n${note}`;
+                const delta = {
+                  id: `gen-${Date.now()}`,
+                  provider: "internal",
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n${note}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+              }
+            } catch (e) {
+              console.error("Gmail fallback failed:", e);
             }
           }
 
