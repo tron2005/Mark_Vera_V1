@@ -583,8 +583,22 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       "tento týden"
     ];
 
+    // Spánkové klíčové fráze pro zajištění volání nástroje
+    const sleepKeywords = [
+      "spánek",
+      "spánku",
+      "spal",
+      "spala",
+      "spánkov",
+      "sleep",
+      "jak jsem spal",
+      "kvalita spánku",
+      "poslední týden spánku"
+    ];
+
     const shouldForceCalendar = !!lastUserText && calendarKeywords.some(k => lastUserText.includes(k));
     const shouldForceStrava = !!lastUserText && hasStravaConnected && stravaKeywords.some(k => lastUserText.includes(k));
+    const shouldForceSleep = !!lastUserText && sleepKeywords.some(k => lastUserText.includes(k));
 
     // Předpočítané timestampy pro fallback: posledních 7 dní
     let stravaAfterTs: string | null = null;
@@ -599,6 +613,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     let toolChoiceLog = "auto";
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
     else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
+    else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
     console.log("AI tool_choice:", toolChoiceLog);
 
 
@@ -617,7 +632,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         tools,
         tool_choice: shouldForceCalendar
           ? { type: "function", function: { name: "create_calendar_event" } }
-          : (shouldForceStrava ? { type: "function", function: { name: "get_strava_activities" } } : "auto"),
+          : (shouldForceStrava
+              ? { type: "function", function: { name: "get_strava_activities" } }
+              : (shouldForceSleep
+                  ? { type: "function", function: { name: "get_sleep_data" } }
+                  : "auto")),
         stream: true,
       }),
     });
@@ -797,6 +816,45 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               }
             } catch (e) {
               console.error("Strava fallback failed:", e);
+            }
+          }
+
+          // SLEEP FALLBACK: pokud AI nevydala tool call a uživatel se ptá na spánek
+          if (toolCalls.length === 0 && shouldForceSleep) {
+            try {
+              console.log("Sleep fallback triggered for last 7 days");
+              const { data, error } = await supabase
+                .from("sleep_logs")
+                .select("*")
+                .eq("user_id", userId)
+                .order("sleep_date", { ascending: false })
+                .limit(7);
+
+              if (!error && data && data.length > 0) {
+                const avgDuration = Math.round(
+                  data.reduce((acc: number, log: any) => acc + (log.duration_minutes || 0), 0) / data.length
+                );
+                const formatted = data.map((log: any, i: number) => {
+                  const date = new Date(log.sleep_date).toLocaleDateString("cs-CZ");
+                  const hours = Math.floor((log.duration_minutes || 0) / 60);
+                  const mins = (log.duration_minutes || 0) % 60;
+                  const qual = log.quality ?? "N/A";
+                  return `${i + 1}. ${date}: ${hours}h ${mins}min (kvalita: ${qual}/10)`;
+                }).join("\n");
+
+                const msg = `😴 Spánek (posledních 7 nocí):\n\nPrůměr: ${Math.floor(avgDuration/60)}h ${avgDuration%60}min\n\n${formatted}`;
+                const delta = {
+                  id: crypto.randomUUID(),
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n${msg}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+                fullResponse += `\n${msg}`;
+              }
+            } catch (e) {
+              console.error("Sleep fallback failed:", e);
             }
           }
 
