@@ -430,9 +430,7 @@ export default function Settings() {
                     <SelectValue placeholder="Vyberte hlas pro Marka" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableVoices
-                      .filter(v => v.lang.startsWith('cs') || v.lang.startsWith('sk'))
-                      .map((voice) => (
+                    {availableVoices.map((voice) => (
                         <SelectItem key={voice.name} value={voice.name}>
                           {voice.name} ({voice.lang})
                         </SelectItem>
@@ -460,9 +458,7 @@ export default function Settings() {
                     <SelectValue placeholder="Vyberte hlas pro Veru" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableVoices
-                      .filter(v => v.lang.startsWith('cs') || v.lang.startsWith('sk'))
-                      .map((voice) => (
+                    {availableVoices.map((voice) => (
                         <SelectItem key={voice.name} value={voice.name}>
                           {voice.name} ({voice.lang})
                         </SelectItem>
