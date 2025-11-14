@@ -90,3 +90,6 @@ verify_jwt = true
 
 [functions.get-strava-activities]
 verify_jwt = true
+
+[functions.search-gmail]
+verify_jwt = true

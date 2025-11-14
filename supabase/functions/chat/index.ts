@@ -410,6 +410,25 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "search_gmail",
+          description: "Vyhledá a přečte emaily v uživatelově Gmail účtu. Můžeš filtrovat podle odesílatele, tématu, data. Použij když se uživatel ptá na emaily.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Vyhledávací dotaz (např. 'faktury', 'objednávky')" },
+              from: { type: "string", description: "Email odesílatele" },
+              subject: { type: "string", description: "Téma emailu" },
+              after: { type: "string", description: "Datum od (formát YYYY/MM/DD)" },
+              before: { type: "string", description: "Datum do (formát YYYY/MM/DD)" },
+              maxResults: { type: "number", description: "Max počet výsledků (výchozí 10)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "web_search",
           description: "Vyhledá aktuální informace na internetu - články, videa, filmy, seriály, zprávy. Použij když potřebuješ aktuální informace nebo když se uživatel ptá na doporučení filmů, seriálů, článků apod.",
           parameters: {
@@ -516,9 +535,10 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - send_stats_email: Pro odeslání fitness a wellness statistik emailem (spánek, HRV, fitness aktivity, tělesné složení)
 - create_calendar_event: Pro vytvoření události v Google Calendar - použij VŽDY když uživatel chce vytvořit událost/upomínku/schůzku
 - list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
+- search_gmail: Pro vyhledávání a čtení emailů v Gmail účtu uživatele
 - web_search: Pro vyhledání aktuálních informací, článků, zpráv, doporučení filmů, seriálů, knih a dalšího
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání statistik emailem (např. "pošli mi jak jsem spal poslední týden") použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání statistik emailem (např. "pošli mi jak jsem spal poslední týden") použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledávání v emailech (např. "najdi emaily od banky", "co mi přišlo od Petra") použij search_gmail. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search.`
       : `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
 📅 ROK: ${currentYear} - DŮLEŽITÉ: Při práci s daty VŽDY používej rok ${currentYear}!
 
@@ -530,7 +550,7 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje
 
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search.`;
     
     // Přidat kontext o uživateli
     if (userDescription) {
@@ -1554,6 +1574,47 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     completed: false
                   });
                   result = error ? { error: error.message } : { success: true, message: `Závod "${args.race_name}" byl přidán do plánu` };
+                } else if (tc.name === "search_gmail") {
+                  const args = JSON.parse(tc.arguments);
+                  console.log("search_gmail called with args:", args);
+                  
+                  try {
+                    const gmailResponse = await supabase.functions.invoke("search-gmail", {
+                      headers: {
+                        Authorization: authHeader || ""
+                      },
+                      body: {
+                        query: args.query,
+                        from: args.from,
+                        subject: args.subject,
+                        after: args.after,
+                        before: args.before,
+                        maxResults: args.maxResults || 10
+                      }
+                    });
+
+                    console.log("Gmail search response:", JSON.stringify(gmailResponse));
+
+                    if (gmailResponse.error) {
+                      console.log("Gmail search error:", gmailResponse.error);
+                      result = { error: `Chyba při vyhledávání v Gmailu: ${gmailResponse.error.message}` };
+                    } else {
+                      const data = gmailResponse.data as any;
+                      if (data.messages && data.messages.length > 0) {
+                        result = { 
+                          success: true, 
+                          messages: data.messages,
+                          count: data.count,
+                          summary: `Nalezeno ${data.count} emailů`
+                        };
+                      } else {
+                        result = { success: true, messages: [], count: 0, summary: "Nenalezeny žádné emaily" };
+                      }
+                    }
+                  } catch (error: any) {
+                    console.log("Exception when searching Gmail:", error);
+                    result = { error: `Chyba: ${error.message}` };
+                  }
                 } else if (tc.name === "web_search") {
                   const args = JSON.parse(tc.arguments);
                   const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
