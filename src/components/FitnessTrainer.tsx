@@ -26,7 +26,7 @@ export const FitnessTrainer = () => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("strava_refresh_token, garmin_refresh_token, weight_kg, age, height_cm, bmi")
+      .select("strava_refresh_token, garmin_refresh_token, weight_kg, age, height_cm, bmi, bmr")
       .eq("user_id", user.id)
       .single();
 
@@ -177,6 +177,12 @@ export const FitnessTrainer = () => {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">BMI</span>
                   <span className="text-lg font-bold">{Number(userProfile.bmi).toFixed(1)}</span>
+                </div>
+              )}
+              {userProfile.bmr && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">BMR</span>
+                  <span className="text-lg font-bold">{Math.round(userProfile.bmr)} kcal/den</span>
                 </div>
               )}
               {!userProfile.weight_kg && !userProfile.height_cm && !userProfile.age && (
