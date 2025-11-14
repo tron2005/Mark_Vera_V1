@@ -286,6 +286,20 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "get_sleep_data",
+          description: "Načte spánková data uživatele pro analýzu kvality spánku a zotavení.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Počet dnů zpět (výchozí 7)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "get_race_goals",
           description: "Načte plánované závody a tréninkové cíle uživatele.",
           parameters: {
@@ -357,6 +371,7 @@ serve(async (req) => {
 - Analyzovat tréninky a výkony
 - Doporučit trénink podle počasí a zdravotního stavu
 - Sledovat zdravotní stav a únavu
+- Analyzovat kvalitu spánku a zotavení
 - Pomoci s plánováním závodů
 - Poskytovat sportovní rady
 ${profileInfo}
@@ -364,7 +379,7 @@ ${profileInfo}
 ⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!
 Příklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!
 
-Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_race_goals, add_race_goal
+Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_race_goals, add_race_goal
 `;
     }
 
@@ -1134,6 +1149,39 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     log_date: new Date().toISOString()
                   });
                   result = error ? { error: error.message } : { success: true, message: "Zdravotní záznam přidán" };
+                } else if (tc.name === "get_sleep_data") {
+                  const args = JSON.parse(tc.arguments);
+                  const days = args.days || 7;
+                  const sinceDate = new Date();
+                  sinceDate.setDate(sinceDate.getDate() - days);
+                  
+                  const { data, error } = await supabase
+                    .from("sleep_logs")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("sleep_date", sinceDate.toISOString().split('T')[0])
+                    .order("sleep_date", { ascending: false });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Žádná spánková data za toto období." };
+                  } else {
+                    const avgDuration = Math.round(data.reduce((acc: number, log: any) => acc + (log.duration_minutes || 0), 0) / data.length);
+                    const avgQuality = Math.round(data.reduce((acc: number, log: any) => acc + (log.quality || 0), 0) / data.length);
+                    const avgDeep = Math.round(data.reduce((acc: number, log: any) => acc + (log.deep_sleep_minutes || 0), 0) / data.length);
+                    
+                    const formatted = data.slice(0, 5).map((log: any, i: number) => {
+                      const date = new Date(log.sleep_date).toLocaleDateString("cs-CZ");
+                      const hours = Math.floor((log.duration_minutes || 0) / 60);
+                      const mins = (log.duration_minutes || 0) % 60;
+                      return `${i + 1}. ${date}: ${hours}h ${mins}min (kvalita: ${log.quality || 'N/A'}/10)\n   Hluboký spánek: ${log.deep_sleep_minutes || 0}min, REM: ${log.rem_duration_minutes || 0}min`;
+                    }).join("\n\n");
+                    
+                    result = { 
+                      message: `😴 Spánková analýza (${days} dní):\n\n📊 Průměry:\n- Délka: ${Math.floor(avgDuration/60)}h ${avgDuration%60}min\n- Kvalita: ${avgQuality}/10\n- Hluboký spánek: ${avgDeep}min\n\n📅 Poslední noci:\n\n${formatted}` 
+                    };
+                  }
                 } else if (tc.name === "get_race_goals") {
                   const args = JSON.parse(tc.arguments);
                   let query = supabase
