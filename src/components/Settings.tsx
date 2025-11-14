@@ -21,6 +21,8 @@ export default function Settings() {
   const [email, setEmail] = useState("");
   const [voicePreference, setVoicePreference] = useState("alloy");
   const [customInstructions, setCustomInstructions] = useState("");
+  const [userDescription, setUserDescription] = useState("");
+  const [trainerEnabled, setTrainerEnabled] = useState(true);
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [stravaConnected, setStravaConnected] = useState(false);
 
@@ -35,7 +37,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions, google_refresh_token, strava_refresh_token")
+        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -45,6 +47,8 @@ export default function Settings() {
         setEmail(data.email || "");
         setVoicePreference(data.voice_preference || "alloy");
         setCustomInstructions(data.custom_instructions || "");
+        setUserDescription(data.user_description || "");
+        setTrainerEnabled(data.trainer_enabled ?? true);
         setGoogleCalendarConnected(!!data.google_refresh_token);
         setStravaConnected(!!data.strava_refresh_token);
       }
@@ -77,6 +81,8 @@ export default function Settings() {
             email,
             voice_preference: voicePreference,
             custom_instructions: customInstructions,
+            user_description: userDescription,
+            trainer_enabled: trainerEnabled,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -90,6 +96,8 @@ export default function Settings() {
             email,
             voice_preference: voicePreference,
             custom_instructions: customInstructions,
+            user_description: userDescription,
+            trainer_enabled: trainerEnabled,
           });
         error = insertError;
       }
@@ -296,20 +304,6 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="instructions">Vlastní instrukce</Label>
-            <Textarea
-              id="instructions"
-              placeholder="Jak má se mnou asistent mluvit..."
-              value={customInstructions}
-              onChange={(e) => setCustomInstructions(e.target.value)}
-              rows={6}
-            />
-            <p className="text-sm text-muted-foreground">
-              Definujte, jak má asistent komunikovat (styl, tón, preference)
-            </p>
-          </div>
-
-          <div className="space-y-2">
             <Label>Google Integrace</Label>
             {googleCalendarConnected ? (
               <div className="flex items-center gap-2">
@@ -371,6 +365,64 @@ export default function Settings() {
           <Button onClick={saveSettings} disabled={saving} className="w-full">
             {saving ? "Ukládání..." : "Uložit nastavení"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Vlastní instrukce asistenta</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="custom_instructions">Jak se má asistent chovat?</Label>
+            <Textarea
+              id="custom_instructions"
+              placeholder="Například: Buď přátelský a používej emojis, upozorni mě na důležité schůzky..."
+              value={customInstructions}
+              onChange={(e) => setCustomInstructions(e.target.value)}
+              rows={4}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>O tobě</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="user_description">Informace o tobě</Label>
+            <Textarea
+              id="user_description"
+              placeholder="Řekni asistentovi o sobě: zájmy, rodina, práce, cíle... Tyto informace pomohou poskytnout personalizované rady."
+              value={userDescription}
+              onChange={(e) => setUserDescription(e.target.value)}
+              rows={6}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fitness Trenér</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Zapnout AI fitness trenéra</Label>
+              <p className="text-sm text-muted-foreground">
+                Trenér má přístup k datům ze Stravy a poskytuje sportovní rady
+              </p>
+            </div>
+            <Button
+              variant={trainerEnabled ? "default" : "outline"}
+              onClick={() => setTrainerEnabled(!trainerEnabled)}
+            >
+              {trainerEnabled ? "Zapnuto" : "Vypnuto"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
