@@ -315,6 +315,7 @@ serve(async (req) => {
     // Fitness kontext pro trenérský režim
     let fitnessContext = "";
     if (trainerEnabled && hasStravaConnected) {
+      const currentYear = new Date().getFullYear();
       fitnessContext = `
 
 🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy. Můžeš:
@@ -323,6 +324,9 @@ serve(async (req) => {
 - Sledovat zdravotní stav a únavu
 - Pomoci s plánováním závodů
 - Poskytovat sportovní rady
+
+⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!
+Příklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!
 
 Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_race_goals, add_race_goal
 `;
@@ -340,10 +344,12 @@ Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_
       weekday: 'long'
     });
     const currentDateISO = now.toISOString().split('T')[0];
+    const currentYear = now.getFullYear();
 
     // Systémový prompt podle režimu
     let systemPrompt = mode === "vera"
       ? `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
+📅 ROK: ${currentYear} - DŮLEŽITÉ: Při práci s daty VŽDY používej rok ${currentYear}!
 
 Jsi V.E.R.A. (Voice Enhanced Raspberry Assistant) - pokročilý hlasový asistent. Mluvíš česky, jsi přátelská a inteligentní. 
       
@@ -374,6 +380,7 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 
 Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
       : `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
+📅 ROK: ${currentYear} - DŮLEŽITÉ: Při práci s daty VŽDY používej rok ${currentYear}!
 
 Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
