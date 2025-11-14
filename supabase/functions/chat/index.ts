@@ -577,10 +577,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       "kolo",
       "cyklo",
       "cycling",
-      "run",
-      "poslední týden",
-      "minulý týden",
-      "tento týden"
+      "run"
     ];
 
     // Spánkové klíčové fráze pro zajištění volání nástroje
@@ -592,13 +589,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       "spánkov",
       "sleep",
       "jak jsem spal",
-      "kvalita spánku",
-      "poslední týden spánku"
+      "kvalita spánku"
     ];
 
-    const shouldForceCalendar = !!lastUserText && calendarKeywords.some(k => lastUserText.includes(k));
-    const shouldForceStrava = !!lastUserText && hasStravaConnected && stravaKeywords.some(k => lastUserText.includes(k));
-    const shouldForceSleep = !!lastUserText && sleepKeywords.some(k => lastUserText.includes(k));
+    const normIncludes = (text: string, words: string[]) => {
+      const t = normalizeText(text);
+      return words.some(w => t.includes(normalizeText(w)));
+    };
+
+    const shouldForceCalendar = !!lastUserText && normIncludes(lastUserText, calendarKeywords);
+    const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
+    const shouldForceStrava = !!lastUserText && hasStravaConnected && !shouldForceSleep && normIncludes(lastUserText, stravaKeywords);
 
     // Předpočítané timestampy pro fallback: posledních 7 dní
     let stravaAfterTs: string | null = null;
@@ -612,9 +613,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
 
     let toolChoiceLog = "auto";
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
-    else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
     else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
-    console.log("AI tool_choice:", toolChoiceLog);
+    else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
+    console.log("AI tool_choice:", toolChoiceLog, { shouldForceCalendar, shouldForceSleep, shouldForceStrava });
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
