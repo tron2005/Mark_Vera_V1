@@ -9,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 
 const VOICES = [
-  { value: "alloy", label: "Alloy" },
-  { value: "echo", label: "Echo" },
-  { value: "shimmer", label: "Shimmer" },
+  { value: "cs-CZ", label: "Český hlas (výchozí)" },
 ];
 
 export default function Settings() {
@@ -52,7 +50,7 @@ export default function Settings() {
       if (data) {
         const profile = data as any; // Type assertion until Supabase types are regenerated
         setEmail(profile.email || "");
-        setVoicePreference(profile.voice_preference || "alloy");
+        setVoicePreference(profile.voice_preference || "cs-CZ");
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);

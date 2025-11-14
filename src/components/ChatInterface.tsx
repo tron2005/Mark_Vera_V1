@@ -27,14 +27,11 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [voicePreference, setVoicePreference] = useState<string>("alloy");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     loadMessages();
-    loadVoicePreference();
     
     // Realtime subscription
     const channel = supabase
@@ -57,11 +54,6 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
 
     return () => {
       channel.unsubscribe();
-      // Clean up audio on unmount
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
     };
   }, [conversationId]);
 
@@ -84,26 +76,6 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     setMessages((data || []) as Message[]);
   };
 
-  const loadVoicePreference = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("voice_preference")
-        .eq("user_id", user.id)
-        .single();
-
-      if (error) throw error;
-      
-      if (data?.voice_preference) {
-        setVoicePreference(data.voice_preference);
-      }
-    } catch (error) {
-      console.error("Error loading voice preference:", error);
-    }
-  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -321,57 +293,36 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     }
   };
 
-  const speakText = async (text: string) => {
-    try {
-      setIsSpeaking(true);
-      
-      // Stop any currently playing audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      // Determine voice based on mode and user preference
-      let voice = voicePreference;
-      
-      // Override with mode-specific voices if user hasn't customized
-      if (voicePreference === "alloy") {
-        if (mode === "mark") {
-          voice = "echo"; // Mužský hlas pro Marka
-        } else {
-          voice = "shimmer"; // Ženský hlas pro Veru
-        }
-      }
-
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text, voice }
-      });
-
-      if (error) throw error;
-
-      if (data?.audioContent) {
-        // Convert base64 to blob and play
-        const audioBlob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(r => r.blob());
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        audioRef.current = new Audio(audioUrl);
-        audioRef.current.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        audioRef.current.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          toast.error("Chyba při přehrávání zvuku");
-        };
-        
-        await audioRef.current.play();
-      }
-    } catch (error: any) {
-      console.error("TTS error:", error);
-      toast.error("Nepodařilo se přečíst text");
-      setIsSpeaking(false);
+  const speakText = (text: string) => {
+    if (!text || isSpeaking) return;
+    
+    setIsSpeaking(true);
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'cs-CZ';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    
+    // Try to find a Czech voice
+    const voices = window.speechSynthesis.getVoices();
+    const czechVoice = voices.find(voice => voice.lang.startsWith('cs'));
+    if (czechVoice) {
+      utterance.voice = czechVoice;
     }
+    
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+    
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      toast.error("Nepodařilo se přečíst text");
+    };
+    
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
