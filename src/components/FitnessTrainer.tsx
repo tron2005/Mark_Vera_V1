@@ -7,6 +7,7 @@ import { Activity, Heart, TrendingUp, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FitnessStats } from "./FitnessStats";
 import { GarminImport } from "./GarminImport";
+import { SleepImport } from "./SleepImport";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -143,6 +144,11 @@ export const FitnessTrainer = () => {
         <GarminImport onImportComplete={() => {
           loadGarminActivities();
           toast.success("Aktivity importovány");
+        }} />
+
+        {/* Sleep Import */}
+        <SleepImport onImportComplete={() => {
+          toast.success("Spánková data importována");
         }} />
 
         {/* User Profile */}

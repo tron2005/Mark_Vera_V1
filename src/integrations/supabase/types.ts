@@ -322,6 +322,63 @@ export type Database = {
         }
         Relationships: []
       }
+      sleep_logs: {
+        Row: {
+          awake_duration_minutes: number | null
+          created_at: string
+          deep_sleep_minutes: number | null
+          duration_minutes: number | null
+          end_time: string | null
+          hr_average: number | null
+          hr_lowest: number | null
+          id: string
+          light_sleep_minutes: number | null
+          quality: number | null
+          rem_duration_minutes: number | null
+          respiration_rate: number | null
+          sleep_date: string
+          start_time: string | null
+          unknown_sleep_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          awake_duration_minutes?: number | null
+          created_at?: string
+          deep_sleep_minutes?: number | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hr_average?: number | null
+          hr_lowest?: number | null
+          id?: string
+          light_sleep_minutes?: number | null
+          quality?: number | null
+          rem_duration_minutes?: number | null
+          respiration_rate?: number | null
+          sleep_date: string
+          start_time?: string | null
+          unknown_sleep_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          awake_duration_minutes?: number | null
+          created_at?: string
+          deep_sleep_minutes?: number | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hr_average?: number | null
+          hr_lowest?: number | null
+          id?: string
+          light_sleep_minutes?: number | null
+          quality?: number | null
+          rem_duration_minutes?: number | null
+          respiration_rate?: number | null
+          sleep_date?: string
+          start_time?: string | null
+          unknown_sleep_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
