@@ -457,8 +457,46 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       "vytvoř událost",
       "přidej schůzku",
     ];
+
+    // Strava klíčová slova (CZ/EN) pro dotazy na tréninky/aktivity
+    const stravaKeywords = [
+      "strava",
+      "trénink",
+      "tréninky",
+      "trenink",
+      "treninky",
+      "aktivita",
+      "aktivity",
+      "běh",
+      "běh",
+      "běžeck",
+      "kolo",
+      "cyklo",
+      "cycling",
+      "run",
+      "poslední týden",
+      "minulý týden",
+      "tento týden"
+    ];
+
     const shouldForceCalendar = !!lastUserText && calendarKeywords.some(k => lastUserText.includes(k));
-    console.log("AI tool_choice:", shouldForceCalendar ? "force:create_calendar_event" : "auto");
+    const shouldForceStrava = !!lastUserText && hasStravaConnected && stravaKeywords.some(k => lastUserText.includes(k));
+
+    // Předpočítané timestampy pro fallback: posledních 7 dní
+    let stravaAfterTs: string | null = null;
+    let stravaBeforeTs: string | null = null;
+    if (shouldForceStrava) {
+      const nowTs = Math.floor(Date.now() / 1000);
+      const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      stravaBeforeTs = String(nowTs);
+      stravaAfterTs = String(sevenDaysAgo);
+    }
+
+    let toolChoiceLog = "auto";
+    if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
+    else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
+    console.log("AI tool_choice:", toolChoiceLog);
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -473,7 +511,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           ...formattedMessages,
         ],
         tools,
-        tool_choice: shouldForceCalendar ? { type: "function", function: { name: "create_calendar_event" } } : "auto",
+        tool_choice: shouldForceCalendar
+          ? { type: "function", function: { name: "create_calendar_event" } }
+          : (shouldForceStrava ? { type: "function", function: { name: "get_strava_activities" } } : "auto"),
         stream: true,
       }),
     });
@@ -612,6 +652,47 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               }
             } catch (e) {
               console.error("Calendar fallback failed:", e);
+            }
+          }
+
+          // STRAVA FALLBACK: pokud AI nevydala tool call a uživatel se ptá na tréninky
+          if (toolCalls.length === 0 && shouldForceStrava && hasStravaConnected) {
+            try {
+              console.log("Strava fallback triggered for last 7 days");
+              const { data: stravaData, error: stravaError } = await supabase.functions.invoke("get-strava-activities", {
+                headers: { Authorization: authHeader || "" },
+                body: {
+                  per_page: 30,
+                  before: stravaBeforeTs,
+                  after: stravaAfterTs
+                }
+              });
+
+              if (!stravaError) {
+                const activities = (stravaData as any)?.activities || [];
+                let msg = "Zatím nemáš žádné aktivity za poslední týden.";
+                if (activities.length > 0) {
+                  const formatted = activities.slice(0, 10).map((act: any, i: number) => {
+                    const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
+                    const distance = (act.distance / 1000).toFixed(2);
+                    const time = Math.floor(act.moving_time / 60);
+                    return `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                  }).join("\n\n");
+                  msg = `🏃 Poslední aktivity (7 dní):\n\n${formatted}`;
+                }
+
+                const delta = {
+                  id: crypto.randomUUID(),
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n${msg}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+                fullResponse += `\n${msg}`;
+              }
+            } catch (e) {
+              console.error("Strava fallback failed:", e);
             }
           }
 
