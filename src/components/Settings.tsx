@@ -678,6 +678,61 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>O aplikaci & Roadmapa</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="font-semibold mb-2">Verze 1.0.0</h3>
+            <p className="text-sm text-muted-foreground">
+              První stabilní verze s kompletním fitness asistentským systémem
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-2">✅ Aktuální funkce</h3>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>🤖 Dva AI asistenti (M.A.R.K. fitness trenér & V.E.R.A. wellness asistentka)</li>
+              <li>🔊 Text-to-speech s vlastním výběrem hlasů</li>
+              <li>🏃 Strava integrace - import aktivit a statistik</li>
+              <li>💪 Import z Garmin (.FIT soubory) - aktivity, spánek, HRV</li>
+              <li>📊 Import z Runalyze - kompletní běžecká historie</li>
+              <li>😴 Sledování spánku s pokročilými metrikami</li>
+              <li>❤️ Monitoring HRV a klidové srdeční frekvence</li>
+              <li>⚖️ Tělesné složení a BMI tracking</li>
+              <li>🎯 Správa závodních cílů a tréninková periodizace</li>
+              <li>📈 Grafy a vizualizace všech fitness dat</li>
+              <li>📝 Chytré poznámky s AI analýzou</li>
+              <li>📅 Google Calendar integrace</li>
+              <li>📧 Export poznámek emailem</li>
+              <li>🧮 BMR kalkulačka podle pohlaví a věku</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-2">🚀 Plánované funkce (Roadmapa)</h3>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>📊 Pokročilá analytika - týdenní/měsíční přehledy, trendy, PDF reporty</li>
+              <li>🎯 AI generování tréninkových plánů na míru</li>
+              <li>⚡ Adaptivní plány reagující na únavu a přetrénování</li>
+              <li>🍎 Nutriční tracking s USDA Food Database</li>
+              <li>📸 AI rozpoznávání jídla z fotek a odhad kalorií</li>
+              <li>🥗 Doporučení jídelníčku podle cílů a BMR</li>
+              <li>👥 Sociální funkce - sdílení výkonů s přáteli</li>
+              <li>🏆 Gamifikace - body, odznaky, levely, streak counter</li>
+              <li>💪 Výzvy a týmové tréninky</li>
+            </ul>
+          </div>
+
+          <div className="pt-4 border-t">
+            <p className="text-xs text-muted-foreground">
+              Máte nápad na novou funkci? Napište to asistentovi! 💡
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
