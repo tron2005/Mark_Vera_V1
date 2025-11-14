@@ -481,6 +481,99 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_activities: {
+        Row: {
+          activity_type: string
+          average_heartrate: number | null
+          average_speed: number | null
+          average_watts: number | null
+          calories: number | null
+          created_at: string
+          distance_meters: number | null
+          elapsed_time_seconds: number | null
+          id: number
+          max_heartrate: number | null
+          max_speed: number | null
+          max_watts: number | null
+          moving_time_seconds: number | null
+          name: string
+          raw_data: Json | null
+          start_date: string
+          suffer_score: number | null
+          total_elevation_gain: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          average_heartrate?: number | null
+          average_speed?: number | null
+          average_watts?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_meters?: number | null
+          elapsed_time_seconds?: number | null
+          id: number
+          max_heartrate?: number | null
+          max_speed?: number | null
+          max_watts?: number | null
+          moving_time_seconds?: number | null
+          name: string
+          raw_data?: Json | null
+          start_date: string
+          suffer_score?: number | null
+          total_elevation_gain?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          average_heartrate?: number | null
+          average_speed?: number | null
+          average_watts?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_meters?: number | null
+          elapsed_time_seconds?: number | null
+          id?: number
+          max_heartrate?: number | null
+          max_speed?: number | null
+          max_watts?: number | null
+          moving_time_seconds?: number | null
+          name?: string
+          raw_data?: Json | null
+          start_date?: string
+          suffer_score?: number | null
+          total_elevation_gain?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strava_sync_log: {
+        Row: {
+          activities_synced: number | null
+          created_at: string
+          id: string
+          last_sync_at: string
+          user_id: string
+        }
+        Insert: {
+          activities_synced?: number | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string
+          user_id: string
+        }
+        Update: {
+          activities_synced?: number | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

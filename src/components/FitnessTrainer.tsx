@@ -20,6 +20,8 @@ export const FitnessTrainer = () => {
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   useEffect(() => {
     checkConnections();
@@ -41,7 +43,9 @@ export const FitnessTrainer = () => {
       setUserProfile(profile);
       
       if (profile.strava_refresh_token) {
-        loadStravaActivities();
+        // Load from database
+        loadStravaActivitiesFromDB();
+        loadLastSyncTime();
       }
       
       // Always try to load Garmin activities (from manual imports)
@@ -50,10 +54,65 @@ export const FitnessTrainer = () => {
     setLoading(false);
   };
 
-  const loadStravaActivities = async () => {
+  const loadLastSyncTime = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("strava_sync_log")
+      .select("last_sync_at")
+      .eq("user_id", user.id)
+      .single();
+
+    if (data) {
+      setLastSync(new Date(data.last_sync_at));
+    }
+  };
+
+  const loadStravaActivitiesFromDB = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("strava_activities")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("start_date", { ascending: false })
+        .limit(30);
+
+      if (error) throw error;
+      
+      const stravaActivities = (data || []).map((activity: any) => ({
+        id: activity.id,
+        name: activity.name,
+        type: activity.activity_type,
+        start_date: activity.start_date,
+        distance: activity.distance_meters,
+        moving_time: activity.moving_time_seconds,
+        average_heartrate: activity.average_heartrate,
+        max_heartrate: activity.max_heartrate,
+        calories: activity.calories,
+        total_elevation_gain: activity.total_elevation_gain,
+        source: 'strava'
+      }));
+
+      setActivities(prev => {
+        const garminActivities = prev.filter(a => a.source === 'garmin');
+        return [...stravaActivities, ...garminActivities].sort((a, b) => 
+          new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+        );
+      });
+    } catch (error: any) {
+      console.error("Chyba při načítání Strava aktivit z DB:", error);
+    }
+  };
+
+  const syncStravaActivities = async () => {
+    setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-strava-activities', {
-        body: { per_page: 30 }
+        body: { per_page: 100 }
       });
 
       if (error) {
@@ -71,10 +130,16 @@ export const FitnessTrainer = () => {
         return;
       }
       
-      setActivities(data?.activities || []);
+      if (data?.synced) {
+        toast.success(`Synchronizováno ${data.activities?.length || 0} aktivit ze Stravy`);
+        await loadStravaActivitiesFromDB();
+        await loadLastSyncTime();
+      }
     } catch (error: any) {
-      console.error("Chyba při načítání aktivit:", error);
-      toast.error("Nepodařilo se načíst aktivity ze Stravy");
+      console.error("Chyba při synchronizaci aktivit:", error);
+      toast.error("Nepodařilo se synchronizovat aktivity ze Stravy");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -146,6 +211,22 @@ export const FitnessTrainer = () => {
                 <Badge variant="secondary">Nepřipojeno</Badge>
               )}
             </div>
+            {stravaConnected && lastSync && (
+              <div className="text-xs text-muted-foreground">
+                Poslední sync: {lastSync.toLocaleString('cs-CZ')}
+              </div>
+            )}
+            {stravaConnected && (
+              <Button 
+                onClick={syncStravaActivities} 
+                disabled={syncing}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                {syncing ? "Synchronizuji..." : "Synchronizovat Strava data"}
+              </Button>
+            )}
             <div className="flex items-center justify-between">
               <span className="font-medium">Garmin / Runalyze</span>
               <Badge variant="secondary">FIT soubory</Badge>

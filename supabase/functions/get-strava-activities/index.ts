@@ -217,7 +217,61 @@ serve(async (req) => {
 
     console.log("Enriched", detailedActivities.length, "activities with HR and calories");
 
-    return new Response(JSON.stringify({ activities: detailedActivities }), {
+    // Store activities in database
+    const userId = user.id;
+    if (detailedActivities.length > 0) {
+      const activitiesToStore = detailedActivities.map((activity: any) => ({
+        id: activity.id,
+        user_id: userId,
+        name: activity.name,
+        activity_type: activity.type,
+        start_date: activity.start_date,
+        distance_meters: activity.distance,
+        moving_time_seconds: activity.moving_time,
+        elapsed_time_seconds: activity.elapsed_time,
+        total_elevation_gain: activity.total_elevation_gain,
+        average_speed: activity.average_speed,
+        max_speed: activity.max_speed,
+        average_heartrate: activity.average_heartrate,
+        max_heartrate: activity.max_heartrate,
+        calories: activity.calories,
+        average_watts: activity.average_watts,
+        max_watts: activity.max_watts,
+        suffer_score: activity.suffer_score,
+        raw_data: activity
+      }));
+
+      const { error: insertError } = await supabase
+        .from('strava_activities')
+        .upsert(activitiesToStore, {
+          onConflict: 'user_id,id',
+          ignoreDuplicates: false
+        });
+
+      if (insertError) {
+        console.error('Error storing Strava activities:', insertError);
+      } else {
+        console.log(`Stored ${detailedActivities.length} activities in database`);
+        
+        // Update sync log
+        const { error: syncError } = await supabase
+          .from('strava_sync_log')
+          .upsert({
+            user_id: userId,
+            last_sync_at: new Date().toISOString(),
+            activities_synced: detailedActivities.length
+          }, {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
+          });
+
+        if (syncError) {
+          console.error('Error updating sync log:', syncError);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ activities: detailedActivities, synced: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
