@@ -9,6 +9,7 @@ import { FitnessStats } from "./FitnessStats";
 import { GarminImport } from "./GarminImport";
 import { SleepImport } from "./SleepImport";
 import { SleepCharts } from "./SleepCharts";
+import { RunalyzeBackupAnalyzer } from "./RunalyzeBackupAnalyzer";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -152,6 +153,9 @@ export const FitnessTrainer = () => {
           loadGarminActivities();
           toast.success("Spánková data importována");
         }} />
+
+        {/* Runalyze Backup Analyzer */}
+        <RunalyzeBackupAnalyzer />
 
         {/* User Profile */}
         {userProfile && (
