@@ -7,17 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-
-const VOICES = [
-  { value: "cs-CZ", label: "Český hlas (výchozí)" },
-];
+import { Volume2 } from "lucide-react";
 
 export default function Settings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
-  const [voicePreference, setVoicePreference] = useState("alloy");
+  const [markVoice, setMarkVoice] = useState("");
+  const [veraVoice, setVeraVoice] = useState("");
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [customInstructions, setCustomInstructions] = useState("");
   const [userDescription, setUserDescription] = useState("");
   const [trainerEnabled, setTrainerEnabled] = useState(true);
@@ -32,7 +31,20 @@ export default function Settings() {
 
   useEffect(() => {
     loadSettings();
+    loadVoices();
   }, []);
+
+  const loadVoices = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      setAvailableVoices(voices);
+    } else {
+      // Chrome needs a bit of time to load voices
+      window.speechSynthesis.onvoiceschanged = () => {
+        setAvailableVoices(window.speechSynthesis.getVoices());
+      };
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -41,16 +53,15 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr")
+        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        const profile = data as any; // Type assertion until Supabase types are regenerated
+        const profile = data as any;
         setEmail(profile.email || "");
-        setVoicePreference(profile.voice_preference || "cs-CZ");
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);
@@ -61,12 +72,10 @@ export default function Settings() {
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
         
-        // Načíst BMR nebo vypočítat
         if (profile.bmr) {
           setBmr(profile.bmr);
         }
         
-        // Vypočítat BMI a BMR
         if (profile.weight_kg && profile.height_cm) {
           calculateBMI(profile.weight_kg, profile.height_cm);
         }
@@ -176,7 +185,6 @@ export default function Settings() {
           .from("profiles")
           .update({
             email,
-            voice_preference: voicePreference,
             custom_instructions: customInstructions,
             user_description: userDescription,
             trainer_enabled: trainerEnabled,
@@ -203,7 +211,6 @@ export default function Settings() {
           .insert({
             user_id: user.id,
             email,
-            voice_preference: voicePreference,
             custom_instructions: customInstructions,
             user_description: userDescription,
             trainer_enabled: trainerEnabled,
@@ -234,25 +241,28 @@ export default function Settings() {
     }
   };
 
-  const testVoice = () => {
-    const utterance = new SpeechSynthesisUtterance("Ahoj, toto je testovací věta. Jak zní můj hlas?");
-    utterance.lang = "cs-CZ";
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
+  const testVoice = (voiceName: string, mode: 'mark' | 'vera') => {
+    const utterance = new SpeechSynthesisUtterance(
+      mode === 'mark' 
+        ? "Ahoj, jsem Mark, váš sportovní trenér" 
+        : "Ahoj, jsem Vera, vaše wellness asistentka"
+    );
+    utterance.lang = 'cs-CZ';
+    utterance.rate = 0.85;
     
-    // Note: Web Speech API nemá přímou podporu pro výběr konkrétního hlasu "alloy", "echo" atd.
-    // Tyto názvy jsou z OpenAI API. Web Speech API používá systémové hlasy.
-    const voices = speechSynthesis.getVoices();
-    const czechVoice = voices.find(v => v.lang.startsWith("cs"));
-    if (czechVoice) {
-      utterance.voice = czechVoice;
+    const voice = availableVoices.find(v => v.name === voiceName);
+    if (voice) {
+      utterance.voice = voice;
     }
     
-    speechSynthesis.speak(utterance);
+    utterance.pitch = mode === 'mark' ? 0.9 : 1.1;
+    
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
     
     toast({
       title: "Test hlasu",
-      description: "Přehrávám testovací větu...",
+      description: `Přehrávám hlas pro ${mode === 'mark' ? 'Marka' : 'Veru'}...`,
     });
   };
 
@@ -394,28 +404,73 @@ export default function Settings() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="voice">Preferovaný hlas</Label>
-              <Button type="button" variant="outline" size="sm" onClick={testVoice}>
-                Vyzkoušet hlas
-              </Button>
-            </div>
-            <Select value={voicePreference} onValueChange={setVoicePreference}>
-              <SelectTrigger id="voice">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {VOICES.map((voice) => (
-                  <SelectItem key={voice.value} value={voice.value}>
-                    {voice.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <Label>Hlasy asistentů</Label>
             <p className="text-sm text-muted-foreground">
-              Hlas pro syntézu řeči asistenta (OpenAI hlasy - alloy, echo, shimmer). Poznámka: Test hlasu používá systémové hlasy prohlížeče, skutečný hlas se použije při generování audio odpovědí.
+              Vyberte různé hlasy pro každého asistenta. Kvalita závisí na prohlížeči - Chrome a Edge mají nejlepší české hlasy (např. Zuzana od Microsoft).
             </p>
+            
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="mark-voice">🔧 M.A.R.K. (Sportovní trenér)</Label>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => testVoice(markVoice, 'mark')}
+                    disabled={!markVoice}
+                  >
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    Test
+                  </Button>
+                </div>
+                <Select value={markVoice} onValueChange={setMarkVoice}>
+                  <SelectTrigger id="mark-voice">
+                    <SelectValue placeholder="Vyberte hlas pro Marka" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableVoices
+                      .filter(v => v.lang.startsWith('cs') || v.lang.startsWith('sk'))
+                      .map((voice) => (
+                        <SelectItem key={voice.name} value={voice.name}>
+                          {voice.name} ({voice.lang})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="vera-voice">🤖 V.E.R.A. (Wellness asistentka)</Label>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => testVoice(veraVoice, 'vera')}
+                    disabled={!veraVoice}
+                  >
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    Test
+                  </Button>
+                </div>
+                <Select value={veraVoice} onValueChange={setVeraVoice}>
+                  <SelectTrigger id="vera-voice">
+                    <SelectValue placeholder="Vyberte hlas pro Veru" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableVoices
+                      .filter(v => v.lang.startsWith('cs') || v.lang.startsWith('sk'))
+                      .map((voice) => (
+                        <SelectItem key={voice.name} value={voice.name}>
+                          {voice.name} ({voice.lang})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Fyzický profil */}
