@@ -96,20 +96,35 @@ serve(async (req) => {
     }
 
     // Get request parameters
-    const { before, after, page = 1, per_page = 30 } = await req.json();
+    let { before, after, page = 1, per_page = 30 } = await req.json();
+
+    // Normalize timestamps to seconds (Strava expects epoch seconds)
+    const toSeconds = (v: unknown): number | null => {
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return n > 1_000_000_000_000 ? Math.floor(n / 1000) : Math.floor(n);
+    };
+    const beforeSec = toSeconds(before);
+    const afterSec = toSeconds(after);
+
+    console.log("get-strava-activities params:", { page, per_page, before: beforeSec, after: afterSec });
 
     // Build query parameters
     const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: per_page.toString(),
+      page: String(page),
+      per_page: String(per_page),
     });
 
-    if (before) params.append("before", before);
-    if (after) params.append("after", after);
+    if (beforeSec !== null) params.append("before", String(beforeSec));
+    if (afterSec !== null) params.append("after", String(afterSec));
+
+    const url = `https://www.strava.com/api/v3/athlete/activities?${params.toString()}`;
+    console.log("Strava fetch URL:", url);
 
     // Fetch activities from Strava
     const activitiesResponse = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?${params.toString()}`,
+      url,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -124,6 +139,7 @@ serve(async (req) => {
     }
 
     const activities = await activitiesResponse.json();
+    console.log("Strava activities count:", Array.isArray(activities) ? activities.length : "n/a", "first:", Array.isArray(activities) && activities[0]?.start_date);
 
     return new Response(JSON.stringify({ activities }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
