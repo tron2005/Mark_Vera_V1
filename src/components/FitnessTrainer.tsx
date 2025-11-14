@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { FitnessStats } from "./FitnessStats";
 import { GarminImport } from "./GarminImport";
 import { SleepImport } from "./SleepImport";
+import { SleepCharts } from "./SleepCharts";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -148,6 +149,7 @@ export const FitnessTrainer = () => {
 
         {/* Sleep Import */}
         <SleepImport onImportComplete={() => {
+          loadGarminActivities();
           toast.success("Spánková data importována");
         }} />
 
@@ -259,6 +261,9 @@ export const FitnessTrainer = () => {
           {showStats && <FitnessStats activities={activities} />}
         </>
       )}
+
+      {/* Sleep Charts */}
+      <SleepCharts />
 
       {/* AI Coach Section */}
       <Card>
