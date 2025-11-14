@@ -328,9 +328,24 @@ Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_
 `;
     }
 
+    // Aktuální datum a čas
+    const now = new Date();
+    const currentDateTime = now.toLocaleString('cs-CZ', { 
+      timeZone: 'Europe/Prague',
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      weekday: 'long'
+    });
+    const currentDateISO = now.toISOString().split('T')[0];
+
     // Systémový prompt podle režimu
     let systemPrompt = mode === "vera"
-      ? `Jsi V.E.R.A. (Voice Enhanced Raspberry Assistant) - pokročilý hlasový asistent. Mluvíš česky, jsi přátelská a inteligentní. 
+      ? `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
+
+Jsi V.E.R.A. (Voice Enhanced Raspberry Assistant) - pokročilý hlasový asistent. Mluvíš česky, jsi přátelská a inteligentní. 
       
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
@@ -358,7 +373,9 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
 
 Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`
-      : `Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
+      : `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
+
+Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluvíš česky a jsi jednoduchý a přímočarý.
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
