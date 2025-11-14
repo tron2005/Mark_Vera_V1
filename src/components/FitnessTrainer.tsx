@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Activity, Heart, TrendingUp, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FitnessStats } from "./FitnessStats";
+import { GarminImport } from "./GarminImport";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -37,6 +38,9 @@ export const FitnessTrainer = () => {
       if (profile.strava_refresh_token) {
         loadStravaActivities();
       }
+      
+      // Always try to load Garmin activities (from manual imports)
+      loadGarminActivities();
     }
     setLoading(false);
   };
@@ -52,6 +56,43 @@ export const FitnessTrainer = () => {
     } catch (error: any) {
       console.error("Chyba při načítání aktivit:", error);
       toast.error("Nepodařilo se načíst aktivity ze Stravy");
+    }
+  };
+
+  const loadGarminActivities = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("garmin_activities")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("start_date", { ascending: false })
+        .limit(30);
+
+      if (error) throw error;
+      
+      // Merge Garmin activities with Strava activities
+      const garminActivities = (data || []).map((activity: any) => ({
+        id: activity.id,
+        name: `Garmin ${activity.activity_type}`,
+        type: activity.activity_type,
+        start_date: activity.start_date,
+        distance: activity.distance_km * 1000, // convert to meters
+        moving_time: activity.duration_seconds,
+        average_heartrate: activity.avg_heart_rate,
+        max_heartrate: activity.max_heart_rate,
+        calories: activity.calories,
+        total_elevation_gain: activity.elevation_gain,
+        source: 'garmin'
+      }));
+
+      setActivities(prev => [...prev, ...garminActivities].sort((a, b) => 
+        new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+      ));
+    } catch (error: any) {
+      console.error("Chyba při načítání Garmin aktivit:", error);
     }
   };
 
@@ -88,11 +129,7 @@ export const FitnessTrainer = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="font-medium">Garmin</span>
-              {garminConnected ? (
-                <Badge variant="default" className="bg-green-600">Připojeno</Badge>
-              ) : (
-                <Badge variant="secondary">Nepřipojeno (v přípravě)</Badge>
-              )}
+              <Badge variant="secondary">Manuální import</Badge>
             </div>
             {!stravaConnected && (
               <p className="text-sm text-muted-foreground mt-2">
@@ -101,6 +138,12 @@ export const FitnessTrainer = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Garmin Import */}
+        <GarminImport onImportComplete={() => {
+          loadGarminActivities();
+          toast.success("Aktivity importovány");
+        }} />
 
         {/* User Profile */}
         {userProfile && (

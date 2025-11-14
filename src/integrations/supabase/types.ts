@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      garmin_activities: {
+        Row: {
+          activity_type: string
+          avg_heart_rate: number | null
+          avg_speed_kmh: number | null
+          calories: number | null
+          created_at: string
+          distance_km: number | null
+          duration_seconds: number | null
+          elevation_gain: number | null
+          id: string
+          max_heart_rate: number | null
+          raw_data: Json | null
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          avg_heart_rate?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_km?: number | null
+          duration_seconds?: number | null
+          elevation_gain?: number | null
+          id?: string
+          max_heart_rate?: number | null
+          raw_data?: Json | null
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          avg_heart_rate?: number | null
+          avg_speed_kmh?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_km?: number | null
+          duration_seconds?: number | null
+          elevation_gain?: number | null
+          id?: string
+          max_heart_rate?: number | null
+          raw_data?: Json | null
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       health_logs: {
         Row: {
           condition_type: string
