@@ -392,7 +392,7 @@ serve(async (req) => {
 
     // Fitness kontext pro trenérský režim
     let fitnessContext = "";
-    if (trainerEnabled && hasStravaConnected) {
+    if (trainerEnabled) {
       const currentYear = new Date().getFullYear();
       
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
@@ -407,23 +407,28 @@ serve(async (req) => {
         if (userBmr) profileInfo += `\n- BMR (bazální metabolismus): ${Math.round(userBmr)} kcal/den`;
       }
       
+      const stravaInfo = hasStravaConnected 
+        ? `- Analyzovat tréninky a výkony ze Stravy\n- Doporučit trénink podle počasí a zdravotního stavu\n\n⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!\nPříklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!\n`
+        : '';
+      
+      const availableTools = hasStravaConnected 
+        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal'
+        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal';
+      
       fitnessContext = `
 
-🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy a zdravotním datům. Můžeš:
-- Analyzovat tréninky a výkony
-- Doporučit trénink podle počasí a zdravotního stavu
-- Sledovat zdravotní stav a únavu
+🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem ke zdravotním datům. Můžeš:
+${stravaInfo}- Sledovat zdravotní stav a únavu
 - Analyzovat kvalitu spánku a zotavení
 - Sledovat klidový tep a HRV pro optimální regeneraci
 - Monitorovat váhu a složení těla
 - Pomoci s plánováním závodů
-- Poskytovat sportovní rady
+- Poskytovat zdravotní a sportovní rady
 ${profileInfo}
 
-⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!
-Příklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!
+Máš k dispozici nástroje: ${availableTools}
 
-Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal
+DŮLEŽITÉ: Když se uživatel ptá na spánek, HRV, klidový tep nebo složení těla, AKTIVNĚ použij příslušné nástroje (get_sleep_data, get_hrv_data, get_resting_heart_rate, get_body_composition) pro získání aktuálních dat!
 `;
     }
 
