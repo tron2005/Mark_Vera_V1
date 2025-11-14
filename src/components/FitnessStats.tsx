@@ -11,6 +11,10 @@ interface Activity {
   average_speed: number;
   max_speed: number;
   total_elevation_gain: number;
+  average_heartrate?: number;
+  max_heartrate?: number;
+  calories?: number;
+  kilojoules?: number;
 }
 
 interface FitnessStatsProps {
@@ -61,6 +65,13 @@ export const FitnessStats = ({ activities }: FitnessStatsProps) => {
   const totalTime = activities.reduce((sum, act) => sum + act.moving_time, 0) / 60;
   const avgDistance = totalDistance / activities.length;
   const avgSpeed = activities.reduce((sum, act) => sum + act.average_speed, 0) / activities.length;
+  
+  const activitiesWithHR = activities.filter(act => act.average_heartrate);
+  const avgHeartrate = activitiesWithHR.length > 0
+    ? activitiesWithHR.reduce((sum, act) => sum + (act.average_heartrate || 0), 0) / activitiesWithHR.length
+    : 0;
+  
+  const totalCalories = activities.reduce((sum, act) => sum + (act.calories || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -91,17 +102,6 @@ export const FitnessStats = ({ activities }: FitnessStatsProps) => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Průměrná vzdálenost
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{avgDistance.toFixed(1)} km</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
               Průměrná rychlost
             </CardTitle>
           </CardHeader>
@@ -109,6 +109,30 @@ export const FitnessStats = ({ activities }: FitnessStatsProps) => {
             <div className="text-2xl font-bold">{(avgSpeed * 3.6).toFixed(1)} km/h</div>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Celkové kalorie
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Math.round(totalCalories)} kcal</div>
+          </CardContent>
+        </Card>
+        
+        {avgHeartrate > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Průměrný tep
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{Math.round(avgHeartrate)} bpm</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Graf vzdálenosti */}

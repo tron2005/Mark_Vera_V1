@@ -13,6 +13,7 @@ export const FitnessTrainer = () => {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     checkConnections();
@@ -24,13 +25,14 @@ export const FitnessTrainer = () => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("strava_refresh_token, garmin_refresh_token")
+      .select("strava_refresh_token, garmin_refresh_token, weight_kg, age, height_cm, bmi")
       .eq("user_id", user.id)
       .single();
 
     if (profile) {
       setStravaConnected(!!profile.strava_refresh_token);
       setGarminConnected(!!profile.garmin_refresh_token);
+      setUserProfile(profile);
       
       if (profile.strava_refresh_token) {
         loadStravaActivities();
@@ -66,38 +68,83 @@ export const FitnessTrainer = () => {
         </p>
       </div>
 
-      {/* Connection Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Heart className="h-5 w-5" />
-            Stav připojení
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">Strava</span>
-            {stravaConnected ? (
-              <Badge variant="default" className="bg-green-600">Připojeno</Badge>
-            ) : (
-              <Badge variant="secondary">Nepřipojeno</Badge>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Connection Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5" />
+              Stav připojení
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Strava</span>
+              {stravaConnected ? (
+                <Badge variant="default" className="bg-green-600">Připojeno</Badge>
+              ) : (
+                <Badge variant="secondary">Nepřipojeno</Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Garmin</span>
+              {garminConnected ? (
+                <Badge variant="default" className="bg-green-600">Připojeno</Badge>
+              ) : (
+                <Badge variant="secondary">Nepřipojeno (v přípravě)</Badge>
+              )}
+            </div>
+            {!stravaConnected && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Připojte své fitness účty v Nastavení pro zobrazení dat a doporučení.
+              </p>
             )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-medium">Garmin</span>
-            {garminConnected ? (
-              <Badge variant="default" className="bg-green-600">Připojeno</Badge>
-            ) : (
-              <Badge variant="secondary">Nepřipojeno (v přípravě)</Badge>
-            )}
-          </div>
-          {!stravaConnected && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Připojte své fitness účty v Nastavení pro zobrazení dat a doporučení.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* User Profile */}
+        {userProfile && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Váš profil
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {userProfile.weight_kg && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Váha</span>
+                  <span className="text-lg font-bold">{userProfile.weight_kg} kg</span>
+                </div>
+              )}
+              {userProfile.height_cm && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Výška</span>
+                  <span className="text-lg font-bold">{userProfile.height_cm} cm</span>
+                </div>
+              )}
+              {userProfile.age && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Věk</span>
+                  <span className="text-lg font-bold">{userProfile.age} let</span>
+                </div>
+              )}
+              {userProfile.bmi && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">BMI</span>
+                  <span className="text-lg font-bold">{Number(userProfile.bmi).toFixed(1)}</span>
+                </div>
+              )}
+              {!userProfile.weight_kg && !userProfile.height_cm && !userProfile.age && (
+                <p className="text-sm text-muted-foreground">
+                  Profil se doplní automaticky ze Stravy nebo můžete přidat údaje v Nastavení.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Recent Activities */}
       {stravaConnected && activities.length > 0 && (
@@ -125,23 +172,28 @@ export const FitnessTrainer = () => {
             <CardContent>
               <div className="space-y-3">
                 {activities.slice(0, 5).map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">{activity.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {activity.type} · {new Date(activity.start_date).toLocaleDateString('cs-CZ')}
+                  <div key={activity.id} className="p-3 border rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="font-medium">{activity.name}</h3>
+                        <div className="text-sm text-muted-foreground">
+                          {activity.type} · {new Date(activity.start_date).toLocaleDateString('cs-CZ')}
+                        </div>
                       </div>
+                      <Badge variant="outline">{activity.type}</Badge>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {(activity.distance / 1000).toFixed(2)} km
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {Math.floor(activity.moving_time / 60)} min
-                      </div>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                      <span className="font-medium">{(activity.distance / 1000).toFixed(2)} km</span>
+                      <span>{Math.round(activity.moving_time / 60)} min</span>
+                      {activity.average_heartrate && (
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-3 w-3" />
+                          {Math.round(activity.average_heartrate)} bpm
+                        </span>
+                      )}
+                      {activity.calories && (
+                        <span>{Math.round(activity.calories)} kcal</span>
+                      )}
                     </div>
                   </div>
                 ))}
