@@ -25,6 +25,12 @@ export default function Settings() {
   const [trainerEnabled, setTrainerEnabled] = useState(true);
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [stravaConnected, setStravaConnected] = useState(false);
+  const [weightKg, setWeightKg] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("male");
+  const [bmi, setBmi] = useState<number | null>(null);
+  const [bmr, setBmr] = useState<number | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -37,7 +43,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token")
+        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -52,11 +58,92 @@ export default function Settings() {
         setTrainerEnabled(profile.trainer_enabled ?? true);
         setGoogleCalendarConnected(!!profile.google_refresh_token);
         setStravaConnected(!!profile.strava_refresh_token);
+        setWeightKg(profile.weight_kg?.toString() || "");
+        setHeightCm(profile.height_cm?.toString() || "");
+        setAge(profile.age?.toString() || "");
+        setGender(profile.gender || "male");
+        
+        // Vypočítat BMI a BMR
+        if (profile.weight_kg && profile.height_cm) {
+          calculateBMI(profile.weight_kg, profile.height_cm);
+        }
+        if (profile.weight_kg && profile.height_cm && profile.age) {
+          calculateBMR(profile.weight_kg, profile.height_cm, profile.age, profile.gender || "male");
+        }
       }
     } catch (error) {
       console.error("Chyba při načítání nastavení:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const calculateBMI = (weight: number, height: number) => {
+    const heightInMeters = height / 100;
+    const calculatedBMI = weight / (heightInMeters * heightInMeters);
+    setBmi(calculatedBMI);
+    return calculatedBMI;
+  };
+
+  const calculateBMR = (weight: number, height: number, ageYears: number, genderValue: string) => {
+    // Mifflin-St Jeor Equation
+    let calculatedBMR;
+    if (genderValue === "male") {
+      calculatedBMR = 10 * weight + 6.25 * height - 5 * ageYears + 5;
+    } else {
+      calculatedBMR = 10 * weight + 6.25 * height - 5 * ageYears - 161;
+    }
+    setBmr(calculatedBMR);
+    return calculatedBMR;
+  };
+
+  const handleWeightChange = (value: string) => {
+    setWeightKg(value);
+    const weight = parseFloat(value);
+    const height = parseFloat(heightCm);
+    const ageYears = parseFloat(age);
+    
+    if (weight && height) {
+      const calculatedBMI = calculateBMI(weight, height);
+      if (ageYears) {
+        calculateBMR(weight, height, ageYears, gender);
+      }
+    }
+  };
+
+  const handleHeightChange = (value: string) => {
+    setHeightCm(value);
+    const weight = parseFloat(weightKg);
+    const height = parseFloat(value);
+    const ageYears = parseFloat(age);
+    
+    if (weight && height) {
+      const calculatedBMI = calculateBMI(weight, height);
+      if (ageYears) {
+        calculateBMR(weight, height, ageYears, gender);
+      }
+    }
+  };
+
+  const handleAgeChange = (value: string) => {
+    setAge(value);
+    const weight = parseFloat(weightKg);
+    const height = parseFloat(heightCm);
+    const ageYears = parseFloat(value);
+    
+    if (weight && height && ageYears) {
+      calculateBMR(weight, height, ageYears, gender);
+    }
+  };
+
+  const handleGenderChange = (value: string) => {
+    setGender(value);
+    const weight = parseFloat(weightKg);
+    const height = parseFloat(heightCm);
+    const ageYears = parseFloat(age);
+    
+    if (weight && height && ageYears) {
+      calculateBMR(weight, height, ageYears, value);
     }
   };
 
@@ -76,6 +163,11 @@ export default function Settings() {
       let error;
       if (existingProfile) {
         // Update existujícího profilu
+        const weight = parseFloat(weightKg);
+        const height = parseFloat(heightCm);
+        const ageYears = parseFloat(age);
+        const calculatedBMI = weight && height ? calculateBMI(weight, height) : null;
+
         const { error: updateError } = await supabase
           .from("profiles")
           .update({
@@ -84,12 +176,22 @@ export default function Settings() {
             custom_instructions: customInstructions,
             user_description: userDescription,
             trainer_enabled: trainerEnabled,
+            weight_kg: weight || null,
+            height_cm: height || null,
+            age: ageYears || null,
+            gender: gender,
+            bmi: calculatedBMI,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
         error = updateError;
       } else {
         // Insert nového profilu
+        const weight = parseFloat(weightKg);
+        const height = parseFloat(heightCm);
+        const ageYears = parseFloat(age);
+        const calculatedBMI = weight && height ? calculateBMI(weight, height) : null;
+
         const { error: insertError } = await supabase
           .from("profiles")
           .insert({
@@ -99,6 +201,11 @@ export default function Settings() {
             custom_instructions: customInstructions,
             user_description: userDescription,
             trainer_enabled: trainerEnabled,
+            weight_kg: weight || null,
+            height_cm: height || null,
+            age: ageYears || null,
+            gender: gender,
+            bmi: calculatedBMI,
           });
         error = insertError;
       }
@@ -303,6 +410,90 @@ export default function Settings() {
               Hlas pro syntézu řeči asistenta (OpenAI hlasy - alloy, echo, shimmer). Poznámka: Test hlasu používá systémové hlasy prohlížeče, skutečný hlas se použije při generování audio odpovědí.
             </p>
           </div>
+
+          {/* Fyzický profil */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-lg">Fyzický profil</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Váha (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    placeholder="75"
+                    value={weightKg}
+                    onChange={(e) => handleWeightChange(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="height">Výška (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    placeholder="180"
+                    value={heightCm}
+                    onChange={(e) => handleHeightChange(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Věk</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    placeholder="30"
+                    value={age}
+                    onChange={(e) => handleAgeChange(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Pohlaví</Label>
+                  <Select value={gender} onValueChange={handleGenderChange}>
+                    <SelectTrigger id="gender">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Muž</SelectItem>
+                      <SelectItem value="female">Žena</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Vypočítané hodnoty */}
+              {(bmi !== null || bmr !== null) && (
+                <div className="mt-4 p-4 bg-muted rounded-lg space-y-2">
+                  {bmi !== null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">BMI (Body Mass Index):</span>
+                      <span className="text-lg font-bold">
+                        {bmi.toFixed(1)}
+                        <span className="text-sm font-normal ml-2 text-muted-foreground">
+                          {bmi < 18.5 ? "(Podváha)" : bmi < 25 ? "(Normální)" : bmi < 30 ? "(Nadváha)" : "(Obezita)"}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {bmr !== null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">BMR (Bazální metabolismus):</span>
+                      <span className="text-lg font-bold">
+                        {Math.round(bmr)} kcal/den
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    BMR je množství kalorií, které vaše tělo potřebuje v klidu. Pro aktivní den násobte 1.5-2x.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="space-y-2">
             <Label>Google Integrace</Label>
