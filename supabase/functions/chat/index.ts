@@ -315,6 +315,22 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "Vyhledá aktuální informace na internetu - články, videa, filmy, seriály, zprávy. Použij když potřebuješ aktuální informace nebo když se uživatel ptá na doporučení filmů, seriálů, článků apod.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Vyhledávací dotaz" },
+              category: { type: "string", description: "Kategorie: news/general" }
+            },
+            required: ["query"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -1158,6 +1174,45 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     completed: false
                   });
                   result = error ? { error: error.message } : { success: true, message: `Závod "${args.race_name}" byl přidán do plánu` };
+                } else if (tc.name === "web_search") {
+                  const args = JSON.parse(tc.arguments);
+                  const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
+                  
+                  if (!TAVILY_API_KEY) {
+                    result = { error: "Vyhledávání není nakonfigurováno" };
+                  } else {
+                    try {
+                      const searchResponse = await fetch("https://api.tavily.com/search", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          api_key: TAVILY_API_KEY,
+                          query: args.query,
+                          search_depth: "basic",
+                          max_results: 5,
+                          include_answer: true,
+                        }),
+                      });
+                      
+                      const searchData = await searchResponse.json();
+                      
+                      if (searchData.results && searchData.results.length > 0) {
+                        let summary = searchData.answer ? `${searchData.answer}\n\n` : "";
+                        summary += "📰 Nalezené zdroje:\n\n";
+                        searchData.results.forEach((item: any, idx: number) => {
+                          summary += `${idx + 1}. ${item.title}\n   ${item.content}\n   🔗 ${item.url}\n\n`;
+                        });
+                        result = { message: summary };
+                      } else {
+                        result = { message: "Nenašel jsem žádné relevantní výsledky." };
+                      }
+                    } catch (searchError) {
+                      console.error("Search error:", searchError);
+                      result = { error: "Chyba při vyhledávání" };
+                    }
+                  }
                 }
 
                 toolMessages.push({
