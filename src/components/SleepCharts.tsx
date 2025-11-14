@@ -149,7 +149,9 @@ export const SleepCharts = () => {
                 dataKey="kvalita" 
                 stroke="hsl(var(--chart-1))" 
                 name="Kvalita (0-100)"
-                strokeWidth={2}
+                strokeWidth={3}
+                dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
+                activeDot={{ r: 6 }}
               />
               <Line 
                 yAxisId="right"
@@ -157,7 +159,9 @@ export const SleepCharts = () => {
                 dataKey="tep" 
                 stroke="hsl(var(--chart-2))" 
                 name="Nejnižší tep (bpm)"
-                strokeWidth={2}
+                strokeWidth={3}
+                dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
+                activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
