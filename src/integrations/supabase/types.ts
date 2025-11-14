@@ -197,6 +197,7 @@ export type Database = {
         Row: {
           age: number | null
           bmi: number | null
+          bmr: number | null
           created_at: string | null
           custom_instructions: string | null
           display_name: string | null
@@ -224,6 +225,7 @@ export type Database = {
         Insert: {
           age?: number | null
           bmi?: number | null
+          bmr?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null
@@ -251,6 +253,7 @@ export type Database = {
         Update: {
           age?: number | null
           bmi?: number | null
+          bmr?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null

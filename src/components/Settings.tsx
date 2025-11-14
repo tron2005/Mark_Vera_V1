@@ -43,7 +43,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender")
+        .select("email, voice_preference, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -62,6 +62,11 @@ export default function Settings() {
         setHeightCm(profile.height_cm?.toString() || "");
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
+        
+        // Načíst BMR nebo vypočítat
+        if (profile.bmr) {
+          setBmr(profile.bmr);
+        }
         
         // Vypočítat BMI a BMR
         if (profile.weight_kg && profile.height_cm) {
@@ -167,6 +172,7 @@ export default function Settings() {
         const height = parseFloat(heightCm);
         const ageYears = parseFloat(age);
         const calculatedBMI = weight && height ? calculateBMI(weight, height) : null;
+        const calculatedBMR = weight && height && ageYears ? calculateBMR(weight, height, ageYears, gender) : null;
 
         const { error: updateError } = await supabase
           .from("profiles")
@@ -181,6 +187,7 @@ export default function Settings() {
             age: ageYears || null,
             gender: gender,
             bmi: calculatedBMI,
+            bmr: calculatedBMR,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -191,6 +198,7 @@ export default function Settings() {
         const height = parseFloat(heightCm);
         const ageYears = parseFloat(age);
         const calculatedBMI = weight && height ? calculateBMI(weight, height) : null;
+        const calculatedBMR = weight && height && ageYears ? calculateBMR(weight, height, ageYears, gender) : null;
 
         const { error: insertError } = await supabase
           .from("profiles")
@@ -206,6 +214,7 @@ export default function Settings() {
             age: ageYears || null,
             gender: gender,
             bmi: calculatedBMI,
+            bmr: calculatedBMR,
           });
         error = insertError;
       }

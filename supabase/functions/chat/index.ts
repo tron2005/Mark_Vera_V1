@@ -54,7 +54,7 @@ serve(async (req) => {
     // Načíst profil uživatele včetně fitness nastavení
     const { data: profile } = await supabase
       .from("profiles")
-      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token, weight_kg, age, height_cm, bmi")
+      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token, weight_kg, age, height_cm, bmi, bmr, gender")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -66,6 +66,8 @@ serve(async (req) => {
     const userAge = profile?.age;
     const userHeight = profile?.height_cm;
     const userBmi = profile?.bmi;
+    const userBmr = profile?.bmr;
+    const userGender = profile?.gender;
 
     // Nástroje pro správu poznámek
     const tools = [
@@ -323,12 +325,14 @@ serve(async (req) => {
       
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
       let profileInfo = "";
-      if (userWeight || userAge || userHeight || userBmi) {
+      if (userWeight || userAge || userHeight || userBmi || userBmr) {
         profileInfo = "\n📊 PROFIL UŽIVATELE:";
         if (userWeight) profileInfo += `\n- Váha: ${userWeight} kg`;
         if (userHeight) profileInfo += `\n- Výška: ${userHeight} cm`;
         if (userAge) profileInfo += `\n- Věk: ${userAge} let`;
+        if (userGender) profileInfo += `\n- Pohlaví: ${userGender === 'male' ? 'muž' : 'žena'}`;
         if (userBmi) profileInfo += `\n- BMI: ${Number(userBmi).toFixed(1)}`;
+        if (userBmr) profileInfo += `\n- BMR (bazální metabolismus): ${Math.round(userBmr)} kcal/den`;
       }
       
       fitnessContext = `
