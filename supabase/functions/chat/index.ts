@@ -1120,6 +1120,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   }
                 } else if (tc.name === "send_stats_email") {
                   const args = JSON.parse(tc.arguments);
+                  console.log("send_stats_email called with args:", args);
                   
                   // Get user's email from profile
                   const { data: profile } = await supabase
@@ -1129,11 +1130,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .single();
                   
                   const recipientEmail = args.recipientEmail || profile?.email;
+                  console.log("Recipient email:", recipientEmail);
                   
                   if (!recipientEmail) {
+                    console.log("No recipient email found");
                     result = { error: "Email adresa není nastavena v profilu" };
                   } else {
                     try {
+                      console.log("Invoking send-stats-email function...");
                       const emailResponse = await supabase.functions.invoke("send-stats-email", {
                         headers: {
                           Authorization: authHeader || ""
@@ -1147,9 +1151,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         }
                       });
 
+                      console.log("Email response:", JSON.stringify(emailResponse));
+
                       if (emailResponse.error) {
-                        result = { error: emailResponse.error.message };
+                        console.log("Email error:", emailResponse.error);
+                        result = { error: `Chyba při odesílání emailu: ${emailResponse.error.message}` };
                       } else {
+                        console.log("Email sent successfully");
                         const typeLabels: Record<string, string> = {
                           sleep: "spánku",
                           fitness: "fitness aktivit",
@@ -1163,7 +1171,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         };
                       }
                     } catch (error: any) {
-                      result = { error: error.message };
+                      console.log("Exception when sending email:", error);
+                      result = { error: `Chyba: ${error.message}` };
                     }
                   }
                 } else if (tc.name === "create_calendar_event") {
