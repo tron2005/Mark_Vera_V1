@@ -56,7 +56,21 @@ export const FitnessTrainer = () => {
         body: { per_page: 30 }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a rate limit error
+        if (error.message?.includes('rate limit') || error.message?.includes('Rate Limit')) {
+          toast.error("Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
+          return;
+        }
+        throw error;
+      }
+      
+      // Check if data contains rate limit error
+      if (data?.rateLimitExceeded) {
+        toast.error(data.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
+        return;
+      }
+      
       setActivities(data?.activities || []);
     } catch (error: any) {
       console.error("Chyba při načítání aktivit:", error);

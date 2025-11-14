@@ -792,7 +792,29 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 }
               });
 
-              if (!stravaError) {
+              if (stravaError) {
+                // Check for rate limit error
+                const errorMsg = stravaError.message || '';
+                if (errorMsg.includes('rate limit') || errorMsg.includes('Rate Limit') || errorMsg.includes('429')) {
+                  const errDelta = {
+                    id: crypto.randomUUID(),
+                    model: "internal",
+                    object: "chat.completion.chunk",
+                    created: Date.now(),
+                    choices: [{ index: 0, delta: { role: "assistant", content: "\n⚠️ Strava API rate limit překročen. Zkuste to prosím za 15 minut." }, finish_reason: null }]
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(errDelta)}\n\n`));
+                }
+              } else if ((stravaData as any)?.rateLimitExceeded) {
+                const errDelta = {
+                  id: crypto.randomUUID(),
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n⚠️ ${(stravaData as any)?.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut."}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errDelta)}\n\n`));
+              } else if (!stravaError) {
                 const activities = (stravaData as any)?.activities || [];
                 let msg = "Zatím nemáš žádné aktivity za poslední týden.";
                 if (activities.length > 0) {
@@ -1184,7 +1206,15 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     });
 
                     if (stravaResp.error) {
-                      result = { error: stravaResp.error.message };
+                      // Check for rate limit error
+                      const errorMsg = stravaResp.error.message || '';
+                      if (errorMsg.includes('rate limit') || errorMsg.includes('Rate Limit') || errorMsg.includes('429')) {
+                        result = { error: "Strava API rate limit překročen. Zkuste to prosím za 15 minut." };
+                      } else {
+                        result = { error: errorMsg };
+                      }
+                    } else if ((stravaResp.data as any)?.rateLimitExceeded) {
+                      result = { error: (stravaResp.data as any)?.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut." };
                     } else {
                       const activities = (stravaResp.data as any)?.activities || [];
                       if (activities.length === 0) {
