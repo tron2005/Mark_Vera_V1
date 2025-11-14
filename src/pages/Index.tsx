@@ -19,15 +19,17 @@ const Index = () => {
 
   useEffect(() => {
     console.log("Initializing auth...");
-    
+
+    // Fail-safe: never keep the app stuck on loading
+    const failSafe = setTimeout(() => {
+      console.warn("Auth init timeout reached — showing Auth screen.");
+      setLoading(false);
+    }, 6000);
+
     // Set up auth state listener FIRST
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event, session ? "authenticated" : "not authenticated");
-      // Only synchronous updates here
       setSession(session);
-      
       // Defer Supabase calls with setTimeout to prevent deadlock
       if (session) {
         setTimeout(() => {
@@ -36,17 +38,16 @@ const Index = () => {
       }
     });
 
-    // THEN check for existing session
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        console.log("Session loaded:", session ? "authenticated" : "not authenticated", error);
-        if (error) {
-          console.error("Session error:", error);
-          toast.error("Chyba při načítání session");
-        }
+    // THEN check for existing session (with timeout protection)
+    const getSessionWithTimeout = Promise.race([
+      supabase.auth.getSession(),
+      new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 5000))
+    ]) as Promise<{ data: { session: any } }>; // keep typing simple here
+
+    getSessionWithTimeout
+      .then(({ data: { session } }) => {
+        console.log("Session loaded:", session ? "authenticated" : "not authenticated");
         setSession(session);
-        setLoading(false);
-        
         if (session) {
           setTimeout(() => {
             initializeConversation();
@@ -56,10 +57,16 @@ const Index = () => {
       .catch((err) => {
         console.error("Fatal session error:", err);
         toast.error("Kritická chyba při načítání");
+      })
+      .finally(() => {
+        clearTimeout(failSafe);
         setLoading(false);
       });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(failSafe);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const initializeConversation = async () => {
