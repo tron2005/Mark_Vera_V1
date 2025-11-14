@@ -18,18 +18,31 @@ const Index = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-      
-      if (session) {
-        initializeConversation();
-      }
-    });
+    console.log("Initializing auth...");
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        console.log("Session loaded:", session ? "authenticated" : "not authenticated", error);
+        if (error) {
+          console.error("Session error:", error);
+          toast.error("Chyba při načítání session");
+        }
+        setSession(session);
+        setLoading(false);
+        
+        if (session) {
+          initializeConversation();
+        }
+      })
+      .catch((err) => {
+        console.error("Fatal session error:", err);
+        toast.error("Kritická chyba při načítání");
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event, session ? "authenticated" : "not authenticated");
       setSession(session);
       if (session) {
         initializeConversation();
