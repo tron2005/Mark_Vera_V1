@@ -125,10 +125,10 @@ export const GarminImport = ({ onImportComplete }: { onImportComplete?: () => vo
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Import z Garminu
+          Import FIT souborů
         </CardTitle>
         <CardDescription>
-          Nahrajte .fit soubory z vašeho Garmin zařízení
+          Nahrajte .fit soubory z Garminu, Runalyze nebo jiných zařízení
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -153,7 +153,7 @@ export const GarminImport = ({ onImportComplete }: { onImportComplete?: () => vo
                   {importing ? "Importuji..." : "Klikněte pro výběr FIT souborů"}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Podporovány jsou .fit soubory z Garmin zařízení
+                  Z Garminu, Runalyze nebo jiných fitness aplikací
                 </p>
               </div>
             </label>
@@ -167,13 +167,25 @@ export const GarminImport = ({ onImportComplete }: { onImportComplete?: () => vo
           )}
 
           <div className="text-sm text-muted-foreground space-y-2">
-            <p className="font-medium">Jak získat FIT soubory z Garminu:</p>
-            <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Připojte Garmin zařízení k počítači</li>
-              <li>Najděte složku "Activities" nebo "GARMIN/Activity"</li>
-              <li>Zkopírujte .fit soubory aktivit, které chcete importovat</li>
-              <li>Nahrajte je zde</li>
-            </ol>
+            <p className="font-medium">Jak získat FIT soubory:</p>
+            <div className="space-y-3 ml-2">
+              <div>
+                <p className="font-medium text-foreground">Z Garminu:</p>
+                <ol className="list-decimal list-inside space-y-1 mt-1">
+                  <li>Připojte zařízení k počítači</li>
+                  <li>Najděte složku "Activities" nebo "GARMIN/Activity"</li>
+                  <li>Zkopírujte .fit soubory</li>
+                </ol>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Z Runalyze:</p>
+                <ol className="list-decimal list-inside space-y-1 mt-1">
+                  <li>Přihlaste se na Runalyze.com</li>
+                  <li>Otevřete aktivitu</li>
+                  <li>Klikněte na "Export" → "Download .fit"</li>
+                </ol>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

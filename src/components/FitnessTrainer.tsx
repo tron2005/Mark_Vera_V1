@@ -128,8 +128,8 @@ export const FitnessTrainer = () => {
               )}
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-medium">Garmin</span>
-              <Badge variant="secondary">Manuální import</Badge>
+              <span className="font-medium">Garmin / Runalyze</span>
+              <Badge variant="secondary">FIT soubory</Badge>
             </div>
             {!stravaConnected && (
               <p className="text-sm text-muted-foreground mt-2">
