@@ -60,13 +60,63 @@ export const FitnessStats = ({ activities }: FitnessStatsProps) => {
       elevation: Math.round(item.elevation)
     }));
 
+  // Data podle typu aktivity
+  const activityByType = activities.reduce((acc: any, activity) => {
+    const type = activity.type;
+    if (!acc[type]) {
+      acc[type] = {
+        type,
+        count: 0,
+        totalDistance: 0,
+        totalTime: 0,
+      };
+    }
+    acc[type].count += 1;
+    acc[type].totalDistance += activity.distance / 1000;
+    acc[type].totalTime += activity.moving_time / 60;
+    return acc;
+  }, {});
+
+  const typeChartData = Object.values(activityByType).map((item: any) => ({
+    type: item.type,
+    count: item.count,
+    distance: parseFloat(item.totalDistance.toFixed(2)),
+    time: Math.round(item.totalTime),
+  }));
+
+  // Pásma tepové frekvence (zóny)
+  const activitiesWithHR = activities.filter(act => act.average_heartrate);
+  const hrZones = {
+    'Zóna 1 (50-60%)': 0,
+    'Zóna 2 (60-70%)': 0,
+    'Zóna 3 (70-80%)': 0,
+    'Zóna 4 (80-90%)': 0,
+    'Zóna 5 (90-100%)': 0,
+  };
+
+  activitiesWithHR.forEach(act => {
+    const maxHR = 220 - 30; // Předpokládaný věk 30, později lze doplnit z profilu
+    const avgHR = act.average_heartrate || 0;
+    const percentage = (avgHR / maxHR) * 100;
+
+    if (percentage < 60) hrZones['Zóna 1 (50-60%)']++;
+    else if (percentage < 70) hrZones['Zóna 2 (60-70%)']++;
+    else if (percentage < 80) hrZones['Zóna 3 (70-80%)']++;
+    else if (percentage < 90) hrZones['Zóna 4 (80-90%)']++;
+    else hrZones['Zóna 5 (90-100%)']++;
+  });
+
+  const hrZoneData = Object.entries(hrZones).map(([zone, count]) => ({
+    zone,
+    count,
+  }));
+
   // Celkové statistiky
   const totalDistance = activities.reduce((sum, act) => sum + act.distance, 0) / 1000;
   const totalTime = activities.reduce((sum, act) => sum + act.moving_time, 0) / 60;
   const avgDistance = totalDistance / activities.length;
   const avgSpeed = activities.reduce((sum, act) => sum + act.average_speed, 0) / activities.length;
   
-  const activitiesWithHR = activities.filter(act => act.average_heartrate);
   const avgHeartrate = activitiesWithHR.length > 0
     ? activitiesWithHR.reduce((sum, act) => sum + (act.average_heartrate || 0), 0) / activitiesWithHR.length
     : 0;
@@ -190,6 +240,65 @@ export const FitnessStats = ({ activities }: FitnessStatsProps) => {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Graf podle typu aktivity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Aktivity podle typu</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={typeChartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="type" />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip />
+              <Legend />
+              <Bar 
+                yAxisId="left" 
+                dataKey="distance" 
+                fill="hsl(var(--primary))" 
+                name="Vzdálenost (km)"
+              />
+              <Bar 
+                yAxisId="right" 
+                dataKey="count" 
+                fill="hsl(var(--accent))" 
+                name="Počet aktivit"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Pásma tepové frekvence */}
+      {activitiesWithHR.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tréninkové zóny (podle tepové frekvence)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={hrZoneData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="zone" type="category" width={120} />
+                <Tooltip />
+                <Legend />
+                <Bar 
+                  dataKey="count" 
+                  fill="hsl(var(--destructive))" 
+                  name="Počet tréninků"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-sm text-muted-foreground mt-4">
+              Tepové zóny pomáhají optimalizovat trénink. Nižší zóny (1-2) pro vytrvalost, vyšší (4-5) pro intenzitu a rychlost.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
