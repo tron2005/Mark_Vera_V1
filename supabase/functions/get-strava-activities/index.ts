@@ -119,6 +119,29 @@ serve(async (req) => {
     if (beforeSec !== null) params.append("before", String(beforeSec));
     if (afterSec !== null) params.append("after", String(afterSec));
 
+    // Fetch athlete profile for weight, age, etc.
+    const athleteResponse = await fetch("https://www.strava.com/api/v3/athlete", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (athleteResponse.ok) {
+      const athleteData = await athleteResponse.json();
+      console.log("Fetched athlete profile, weight:", athleteData.weight);
+      
+      // Update profile with weight if available
+      const updateData: any = {};
+      if (athleteData.weight) updateData.weight_kg = athleteData.weight;
+
+      if (Object.keys(updateData).length > 0) {
+        await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("user_id", user.id);
+      }
+    }
+
     const url = `https://www.strava.com/api/v3/athlete/activities?${params.toString()}`;
     console.log("Strava fetch URL:", url);
 
@@ -141,7 +164,40 @@ serve(async (req) => {
     const activities = await activitiesResponse.json();
     console.log("Strava activities count:", Array.isArray(activities) ? activities.length : "n/a", "first:", Array.isArray(activities) && activities[0]?.start_date);
 
-    return new Response(JSON.stringify({ activities }), {
+    // Fetch detailed info for each activity to get heart rate and calories
+    const detailedActivities = await Promise.all(
+      (Array.isArray(activities) ? activities : []).map(async (activity: any) => {
+        try {
+          const detailResponse = await fetch(
+            `https://www.strava.com/api/v3/activities/${activity.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (detailResponse.ok) {
+            const detailData = await detailResponse.json();
+            return {
+              ...activity,
+              average_heartrate: detailData.average_heartrate,
+              max_heartrate: detailData.max_heartrate,
+              calories: detailData.calories,
+              kilojoules: detailData.kilojoules,
+            };
+          }
+          return activity;
+        } catch (err) {
+          console.error(`Failed to fetch detail for activity ${activity.id}:`, err);
+          return activity;
+        }
+      })
+    );
+
+    console.log("Enriched", detailedActivities.length, "activities with HR and calories");
+
+    return new Response(JSON.stringify({ activities: detailedActivities }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
