@@ -44,13 +44,14 @@ export default function Settings() {
       if (error) throw error;
 
       if (data) {
-        setEmail(data.email || "");
-        setVoicePreference(data.voice_preference || "alloy");
-        setCustomInstructions(data.custom_instructions || "");
-        setUserDescription(data.user_description || "");
-        setTrainerEnabled(data.trainer_enabled ?? true);
-        setGoogleCalendarConnected(!!data.google_refresh_token);
-        setStravaConnected(!!data.strava_refresh_token);
+        const profile = data as any; // Type assertion until Supabase types are regenerated
+        setEmail(profile.email || "");
+        setVoicePreference(profile.voice_preference || "alloy");
+        setCustomInstructions(profile.custom_instructions || "");
+        setUserDescription(profile.user_description || "");
+        setTrainerEnabled(profile.trainer_enabled ?? true);
+        setGoogleCalendarConnected(!!profile.google_refresh_token);
+        setStravaConnected(!!profile.strava_refresh_token);
       }
     } catch (error) {
       console.error("Chyba při načítání nastavení:", error);
