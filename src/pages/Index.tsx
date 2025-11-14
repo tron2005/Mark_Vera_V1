@@ -19,6 +19,24 @@ const Index = () => {
 
   useEffect(() => {
     console.log("Initializing auth...");
+    
+    // Set up auth state listener FIRST
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event, session ? "authenticated" : "not authenticated");
+      // Only synchronous updates here
+      setSession(session);
+      
+      // Defer Supabase calls with setTimeout to prevent deadlock
+      if (session) {
+        setTimeout(() => {
+          initializeConversation();
+        }, 0);
+      }
+    });
+
+    // THEN check for existing session
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
         console.log("Session loaded:", session ? "authenticated" : "not authenticated", error);
@@ -30,7 +48,9 @@ const Index = () => {
         setLoading(false);
         
         if (session) {
-          initializeConversation();
+          setTimeout(() => {
+            initializeConversation();
+          }, 0);
         }
       })
       .catch((err) => {
@@ -38,16 +58,6 @@ const Index = () => {
         toast.error("Kritická chyba při načítání");
         setLoading(false);
       });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", _event, session ? "authenticated" : "not authenticated");
-      setSession(session);
-      if (session) {
-        initializeConversation();
-      }
-    });
 
     return () => subscription.unsubscribe();
   }, []);
