@@ -983,12 +983,34 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_strava_activities") {
                   const args = JSON.parse(tc.arguments);
                   try {
+                    // Normalizace timestampů (Strava očekává sekundy)
+                    let before = args.before ? String(args.before) : null;
+                    let after = args.after ? String(args.after) : null;
+                    const normalizeTs = (ts: string | null) => {
+                      if (!ts) return null;
+                      const n = Number(ts);
+                      if (!Number.isFinite(n)) return null;
+                      // Pokud je v milisekundách, převedeme na sekundy
+                      return String(n > 1_000_000_000_000 ? Math.floor(n / 1000) : Math.floor(n));
+                    };
+                    before = normalizeTs(before);
+                    after = normalizeTs(after);
+
+                    // Pokud víme, že uživatel chce "poslední týden" nebo obecně aktivity a AI neposlala rozsah,
+                    // použijeme náš bezpečný rozsah (7 dní zpět)
+                    const weekKeywords = ["poslední týden", "minulý týden", "tento týden", "last week", "this week"]; 
+                    const askWeek = !!lastUserText && weekKeywords.some(k => lastUserText.includes(k));
+                    if (shouldForceStrava && (askWeek || (!after && !before))) {
+                      before = stravaBeforeTs;
+                      after = stravaAfterTs;
+                    }
+
                     const stravaResp = await supabase.functions.invoke("get-strava-activities", {
                       headers: { Authorization: authHeader || "" },
                       body: { 
                         per_page: args.limit || 10,
-                        before: args.before,
-                        after: args.after
+                        before,
+                        after
                       }
                     });
 
@@ -997,7 +1019,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     } else {
                       const activities = (stravaResp.data as any)?.activities || [];
                       if (activities.length === 0) {
-                        result = { message: "Zatím nemáš žádné aktivity." };
+                        result = { message: "Zatím nemáš žádné aktivity v daném období." };
                       } else {
                         const formatted = activities.map((act: any, i: number) => {
                           const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
