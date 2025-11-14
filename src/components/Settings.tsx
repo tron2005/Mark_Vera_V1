@@ -36,12 +36,15 @@ export default function Settings() {
 
   const loadVoices = () => {
     const voices = window.speechSynthesis.getVoices();
+    console.log('Dostupné hlasy:', voices.map(v => `${v.name} (${v.lang})`));
     if (voices.length > 0) {
       setAvailableVoices(voices);
     } else {
       // Chrome needs a bit of time to load voices
       window.speechSynthesis.onvoiceschanged = () => {
-        setAvailableVoices(window.speechSynthesis.getVoices());
+        const newVoices = window.speechSynthesis.getVoices();
+        console.log('Hlasy načteny:', newVoices.map(v => `${v.name} (${v.lang})`));
+        setAvailableVoices(newVoices);
       };
     }
   };
