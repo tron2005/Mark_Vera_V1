@@ -1201,15 +1201,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_sleep_data") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 7;
-                  const sinceDate = new Date();
-                  sinceDate.setDate(sinceDate.getDate() - days);
                   
                   const { data, error } = await supabase
                     .from("sleep_logs")
                     .select("*")
                     .eq("user_id", userId)
-                    .gte("sleep_date", sinceDate.toISOString().split('T')[0])
-                    .order("sleep_date", { ascending: false });
+                    .order("sleep_date", { ascending: false })
+                    .limit(days);
                   
                   if (error) {
                     result = { error: error.message };
@@ -1234,15 +1232,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_resting_heart_rate") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 30;
-                  const sinceDate = new Date();
-                  sinceDate.setDate(sinceDate.getDate() - days);
                   
                   const { data, error } = await supabase
                     .from("heart_rate_rest")
                     .select("*")
                     .eq("user_id", userId)
-                    .gte("date", sinceDate.toISOString().split('T')[0])
-                    .order("date", { ascending: false });
+                    .order("date", { ascending: false })
+                    .limit(days);
                   
                   if (error) {
                     result = { error: error.message };
@@ -1265,15 +1261,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_hrv_data") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 30;
-                  const sinceDate = new Date();
-                  sinceDate.setDate(sinceDate.getDate() - days);
                   
                   const { data, error } = await supabase
                     .from("hrv_logs")
                     .select("*")
                     .eq("user_id", userId)
-                    .gte("date", sinceDate.toISOString().split('T')[0])
-                    .order("date", { ascending: false });
+                    .order("date", { ascending: false })
+                    .limit(days);
                   
                   if (error) {
                     result = { error: error.message };
@@ -1298,15 +1292,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_body_composition") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 90;
-                  const sinceDate = new Date();
-                  sinceDate.setDate(sinceDate.getDate() - days);
                   
                   const { data, error } = await supabase
                     .from("body_composition")
                     .select("*")
                     .eq("user_id", userId)
-                    .gte("date", sinceDate.toISOString().split('T')[0])
-                    .order("date", { ascending: false });
+                    .order("date", { ascending: false })
+                    .limit(days);
                   
                   if (error) {
                     result = { error: error.message };
