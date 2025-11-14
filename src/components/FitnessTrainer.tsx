@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Activity, Heart, TrendingUp, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { FitnessStats } from "./FitnessStats";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
   const [garminConnected, setGarminConnected] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     checkConnections();
@@ -40,11 +42,11 @@ export const FitnessTrainer = () => {
   const loadStravaActivities = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('get-strava-activities', {
-        body: { limit: 10 }
+        body: { per_page: 30 }
       });
 
       if (error) throw error;
-      setActivities(data.activities || []);
+      setActivities(data || []);
     } catch (error: any) {
       console.error("Chyba při načítání aktivit:", error);
       toast.error("Nepodařilo se načíst aktivity ze Stravy");
@@ -99,42 +101,56 @@ export const FitnessTrainer = () => {
 
       {/* Recent Activities */}
       {stravaConnected && activities.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Poslední aktivity ze Stravy
-            </CardTitle>
-            <CardDescription>
-              Vaše nedávné tréninky a výkony
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {activities.slice(0, 5).map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{activity.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {activity.type} · {new Date(activity.start_date).toLocaleDateString('cs-CZ')}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {(activity.distance / 1000).toFixed(2)} km
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {Math.floor(activity.moving_time / 60)} min
-                    </div>
-                  </div>
+        <>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Poslední aktivity ze Stravy
+                  </CardTitle>
+                  <CardDescription>
+                    Vaše nedávné tréninky a výkony
+                  </CardDescription>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowStats(!showStats)}
+                >
+                  {showStats ? "Skrýt statistiky" : "Zobrazit statistiky"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {activities.slice(0, 5).map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{activity.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {activity.type} · {new Date(activity.start_date).toLocaleDateString('cs-CZ')}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {(activity.distance / 1000).toFixed(2)} km
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {Math.floor(activity.moving_time / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {showStats && <FitnessStats activities={activities} />}
+        </>
       )}
 
       {/* AI Coach Section */}

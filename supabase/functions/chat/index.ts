@@ -51,14 +51,17 @@ serve(async (req) => {
       );
     }
 
-    // Načíst vlastní instrukce z profilu uživatele
+    // Načíst profil uživatele včetně fitness nastavení
     const { data: profile } = await supabase
       .from("profiles")
-      .select("custom_instructions")
+      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token")
       .eq("user_id", userId)
       .maybeSingle();
 
     const customInstructions = profile?.custom_instructions || "";
+    const trainerEnabled = profile?.trainer_enabled ?? true;
+    const userDescription = profile?.user_description || "";
+    const hasStravaConnected = !!profile?.strava_refresh_token;
 
     // Nástroje pro správu poznámek
     const tools = [
@@ -225,8 +228,105 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_strava_activities",
+          description: "Načte aktivity ze Stravy (běh, cyklistika, atd.). Můžeš získat posledních X aktivit nebo aktivity za určité období.",
+          parameters: {
+            type: "object",
+            properties: {
+              limit: { type: "number", description: "Počet aktivit k načtení (výchozí 10)" },
+              before: { type: "string", description: "Unix timestamp - načíst aktivity před tímto datem" },
+              after: { type: "string", description: "Unix timestamp - načíst aktivity po tomto datu" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_health_logs",
+          description: "Načte zdravotní záznamy uživatele (bolesti, únava, nemoci, atd.) pro vyhodnocení zdravotního stavu a plánování tréninku.",
+          parameters: {
+            type: "object",
+            properties: {
+              condition_type: { type: "string", description: "Typ zdravotního stavu (bolest, únava, nemoc, zranění)" },
+              days: { type: "number", description: "Počet dní zpět k načtení (výchozí 30)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "add_health_log",
+          description: "Přidá zdravotní záznam (bolest, únava, nemoc, zranění). Použij když uživatel zmíní zdravotní stav.",
+          parameters: {
+            type: "object",
+            properties: {
+              condition_type: { type: "string", description: "Typ: bolest/únava/nemoc/zranění" },
+              severity: { type: "number", description: "Závažnost 1-10" },
+              notes: { type: "string", description: "Poznámky k záznamu" }
+            },
+            required: ["condition_type", "severity"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_race_goals",
+          description: "Načte plánované závody a tréninkové cíle uživatele.",
+          parameters: {
+            type: "object",
+            properties: {
+              include_completed: { type: "boolean", description: "Zahrnout dokončené závody (výchozí false)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "add_race_goal",
+          description: "Přidá nový závod nebo cíl. Použij když uživatel plánuje závod nebo si dává cíl.",
+          parameters: {
+            type: "object",
+            properties: {
+              race_name: { type: "string", description: "Název závodu" },
+              race_date: { type: "string", description: "Datum závodu ISO 8601" },
+              race_type: { type: "string", description: "Typ: běh/cyklistika/triatlon/jiné" },
+              target_time: { type: "string", description: "Cílový čas (např. '3:30:00')" },
+              notes: { type: "string", description: "Poznámky" }
+            },
+            required: ["race_name", "race_date", "race_type"],
+            additionalProperties: false
+          }
+        }
       }
     ];
+
+    // Fitness kontext pro trenérský režim
+    let fitnessContext = "";
+    if (trainerEnabled && hasStravaConnected) {
+      fitnessContext = `
+
+🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy. Můžeš:
+- Analyzovat tréninky a výkony
+- Doporučit trénink podle počasí a zdravotního stavu
+- Sledovat zdravotní stav a únavu
+- Pomoci s plánováním závodů
+- Poskytovat sportovní rady
+
+Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_race_goals, add_race_goal
+`;
+    }
 
     // Systémový prompt podle režimu
     let systemPrompt = mode === "vera"
@@ -268,6 +368,15 @@ VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kale
 
 Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event, list_calendar_events. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event.`;
     
+    // Přidat kontext o uživateli
+    if (userDescription) {
+      systemPrompt += `\n\n👤 O UŽIVATELI:\n${userDescription}`;
+    }
+    
+    // Přidat fitness kontext
+    if (fitnessContext) {
+      systemPrompt += fitnessContext;
+    }
     
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
@@ -766,6 +875,118 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   } catch (error: any) {
                     result = { error: error.message };
                   }
+                } else if (tc.name === "get_strava_activities") {
+                  const args = JSON.parse(tc.arguments);
+                  try {
+                    const stravaResp = await supabase.functions.invoke("get-strava-activities", {
+                      headers: { Authorization: authHeader || "" },
+                      body: { 
+                        per_page: args.limit || 10,
+                        before: args.before,
+                        after: args.after
+                      }
+                    });
+
+                    if (stravaResp.error) {
+                      result = { error: stravaResp.error.message };
+                    } else {
+                      const activities = (stravaResp.data as any) || [];
+                      if (activities.length === 0) {
+                        result = { message: "Zatím nemáš žádné aktivity." };
+                      } else {
+                        const formatted = activities.map((act: any, i: number) => {
+                          const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
+                          const distance = (act.distance / 1000).toFixed(2);
+                          const time = Math.floor(act.moving_time / 60);
+                          return `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                        }).join("\n\n");
+                        result = { message: `🏃 Tvoje aktivity:\n\n${formatted}` };
+                      }
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
+                  }
+                } else if (tc.name === "get_health_logs") {
+                  const args = JSON.parse(tc.arguments);
+                  const days = args.days || 30;
+                  const sinceDate = new Date();
+                  sinceDate.setDate(sinceDate.getDate() - days);
+                  
+                  let query = supabase
+                    .from("health_logs")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("log_date", sinceDate.toISOString())
+                    .order("log_date", { ascending: false });
+                  
+                  if (args.condition_type) {
+                    query = query.eq("condition_type", args.condition_type);
+                  }
+                  
+                  const { data, error } = await query;
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Žádné zdravotní záznamy za toto období." };
+                  } else {
+                    const formatted = data.map((log: any, i: number) => {
+                      const date = new Date(log.log_date).toLocaleDateString("cs-CZ");
+                      return `${i + 1}. ${log.condition_type} (závažnost: ${log.severity}/10)\n   📅 ${date}\n   ${log.notes || ''}`;
+                    }).join("\n\n");
+                    result = { message: `🏥 Zdravotní záznamy:\n\n${formatted}` };
+                  }
+                } else if (tc.name === "add_health_log") {
+                  const args = JSON.parse(tc.arguments);
+                  const { error } = await supabase.from("health_logs").insert({
+                    user_id: userId,
+                    condition_type: args.condition_type,
+                    severity: args.severity,
+                    notes: args.notes || "",
+                    log_date: new Date().toISOString()
+                  });
+                  result = error ? { error: error.message } : { success: true, message: "Zdravotní záznam přidán" };
+                } else if (tc.name === "get_race_goals") {
+                  const args = JSON.parse(tc.arguments);
+                  let query = supabase
+                    .from("race_goals")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .order("race_date", { ascending: true });
+                  
+                  if (!args.include_completed) {
+                    query = query.eq("completed", false);
+                  }
+                  
+                  const { data, error } = await query;
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Zatím nemáš žádné závody v plánu." };
+                  } else {
+                    const formatted = data.map((goal: any, i: number) => {
+                      const date = new Date(goal.race_date).toLocaleDateString("cs-CZ");
+                      let info = `${i + 1}. ${goal.race_name} (${goal.race_type})\n   📅 ${date}`;
+                      if (goal.target_time) info += `\n   ⏱️ Cíl: ${goal.target_time}`;
+                      if (goal.notes) info += `\n   📝 ${goal.notes}`;
+                      if (goal.completed) info += `\n   ✅ Dokončeno`;
+                      return info;
+                    }).join("\n\n");
+                    result = { message: `🏁 Plánované závody:\n\n${formatted}` };
+                  }
+                } else if (tc.name === "add_race_goal") {
+                  const args = JSON.parse(tc.arguments);
+                  const { error } = await supabase.from("race_goals").insert({
+                    user_id: userId,
+                    race_name: args.race_name,
+                    race_date: args.race_date,
+                    race_type: args.race_type,
+                    target_time: args.target_time || null,
+                    notes: args.notes || "",
+                    completed: false
+                  });
+                  result = error ? { error: error.message } : { success: true, message: `Závod "${args.race_name}" byl přidán do plánu` };
                 }
 
                 toolMessages.push({
