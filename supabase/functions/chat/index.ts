@@ -205,6 +205,41 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "send_stats_email",
+          description: "Odešle fitness a wellness statistiky emailem - spánek, HRV, klidovou srdeční frekvenci, tělesné složení nebo fitness aktivity za určité období",
+          parameters: {
+            type: "object",
+            properties: {
+              recipientEmail: {
+                type: "string",
+                description: "Email adresa příjemce (pokud není zadaná, použije se email z profilu)"
+              },
+              statsType: {
+                type: "string",
+                enum: ["sleep", "fitness", "hrv", "heart_rate", "body_composition"],
+                description: "Typ statistik: sleep=spánek, fitness=běhy/aktivity, hrv=variabilita tepové frekvence, heart_rate=klidová srdeční frekvence, body_composition=tělesné složení"
+              },
+              days: {
+                type: "number",
+                description: "Počet dní zpět (výchozí 7 = poslední týden)"
+              },
+              startDate: {
+                type: "string",
+                description: "Datum začátku období (YYYY-MM-DD) - volitelné"
+              },
+              endDate: {
+                type: "string",
+                description: "Datum konce období (YYYY-MM-DD) - volitelné"
+              }
+            },
+            required: ["statsType"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "create_calendar_event",
           description: "Vytvoří událost/upomínku/schůzku v Google Calendar uživatele. Použij VŽDY když uživatel řekne 'vytvoř v kalendáři', 'přidej do kalendáře', 'naplánuj', 'upomeň mě', 'vytvoř událost', 'přidej schůzku' nebo podobně.",
           parameters: {
@@ -412,8 +447,8 @@ serve(async (req) => {
         : '';
       
       const availableTools = hasStravaConnected 
-        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal'
-        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal';
+        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email'
+        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email';
       
       fitnessContext = `
 
@@ -424,11 +459,14 @@ ${stravaInfo}- Sledovat zdravotní stav a únavu
 - Monitorovat váhu a složení těla
 - Pomoci s plánováním závodů
 - Poskytovat zdravotní a sportovní rady
+- Posílat uživateli statistiky emailem (spánek, HRV, fitness aktivity, tělesné složení)
 ${profileInfo}
 
 Máš k dispozici nástroje: ${availableTools}
 
-DŮLEŽITÉ: Když se uživatel ptá na spánek, HRV, klidový tep nebo složení těla, AKTIVNĚ použij příslušné nástroje (get_sleep_data, get_hrv_data, get_resting_heart_rate, get_body_composition) pro získání aktuálních dat!
+DŮLEŽITÉ: 
+- Když se uživatel ptá na spánek, HRV, klidový tep nebo složení těla, AKTIVNĚ použij příslušné nástroje (get_sleep_data, get_hrv_data, get_resting_heart_rate, get_body_composition) pro získání aktuálních dat!
+- Když uživatel chce poslat statistiky emailem (např. "pošli mi jak jsem spal poslední týden", "pošli mi HRV data", "pošli mi statistiky běhů"), použij send_stats_email s příslušným statsType (sleep/hrv/heart_rate/body_composition/fitness)
 `;
     }
 
@@ -475,11 +513,12 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - create_summary: Pro vytvoření sumáru poznámek
 - reschedule_note: Pro přeplánování poznámky na jiný termín
 - send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
+- send_stats_email: Pro odeslání fitness a wellness statistik emailem (spánek, HRV, fitness aktivity, tělesné složení)
 - create_calendar_event: Pro vytvoření události v Google Calendar - použij VŽDY když uživatel chce vytvořit událost/upomínku/schůzku
 - list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
 - web_search: Pro vyhledání aktuálních informací, článků, zpráv, doporučení filmů, seriálů, knih a dalšího
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání statistik emailem (např. "pošli mi jak jsem spal poslední týden") použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search.`
       : `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
 📅 ROK: ${currentYear} - DŮLEŽITÉ: Při práci s daty VŽDY používej rok ${currentYear}!
 
@@ -491,7 +530,7 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje
 
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, create_calendar_event, list_calendar_events, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání emailem použij send_notes_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search.`;
     
     // Přidat kontext o uživateli
     if (userDescription) {
@@ -1073,6 +1112,54 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         result = { 
                           success: true, 
                           message: `Email odeslán na ${recipientEmail}` 
+                        };
+                      }
+                    } catch (error: any) {
+                      result = { error: error.message };
+                    }
+                  }
+                } else if (tc.name === "send_stats_email") {
+                  const args = JSON.parse(tc.arguments);
+                  
+                  // Get user's email from profile
+                  const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("email")
+                    .eq("user_id", userId)
+                    .single();
+                  
+                  const recipientEmail = args.recipientEmail || profile?.email;
+                  
+                  if (!recipientEmail) {
+                    result = { error: "Email adresa není nastavena v profilu" };
+                  } else {
+                    try {
+                      const emailResponse = await supabase.functions.invoke("send-stats-email", {
+                        headers: {
+                          Authorization: authHeader || ""
+                        },
+                        body: {
+                          recipientEmail,
+                          statsType: args.statsType,
+                          days: args.days || 7,
+                          startDate: args.startDate,
+                          endDate: args.endDate
+                        }
+                      });
+
+                      if (emailResponse.error) {
+                        result = { error: emailResponse.error.message };
+                      } else {
+                        const typeLabels: Record<string, string> = {
+                          sleep: "spánku",
+                          fitness: "fitness aktivit",
+                          hrv: "HRV",
+                          heart_rate: "klidové srdeční frekvence",
+                          body_composition: "tělesného složení"
+                        };
+                        result = { 
+                          success: true, 
+                          message: `Statistiky ${typeLabels[args.statsType] || "wellness dat"} odeslány na ${recipientEmail}` 
                         };
                       }
                     } catch (error: any) {
