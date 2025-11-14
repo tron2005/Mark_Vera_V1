@@ -300,6 +300,48 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "get_resting_heart_rate",
+          description: "Načte data o klidové tepové frekvenci pro analýzu regenerace a celkové kondice.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Počet dnů zpět (výchozí 30)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_hrv_data",
+          description: "Načte data o variabilitě srdeční frekvence (HRV) - klíčový ukazatel regenerace, stresu a celkového stavu organismu.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Počet dnů zpět (výchozí 30)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_body_composition",
+          description: "Načte data o váze a složení těla (procento tuku, svalů, vody, kostí).",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Počet dnů zpět (výchozí 90)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "get_race_goals",
           description: "Načte plánované závody a tréninkové cíle uživatele.",
           parameters: {
@@ -367,11 +409,13 @@ serve(async (req) => {
       
       fitnessContext = `
 
-🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy. Můžeš:
+🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy a zdravotním datům. Můžeš:
 - Analyzovat tréninky a výkony
 - Doporučit trénink podle počasí a zdravotního stavu
 - Sledovat zdravotní stav a únavu
 - Analyzovat kvalitu spánku a zotavení
+- Sledovat klidový tep a HRV pro optimální regeneraci
+- Monitorovat váhu a složení těla
 - Pomoci s plánováním závodů
 - Poskytovat sportovní rady
 ${profileInfo}
@@ -379,7 +423,7 @@ ${profileInfo}
 ⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!
 Příklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!
 
-Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_race_goals, add_race_goal
+Máš k dispozici nástroje: get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal
 `;
     }
 
@@ -1181,6 +1225,111 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     result = { 
                       message: `😴 Spánková analýza (${days} dní):\n\n📊 Průměry:\n- Délka: ${Math.floor(avgDuration/60)}h ${avgDuration%60}min\n- Kvalita: ${avgQuality}/10\n- Hluboký spánek: ${avgDeep}min\n\n📅 Poslední noci:\n\n${formatted}` 
                     };
+                  }
+                } else if (tc.name === "get_resting_heart_rate") {
+                  const args = JSON.parse(tc.arguments);
+                  const days = args.days || 30;
+                  const sinceDate = new Date();
+                  sinceDate.setDate(sinceDate.getDate() - days);
+                  
+                  const { data, error } = await supabase
+                    .from("heart_rate_rest")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("date", sinceDate.toISOString().split('T')[0])
+                    .order("date", { ascending: false });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Žádná data o klidovém tepu za toto období." };
+                  } else {
+                    const avgHR = Math.round(data.reduce((acc: number, log: any) => acc + log.heart_rate, 0) / data.length);
+                    const minHR = Math.min(...data.map((log: any) => log.heart_rate));
+                    const maxHR = Math.max(...data.map((log: any) => log.heart_rate));
+                    
+                    const recent = data.slice(0, 7).map((log: any, i: number) => {
+                      const date = new Date(log.date).toLocaleDateString("cs-CZ");
+                      return `${i + 1}. ${date}: ${log.heart_rate} bpm`;
+                    }).join("\n");
+                    
+                    result = { 
+                      message: `❤️ Klidový tep (${days} dní):\n\n📊 Statistiky:\n- Průměr: ${avgHR} bpm\n- Min: ${minHR} bpm\n- Max: ${maxHR} bpm\n\n📅 Poslední týden:\n\n${recent}` 
+                    };
+                  }
+                } else if (tc.name === "get_hrv_data") {
+                  const args = JSON.parse(tc.arguments);
+                  const days = args.days || 30;
+                  const sinceDate = new Date();
+                  sinceDate.setDate(sinceDate.getDate() - days);
+                  
+                  const { data, error } = await supabase
+                    .from("hrv_logs")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("date", sinceDate.toISOString().split('T')[0])
+                    .order("date", { ascending: false });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Žádná HRV data za toto období." };
+                  } else {
+                    const avgHRV = Math.round(data.reduce((acc: number, log: any) => acc + parseFloat(log.hrv), 0) / data.length);
+                    const recent7 = data.slice(0, 7);
+                    const avg7 = Math.round(recent7.reduce((acc: number, log: any) => acc + parseFloat(log.hrv), 0) / recent7.length);
+                    
+                    const trend = avg7 > avgHRV ? "📈 Rostoucí" : avg7 < avgHRV ? "📉 Klesající" : "➡️ Stabilní";
+                    
+                    const recent = data.slice(0, 7).map((log: any, i: number) => {
+                      const date = new Date(log.date).toLocaleDateString("cs-CZ");
+                      return `${i + 1}. ${date}: ${Math.round(parseFloat(log.hrv))} ms`;
+                    }).join("\n");
+                    
+                    result = { 
+                      message: `💓 HRV analýza (${days} dní):\n\n📊 Statistiky:\n- Průměr za období: ${avgHRV} ms\n- Průměr 7 dní: ${avg7} ms\n- Trend: ${trend}\n\n📅 Poslední týden:\n\n${recent}\n\n💡 Vyšší HRV = lepší zotavení a nižší stres` 
+                    };
+                  }
+                } else if (tc.name === "get_body_composition") {
+                  const args = JSON.parse(tc.arguments);
+                  const days = args.days || 90;
+                  const sinceDate = new Date();
+                  sinceDate.setDate(sinceDate.getDate() - days);
+                  
+                  const { data, error } = await supabase
+                    .from("body_composition")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .gte("date", sinceDate.toISOString().split('T')[0])
+                    .order("date", { ascending: false });
+                  
+                  if (error) {
+                    result = { error: error.message };
+                  } else if (!data || data.length === 0) {
+                    result = { message: "Žádná data o váze a složení těla za toto období." };
+                  } else {
+                    const latest = data[0];
+                    const oldest = data[data.length - 1];
+                    const weightChange = parseFloat(latest.weight_kg) - parseFloat(oldest.weight_kg);
+                    const weightTrend = weightChange > 0 ? "↗️" : weightChange < 0 ? "↘️" : "➡️";
+                    
+                    let message = `⚖️ Váha a složení těla (${days} dní):\n\n📊 Aktuálně:\n- Váha: ${parseFloat(latest.weight_kg).toFixed(1)} kg ${weightTrend}\n`;
+                    
+                    if (latest.fat_percentage) message += `- Tuk: ${parseFloat(latest.fat_percentage).toFixed(1)}%\n`;
+                    if (latest.muscle_percentage) message += `- Svaly: ${parseFloat(latest.muscle_percentage).toFixed(1)}%\n`;
+                    if (latest.water_percentage) message += `- Voda: ${parseFloat(latest.water_percentage).toFixed(1)}%\n`;
+                    
+                    if (Math.abs(weightChange) > 0.1) {
+                      message += `\n📈 Změna: ${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg\n`;
+                    }
+                    
+                    const recent = data.slice(0, 5).map((log: any, i: number) => {
+                      const date = new Date(log.date).toLocaleDateString("cs-CZ");
+                      return `${i + 1}. ${date}: ${parseFloat(log.weight_kg).toFixed(1)} kg`;
+                    }).join("\n");
+                    
+                    message += `\n📅 Poslední měření:\n\n${recent}`;
+                    result = { message };
                   }
                 } else if (tc.name === "get_race_goals") {
                   const args = JSON.parse(tc.arguments);

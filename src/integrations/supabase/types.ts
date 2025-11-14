@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      body_composition: {
+        Row: {
+          bone_percentage: number | null
+          created_at: string
+          date: string
+          fat_percentage: number | null
+          id: string
+          muscle_percentage: number | null
+          time: string | null
+          user_id: string
+          water_percentage: number | null
+          weight_kg: number
+        }
+        Insert: {
+          bone_percentage?: number | null
+          created_at?: string
+          date: string
+          fat_percentage?: number | null
+          id?: string
+          muscle_percentage?: number | null
+          time?: string | null
+          user_id: string
+          water_percentage?: number | null
+          weight_kg: number
+        }
+        Update: {
+          bone_percentage?: number | null
+          created_at?: string
+          date?: string
+          fat_percentage?: number | null
+          id?: string
+          muscle_percentage?: number | null
+          time?: string | null
+          user_id?: string
+          water_percentage?: number | null
+          weight_kg?: number
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string | null
@@ -115,6 +154,69 @@ export type Database = {
           log_date?: string
           notes?: string | null
           severity?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      heart_rate_rest: {
+        Row: {
+          created_at: string
+          date: string
+          heart_rate: number
+          id: string
+          time: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          heart_rate: number
+          id?: string
+          time?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          heart_rate?: number
+          id?: string
+          time?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hrv_logs: {
+        Row: {
+          created_at: string
+          date: string
+          hrv: number
+          id: string
+          measurement_type: string | null
+          metric: string | null
+          source: string | null
+          time: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          hrv: number
+          id?: string
+          measurement_type?: string | null
+          metric?: string | null
+          source?: string | null
+          time?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hrv?: number
+          id?: string
+          measurement_type?: string | null
+          metric?: string | null
+          source?: string | null
+          time?: string | null
           user_id?: string
         }
         Relationships: []

@@ -10,6 +10,8 @@ import { GarminImport } from "./GarminImport";
 import { SleepImport } from "./SleepImport";
 import { SleepCharts } from "./SleepCharts";
 import { RunalyzeBackupAnalyzer } from "./RunalyzeBackupAnalyzer";
+import { RunalyzeFullImport } from "./RunalyzeFullImport";
+import { HealthDataCharts } from "./HealthDataCharts";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -157,6 +159,12 @@ export const FitnessTrainer = () => {
         {/* Runalyze Backup Analyzer */}
         <RunalyzeBackupAnalyzer />
 
+        {/* Full Import */}
+        <RunalyzeFullImport onComplete={() => {
+          loadGarminActivities();
+          toast.success("Všechna data importována");
+        }} />
+
         {/* User Profile */}
         {userProfile && (
           <Card>
@@ -268,6 +276,9 @@ export const FitnessTrainer = () => {
 
       {/* Sleep Charts */}
       <SleepCharts />
+
+      {/* Health Data Charts */}
+      <HealthDataCharts />
 
       {/* AI Coach Section */}
       <Card>
