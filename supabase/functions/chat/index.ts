@@ -890,7 +890,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     if (stravaResp.error) {
                       result = { error: stravaResp.error.message };
                     } else {
-                      const activities = (stravaResp.data as any) || [];
+                      const activities = (stravaResp.data as any)?.activities || [];
                       if (activities.length === 0) {
                         result = { message: "Zatím nemáš žádné aktivity." };
                       } else {
