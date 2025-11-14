@@ -46,7 +46,7 @@ export const FitnessTrainer = () => {
       });
 
       if (error) throw error;
-      setActivities(data || []);
+      setActivities(data?.activities || []);
     } catch (error: any) {
       console.error("Chyba při načítání aktivit:", error);
       toast.error("Nepodařilo se načíst aktivity ze Stravy");
