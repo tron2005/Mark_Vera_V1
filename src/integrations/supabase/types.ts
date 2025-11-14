@@ -156,6 +156,7 @@ export type Database = {
           garmin_access_token: string | null
           garmin_refresh_token: string | null
           garmin_token_expiry: string | null
+          gender: string | null
           google_access_token: string | null
           google_refresh_token: string | null
           google_token_expiry: string | null
@@ -165,7 +166,9 @@ export type Database = {
           strava_access_token: string | null
           strava_refresh_token: string | null
           strava_token_expiry: string | null
+          trainer_enabled: boolean | null
           updated_at: string | null
+          user_description: string | null
           user_id: string
           voice_preference: string | null
           weight_kg: number | null
@@ -180,6 +183,7 @@ export type Database = {
           garmin_access_token?: string | null
           garmin_refresh_token?: string | null
           garmin_token_expiry?: string | null
+          gender?: string | null
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
@@ -189,7 +193,9 @@ export type Database = {
           strava_access_token?: string | null
           strava_refresh_token?: string | null
           strava_token_expiry?: string | null
+          trainer_enabled?: boolean | null
           updated_at?: string | null
+          user_description?: string | null
           user_id: string
           voice_preference?: string | null
           weight_kg?: number | null
@@ -204,6 +210,7 @@ export type Database = {
           garmin_access_token?: string | null
           garmin_refresh_token?: string | null
           garmin_token_expiry?: string | null
+          gender?: string | null
           google_access_token?: string | null
           google_refresh_token?: string | null
           google_token_expiry?: string | null
@@ -213,7 +220,9 @@ export type Database = {
           strava_access_token?: string | null
           strava_refresh_token?: string | null
           strava_token_expiry?: string | null
+          trainer_enabled?: boolean | null
           updated_at?: string | null
+          user_description?: string | null
           user_id?: string
           voice_preference?: string | null
           weight_kg?: number | null
