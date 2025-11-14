@@ -303,14 +303,30 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'cs-CZ';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
+    utterance.rate = 0.85; // Zpomalení řeči
     
-    // Try to find a Czech voice
+    // Select voice based on mode
     const voices = window.speechSynthesis.getVoices();
-    const czechVoice = voices.find(voice => voice.lang.startsWith('cs'));
-    if (czechVoice) {
-      utterance.voice = czechVoice;
+    const czechVoices = voices.filter(voice => voice.lang.startsWith('cs'));
+    
+    if (mode === 'mark') {
+      // Pro Marka: hledáme mužský hlas (lower pitch)
+      const maleVoice = czechVoices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('muž'));
+      if (maleVoice) {
+        utterance.voice = maleVoice;
+      } else if (czechVoices[0]) {
+        utterance.voice = czechVoices[0];
+      }
+      utterance.pitch = 0.9; // Nižší tón pro mužský hlas
+    } else {
+      // Pro Veru: hledáme ženský hlas (higher pitch)
+      const femaleVoice = czechVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('žen'));
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      } else if (czechVoices[1] || czechVoices[0]) {
+        utterance.voice = czechVoices[1] || czechVoices[0];
+      }
+      utterance.pitch = 1.1; // Vyšší tón pro ženský hlas
     }
     
     utterance.onend = () => {
