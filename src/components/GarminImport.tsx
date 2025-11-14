@@ -75,9 +75,9 @@ export const GarminImport = ({ onImportComplete }: { onImportComplete?: () => vo
           else if (session.sport === "walking") activityType = "walk";
 
           // Insert activity into database
-          const { error: insertError } = await supabase
+          const { error: upsertError } = await supabase
             .from("garmin_activities")
-            .insert({
+            .upsert({
               user_id: user.id,
               activity_type: activityType,
               start_date: session.start_time || new Date().toISOString(),
@@ -89,10 +89,12 @@ export const GarminImport = ({ onImportComplete }: { onImportComplete?: () => vo
               elevation_gain: elevationGain,
               avg_speed_kmh: avgSpeed,
               raw_data: result
+            }, {
+              onConflict: 'user_id,start_date'
             });
 
-          if (insertError) {
-            console.error(`Chyba při ukládání ${file.name}:`, insertError);
+          if (upsertError) {
+            console.error(`Chyba při ukládání ${file.name}:`, upsertError);
             continue;
           }
 

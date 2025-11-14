@@ -60,7 +60,7 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-          await supabase.from('sleep_logs').insert({
+          await supabase.from('sleep_logs').upsert({
             user_id: user.id,
             sleep_date: row.date,
             start_time: row.startTime,
@@ -75,6 +75,8 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
             hr_average: row.hrAverage ? parseInt(row.hrAverage) : null,
             respiration_rate: row.respirationRate ? parseFloat(row.respirationRate) : null,
             quality: row.quality ? parseInt(row.quality) : null
+          }, {
+            onConflict: 'user_id,sleep_date'
           });
           importedStats.sleep++;
         }
@@ -94,11 +96,13 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-          await supabase.from('heart_rate_rest').insert({
+          await supabase.from('heart_rate_rest').upsert({
             user_id: user.id,
             date: row.date,
             time: row.time,
             heart_rate: parseInt(row.heartRate)
+          }, {
+            ignoreDuplicates: false
           });
           importedStats.restingHR++;
         }
@@ -118,7 +122,7 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-          await supabase.from('hrv_logs').insert({
+          await supabase.from('hrv_logs').upsert({
             user_id: user.id,
             date: row.date,
             time: row.time,
@@ -126,6 +130,8 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
             metric: row.metric,
             measurement_type: row.measurementType,
             source: row.source
+          }, {
+            ignoreDuplicates: false
           });
           importedStats.hrv++;
         }
@@ -145,7 +151,7 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-          await supabase.from('body_composition').insert({
+          await supabase.from('body_composition').upsert({
             user_id: user.id,
             date: row.date,
             time: row.time,
@@ -154,6 +160,8 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
             water_percentage: row.waterPercentage ? parseFloat(row.waterPercentage) : null,
             muscle_percentage: row.musclePercentage ? parseFloat(row.musclePercentage) : null,
             bone_percentage: row.bonePercentage ? parseFloat(row.bonePercentage) : null
+          }, {
+            ignoreDuplicates: false
           });
           importedStats.weight++;
         }

@@ -52,9 +52,9 @@ export const SleepImport = ({ onImportComplete }: { onImportComplete?: () => voi
 
       for (const entry of sleepData) {
         try {
-          const { error: insertError } = await supabase
+          const { error: upsertError } = await supabase
             .from("sleep_logs")
-            .insert({
+            .upsert({
               user_id: user.id,
               sleep_date: entry.date,
               start_time: entry.startTime || null,
@@ -69,9 +69,11 @@ export const SleepImport = ({ onImportComplete }: { onImportComplete?: () => voi
               hr_average: parseInt(entry.hrAverage) || null,
               respiration_rate: parseFloat(entry.respirationRate) || null,
               quality: parseInt(entry.quality) || null,
+            }, {
+              onConflict: 'user_id,sleep_date'
             });
 
-          if (!insertError) {
+          if (!upsertError) {
             successCount++;
           }
         } catch (error) {
