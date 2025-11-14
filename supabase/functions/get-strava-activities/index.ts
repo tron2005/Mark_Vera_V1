@@ -158,6 +158,26 @@ serve(async (req) => {
     if (!activitiesResponse.ok) {
       const errorText = await activitiesResponse.text();
       console.error("Strava API error:", errorText);
+      
+      // Parse error and check for rate limit
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message === "Rate Limit Exceeded" || activitiesResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Strava API rate limit překročen. Zkuste to prosím za 15 minut.",
+              rateLimitExceeded: true
+            }),
+            { 
+              status: 429, 
+              headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            }
+          );
+        }
+      } catch (e) {
+        // Error není JSON, pokračuj s obecnou chybou
+      }
+      
       throw new Error("Failed to fetch Strava activities");
     }
 
