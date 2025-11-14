@@ -448,6 +448,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         if (textPart) lastUserText = String(textPart).toLowerCase();
       }
     }
+    // Normalizace diakritiky pro robustní detekci klíčových slov
+    const normalizeText = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, '');
+    const lastUserTextNorm = normalizeText(lastUserText);
     const calendarKeywords = [
       "vytvoř v kalendáři",
       "přidej do kalendáře",
@@ -998,9 +1001,15 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
 
                     // Pokud víme, že uživatel chce "poslední týden" nebo obecně aktivity a AI neposlala rozsah,
                     // použijeme náš bezpečný rozsah (7 dní zpět)
-                    const weekKeywords = ["poslední týden", "minulý týden", "tento týden", "last week", "this week"]; 
-                    const askWeek = !!lastUserText && weekKeywords.some(k => lastUserText.includes(k));
-                    if (shouldForceStrava && (askWeek || (!after && !before))) {
+                    // Robustní detekce "posledního týdne" (bez diakritiky) + oprava špatného roku
+                    const weekKeywords = ["posledni tyden","minuly tyden","tento tyden","poslednich 7 dni","last week","this week","last 7 days"];
+                    const askWeek = !!lastUserText && weekKeywords.some(k => (lastUserTextNorm || lastUserText).includes(k));
+                    const toYear = (ts: string | null) => ts ? new Date(Number(ts) * 1000).getFullYear() : null;
+                    const nowYear = new Date().getFullYear();
+                    const beforeYear = toYear(before);
+                    const afterYear = toYear(after);
+                    const badYear = (beforeYear !== null && beforeYear !== nowYear) || (afterYear !== null && afterYear !== nowYear);
+                    if (shouldForceStrava && (askWeek || (!after && !before) || badYear)) {
                       before = stravaBeforeTs;
                       after = stravaAfterTs;
                     }
