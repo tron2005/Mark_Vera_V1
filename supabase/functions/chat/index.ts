@@ -54,7 +54,7 @@ serve(async (req) => {
     // Načíst profil uživatele včetně fitness nastavení
     const { data: profile } = await supabase
       .from("profiles")
-      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token")
+      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token, weight_kg, age, height_cm, bmi")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -62,6 +62,10 @@ serve(async (req) => {
     const trainerEnabled = profile?.trainer_enabled ?? true;
     const userDescription = profile?.user_description || "";
     const hasStravaConnected = !!profile?.strava_refresh_token;
+    const userWeight = profile?.weight_kg;
+    const userAge = profile?.age;
+    const userHeight = profile?.height_cm;
+    const userBmi = profile?.bmi;
 
     // Nástroje pro správu poznámek
     const tools = [
@@ -316,6 +320,17 @@ serve(async (req) => {
     let fitnessContext = "";
     if (trainerEnabled && hasStravaConnected) {
       const currentYear = new Date().getFullYear();
+      
+      // Přidáme informace o profilu uživatele, pokud jsou dostupné
+      let profileInfo = "";
+      if (userWeight || userAge || userHeight || userBmi) {
+        profileInfo = "\n📊 PROFIL UŽIVATELE:";
+        if (userWeight) profileInfo += `\n- Váha: ${userWeight} kg`;
+        if (userHeight) profileInfo += `\n- Výška: ${userHeight} cm`;
+        if (userAge) profileInfo += `\n- Věk: ${userAge} let`;
+        if (userBmi) profileInfo += `\n- BMI: ${Number(userBmi).toFixed(1)}`;
+      }
+      
       fitnessContext = `
 
 🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem k datům ze Stravy. Můžeš:
@@ -324,6 +339,7 @@ serve(async (req) => {
 - Sledovat zdravotní stav a únavu
 - Pomoci s plánováním závodů
 - Poskytovat sportovní rady
+${profileInfo}
 
 ⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!
 Příklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!
@@ -1034,7 +1050,22 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                           const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
                           const distance = (act.distance / 1000).toFixed(2);
                           const time = Math.floor(act.moving_time / 60);
-                          return `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                          let details = `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                          
+                          // Přidáme tepovou frekvenci, pokud je dostupná
+                          if (act.average_heartrate) {
+                            details += `\n   ❤️ Průměrný tep: ${Math.round(act.average_heartrate)} bpm`;
+                          }
+                          if (act.max_heartrate) {
+                            details += ` | Max tep: ${Math.round(act.max_heartrate)} bpm`;
+                          }
+                          
+                          // Přidáme kalorie, pokud jsou dostupné
+                          if (act.calories) {
+                            details += `\n   🔥 Kalorie: ${Math.round(act.calories)} kcal`;
+                          }
+                          
+                          return details;
                         }).join("\n\n");
                         result = { message: `🏃 Tvoje aktivity:\n\n${formatted}` };
                       }
