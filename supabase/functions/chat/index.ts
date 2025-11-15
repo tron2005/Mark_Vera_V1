@@ -892,49 +892,39 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           if (toolCalls.length === 0 && shouldForceStrava && hasStravaConnected) {
             try {
               console.log("Strava fallback triggered for last 7 days");
-              const { data: stravaData, error: stravaError } = await supabase.functions.invoke("get-strava-activities", {
-                headers: { Authorization: authHeader || "" },
-                body: {
-                  per_page: 30,
-                  before: stravaBeforeTs,
-                  after: stravaAfterTs
-                }
-              });
+              
+              // Čtení dat z databáze místo volání Strava API
+              const beforeDate = new Date(Number(stravaBeforeTs) * 1000).toISOString();
+              const afterDate = new Date(Number(stravaAfterTs) * 1000).toISOString();
+              
+              const { data: activities, error: dbError } = await supabase
+                .from("strava_activities")
+                .select("*")
+                .eq("user_id", userId)
+                .lte("start_date", beforeDate)
+                .gte("start_date", afterDate)
+                .order("start_date", { ascending: false })
+                .limit(30);
 
-              if (stravaError) {
-                // Check for rate limit error
-                const errorMsg = stravaError.message || '';
-                if (errorMsg.includes('rate limit') || errorMsg.includes('Rate Limit') || errorMsg.includes('429')) {
-                  const errDelta = {
-                    id: crypto.randomUUID(),
-                    model: "internal",
-                    object: "chat.completion.chunk",
-                    created: Date.now(),
-                    choices: [{ index: 0, delta: { role: "assistant", content: "\n⚠️ Strava API rate limit překročen. Zkuste to prosím za 15 minut." }, finish_reason: null }]
-                  };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(errDelta)}\n\n`));
-                }
-              } else if ((stravaData as any)?.rateLimitExceeded) {
+              if (dbError) {
+                console.error("Database error:", dbError);
+              } else if (!activities || activities.length === 0) {
                 const errDelta = {
                   id: crypto.randomUUID(),
                   model: "internal",
                   object: "chat.completion.chunk",
                   created: Date.now(),
-                  choices: [{ index: 0, delta: { role: "assistant", content: `\n⚠️ ${(stravaData as any)?.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut."}` }, finish_reason: null }]
+                  choices: [{ index: 0, delta: { role: "assistant", content: "\n📊 Zatím nemáš žádné aktivity za poslední týden v databázi. Zkus synchronizovat data ze Stravy v sekci Trenér." }, finish_reason: null }]
                 };
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(errDelta)}\n\n`));
-              } else if (!stravaError) {
-                const activities = (stravaData as any)?.activities || [];
-                let msg = "Zatím nemáš žádné aktivity za poslední týden.";
-                if (activities.length > 0) {
-                  const formatted = activities.slice(0, 10).map((act: any, i: number) => {
-                    const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
-                    const distance = (act.distance / 1000).toFixed(2);
-                    const time = Math.floor(act.moving_time / 60);
-                    return `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
-                  }).join("\n\n");
-                  msg = `🏃 Poslední aktivity (7 dní):\n\n${formatted}`;
-                }
+              } else {
+                const formatted = activities.slice(0, 10).map((act: any, i: number) => {
+                  const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
+                  const distance = act.distance_meters ? (act.distance_meters / 1000).toFixed(2) : "0";
+                  const time = act.moving_time_seconds ? Math.floor(act.moving_time_seconds / 60) : 0;
+                  return `${i + 1}. ${act.name} (${act.activity_type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                }).join("\n\n");
+                const msg = `🏃 Poslední aktivity (7 dní):\n\n${formatted}`;
 
                 const delta = {
                   id: crypto.randomUUID(),
@@ -1334,81 +1324,61 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_strava_activities") {
                   const args = JSON.parse(tc.arguments);
                   try {
-                    // Normalizace timestampů (Strava očekává sekundy)
-                    let before = args.before ? String(args.before) : null;
-                    let after = args.after ? String(args.after) : null;
-                    const normalizeTs = (ts: string | null) => {
-                      if (!ts) return null;
-                      const n = Number(ts);
-                      if (!Number.isFinite(n)) return null;
-                      // Pokud je v milisekundách, převedeme na sekundy
-                      return String(n > 1_000_000_000_000 ? Math.floor(n / 1000) : Math.floor(n));
-                    };
-                    before = normalizeTs(before);
-                    after = normalizeTs(after);
-
-                    // Pokud víme, že uživatel chce "poslední týden" nebo obecně aktivity a AI neposlala rozsah,
-                    // použijeme náš bezpečný rozsah (7 dní zpět)
-                    // Robustní detekce "posledního týdne" (bez diakritiky) + oprava špatného roku
-                    const weekKeywords = ["posledni tyden","minuly tyden","tento tyden","poslednich 7 dni","last week","this week","last 7 days"];
-                    const askWeek = !!lastUserText && weekKeywords.some(k => (lastUserTextNorm || lastUserText).includes(k));
-                    const toYear = (ts: string | null) => ts ? new Date(Number(ts) * 1000).getFullYear() : null;
-                    const nowYear = new Date().getFullYear();
-                    const beforeYear = toYear(before);
-                    const afterYear = toYear(after);
-                    const badYear = (beforeYear !== null && beforeYear !== nowYear) || (afterYear !== null && afterYear !== nowYear);
-                    if (shouldForceStrava && (askWeek || (!after && !before) || badYear)) {
-                      before = stravaBeforeTs;
-                      after = stravaAfterTs;
+                    // Čtení aktivit z databáze místo volání Strava API
+                    let query = supabase
+                      .from("strava_activities")
+                      .select("*")
+                      .eq("user_id", userId)
+                      .order("start_date", { ascending: false });
+                    
+                    // Filtrování podle časového rozsahu
+                    if (args.before) {
+                      const beforeDate = new Date(Number(args.before) * 1000).toISOString();
+                      query = query.lte("start_date", beforeDate);
                     }
+                    if (args.after) {
+                      const afterDate = new Date(Number(args.after) * 1000).toISOString();
+                      query = query.gte("start_date", afterDate);
+                    }
+                    
+                    // Limit počtu aktivit
+                    const limit = args.limit || 10;
+                    query = query.limit(limit);
+                    
+                    const { data: activities, error: dbError } = await query;
 
-                    const stravaResp = await supabase.functions.invoke("get-strava-activities", {
-                      headers: { Authorization: authHeader || "" },
-                      body: { 
-                        per_page: args.limit || 10,
-                        before,
-                        after
-                      }
-                    });
-
-                    if (stravaResp.error) {
-                      // Check for rate limit error
-                      const errorMsg = stravaResp.error.message || '';
-                      if (errorMsg.includes('rate limit') || errorMsg.includes('Rate Limit') || errorMsg.includes('429')) {
-                        result = { error: "Strava API rate limit překročen. Zkuste to prosím za 15 minut." };
-                      } else {
-                        result = { error: errorMsg };
-                      }
-                    } else if ((stravaResp.data as any)?.rateLimitExceeded) {
-                      result = { error: (stravaResp.data as any)?.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut." };
+                    if (dbError) {
+                      result = { error: dbError.message };
+                    } else if (!activities || activities.length === 0) {
+                      result = { message: "Zatím nemáš žádné aktivity v daném období. Zkus synchronizovat data ze Stravy v sekci Trenér." };
                     } else {
-                      const activities = (stravaResp.data as any)?.activities || [];
-                      if (activities.length === 0) {
-                        result = { message: "Zatím nemáš žádné aktivity v daném období." };
-                      } else {
-                        const formatted = activities.map((act: any, i: number) => {
-                          const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
-                          const distance = (act.distance / 1000).toFixed(2);
-                          const time = Math.floor(act.moving_time / 60);
-                          let details = `${i + 1}. ${act.name} (${act.type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
-                          
-                          // Přidáme tepovou frekvenci, pokud je dostupná
-                          if (act.average_heartrate) {
-                            details += `\n   ❤️ Průměrný tep: ${Math.round(act.average_heartrate)} bpm`;
-                          }
-                          if (act.max_heartrate) {
-                            details += ` | Max tep: ${Math.round(act.max_heartrate)} bpm`;
-                          }
-                          
-                          // Přidáme kalorie, pokud jsou dostupné
-                          if (act.calories) {
-                            details += `\n   🔥 Kalorie: ${Math.round(act.calories)} kcal`;
-                          }
-                          
-                          return details;
-                        }).join("\n\n");
-                        result = { message: `🏃 Tvoje aktivity:\n\n${formatted}` };
-                      }
+                      const formatted = activities.map((act: any, i: number) => {
+                        const date = new Date(act.start_date).toLocaleDateString("cs-CZ");
+                        const distance = act.distance_meters ? (act.distance_meters / 1000).toFixed(2) : "0";
+                        const time = act.moving_time_seconds ? Math.floor(act.moving_time_seconds / 60) : 0;
+                        let details = `${i + 1}. ${act.name} (${act.activity_type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
+                        
+                        // Přidáme tepovou frekvenci, pokud je dostupná
+                        if (act.average_heartrate) {
+                          details += `\n   ❤️ Průměrný tep: ${Math.round(act.average_heartrate)} bpm`;
+                        }
+                        if (act.max_heartrate) {
+                          details += ` | Max tep: ${Math.round(act.max_heartrate)} bpm`;
+                        }
+                        
+                        // Přidáme převýšení, pokud je dostupné
+                        if (act.total_elevation_gain) {
+                          details += `\n   ⛰️ Převýšení: ${Math.round(act.total_elevation_gain)} m`;
+                        }
+                        
+                        // Přidáme kalorie, pokud jsou dostupné
+                        if (act.calories) {
+                          details += `\n   🔥 Kalorie: ${Math.round(act.calories)} kcal`;
+                        }
+                        
+                        return details;
+                      }).join("\n\n");
+                      result = { message: `🏃 Našel jsem ${activities.length} aktivit:\n\n${formatted}` };
                     }
                   } catch (error: any) {
                     result = { error: error.message };
