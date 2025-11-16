@@ -106,6 +106,8 @@ serve(async (req) => {
         .eq("user_id", user.id);
     }
 
+    console.log("Creating calendar event:", { summary, start, end, location });
+    
     // Create calendar event
     const startDateTime = new Date(start);
     const endDateTime = end ? new Date(end) : new Date(startDateTime.getTime() + 60 * 60 * 1000);
@@ -149,11 +151,27 @@ serve(async (req) => {
 
     if (!calendarResponse.ok) {
       const errorText = await calendarResponse.text();
-      console.error("Calendar API error:", errorText);
-      throw new Error("Failed to create calendar event");
+      console.error("Calendar API error:", calendarResponse.status, errorText);
+      let errorMessage = "Failed to create calendar event";
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
+      } catch {
+        // If not JSON, use raw text
+        if (errorText.length < 200) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(`Google Calendar API chyba: ${errorMessage}`);
     }
 
     const createdEvent = await calendarResponse.json();
+    console.log("Calendar event created successfully:", { 
+      id: createdEvent.id, 
+      summary: createdEvent.summary,
+      start: createdEvent.start,
+      link: createdEvent.htmlLink 
+    });
 
     return new Response(
       JSON.stringify({

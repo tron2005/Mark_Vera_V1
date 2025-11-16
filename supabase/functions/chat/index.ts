@@ -840,9 +840,24 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               });
 
               if (calResp.error || !(calResp.data as any)?.success) {
-                console.error("Calendar fallback error:", calResp.error || (calResp.data as any)?.error);
+                const errorMsg = calResp.error?.message || (calResp.data as any)?.error || "Nepodařilo se vytvořit událost v Google Kalendáři";
+                console.error("Calendar fallback error:", errorMsg);
+                const errorNote = `Chyba při vytváření události: ${errorMsg}. Zkontroluj prosím připojení ke Google Kalendáři v Nastavení.`;
+                fullResponse += `\n\n${errorNote}`;
+                const delta = {
+                  id: `gen-${Date.now()}`,
+                  provider: "internal",
+                  model: "internal",
+                  object: "chat.completion.chunk",
+                  created: Date.now(),
+                  choices: [{ index: 0, delta: { role: "assistant", content: `\n${errorNote}` }, finish_reason: null }]
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
               } else {
-                const note = `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")} ).`;
+                const eventLink = (calResp.data as any)?.eventLink;
+                const note = eventLink 
+                  ? `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}). [Zobrazit v kalendáři](${eventLink})`
+                  : `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}).`;
                 fullResponse += `\n\n${note}`;
                 const delta = {
                   id: `gen-${Date.now()}`,
@@ -1282,13 +1297,43 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     });
 
                     if (calendarResponse.error || !(calendarResponse.data as any)?.success) {
-                      result = { error: calendarResponse.error?.message || (calendarResponse.data as any)?.error || "Nepodařilo se vytvořit událost" };
+                      const errorMsg = calendarResponse.error?.message || (calendarResponse.data as any)?.error || "Nepodařilo se vytvořit událost";
+                      console.error("Calendar create error:", errorMsg);
+                      result = { 
+                        error: `${errorMsg}. Zkontroluj prosím připojení ke Google Kalendáři v Nastavení a ujisti se, že máš správná oprávnění.`
+                      };
                     } else {
-                      const link = (calendarResponse.data as any)?.eventLink;
+                      const eventLink = (calendarResponse.data as any)?.eventLink;
+                      const eventId = (calendarResponse.data as any)?.eventId;
+                      console.log("Calendar event created:", { eventId, eventLink });
+                      
+                      // Ověř vytvoření načtením událostí z daného dne
+                      const dateForVerification = startIso.split('T')[0];
+                      try {
+                        const verifyResp = await supabase.functions.invoke("list-calendar-events", {
+                          headers: { Authorization: authHeader || "" },
+                          body: { date: dateForVerification }
+                        });
+                        const events = (verifyResp.data as any)?.items || [];
+                        const foundEvent = events.find((e: any) => 
+                          e.summary === (args.summary || "Událost") || 
+                          (e.id && eventId && e.id.includes(eventId))
+                        );
+                        if (foundEvent) {
+                          console.log("Event verified in calendar:", foundEvent.summary);
+                        } else {
+                          console.warn("Event created but not found in verification");
+                        }
+                      } catch (verifyErr) {
+                        console.warn("Could not verify event creation:", verifyErr);
+                      }
+                      
                       result = { 
                         success: true, 
-                        message: `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři`,
-                        link
+                        message: eventLink 
+                          ? `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři. [Zobrazit](${eventLink})`
+                          : `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři.`,
+                        link: eventLink
                       };
                     }
                   } catch (error: any) {
