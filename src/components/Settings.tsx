@@ -27,7 +27,13 @@ export default function Settings() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("male");
   const [bmi, setBmi] = useState<number | null>(null);
-  const [bmr, setBmr] = useState<number | null>(null);
+   const [bmr, setBmr] = useState<number | null>(null);
+
+   // Test Google Calendar fields
+   const [testingCalendar, setTestingCalendar] = useState(false);
+   const [testSummary, setTestSummary] = useState("Hruboskalský půlmaraton");
+   const [testDate, setTestDate] = useState<string>("");
+   const [testTime, setTestTime] = useState<string>("08:00");
 
   useEffect(() => {
     loadSettings();
@@ -326,6 +332,36 @@ export default function Settings() {
     }
   };
 
+  const createTestCalendarEvent = async (allDay: boolean) => {
+    try {
+      setTestingCalendar(true);
+      if (!testDate) throw new Error("Zadej datum");
+      const start = allDay ? testDate : `${testDate}T${testTime}`;
+
+      const { data, error } = await supabase.functions.invoke('create-calendar-event', {
+        body: {
+          summary: testSummary || 'Test událost',
+          start
+        }
+      });
+
+      if (error) throw error;
+      if ((data as any)?.success) {
+        toast({
+          title: 'Událost vytvořena',
+          description: (data as any)?.eventLink ? `Odkaz: ${(data as any).eventLink}` : 'Zkontroluj Google Kalendář.'
+        });
+      } else {
+        toast({ title: 'Odpověď', description: JSON.stringify(data) });
+      }
+    } catch (err: any) {
+      console.error('Calendar test error:', err);
+      toast({ title: 'Chyba při vytváření události', description: err?.message || String(err), variant: 'destructive' });
+    } finally {
+      setTestingCalendar(false);
+    }
+  };
+
   const connectStrava = () => {
     const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
     
@@ -618,6 +654,37 @@ export default function Settings() {
           <Button onClick={saveSettings} disabled={saving} className="w-full">
             {saving ? "Ukládání..." : "Uložit nastavení"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Google Kalendáře</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="testSummary">Název</Label>
+              <Input id="testSummary" value={testSummary} onChange={(e)=>setTestSummary(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="testDate">Datum</Label>
+              <Input id="testDate" type="date" value={testDate} onChange={(e)=>setTestDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="testTime">Čas (pro 1h událost)</Label>
+              <Input id="testTime" type="time" value={testTime} onChange={(e)=>setTestTime(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-2">
+            <Button disabled={testingCalendar || !testDate} onClick={()=>createTestCalendarEvent(true)}>
+              {testingCalendar ? 'Vytvářím…' : 'Vytvořit celodenní událost'}
+            </Button>
+            <Button variant="outline" disabled={testingCalendar || !testDate || !testTime} onClick={()=>createTestCalendarEvent(false)}>
+              {testingCalendar ? 'Vytvářím…' : 'Vytvořit 1h událost'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Test volá přímo backend funkci a vypíše přesnou chybu, pokud nastane.</p>
         </CardContent>
       </Card>
 
