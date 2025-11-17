@@ -109,13 +109,53 @@ serve(async (req) => {
     console.log("Creating calendar event:", { summary, start, end, location });
     
     // Create calendar event
-    const startDateTime = new Date(start);
-    
-    // Detect if this is an all-day event (time is 00:00:00)
-    const isAllDay = startDateTime.getHours() === 0 && startDateTime.getMinutes() === 0 && startDateTime.getSeconds() === 0;
-    
+    // Robustly parse Czech/ISO date strings, optionally with time
+    const parseCzechDateTime = (input: string): { date: Date; hasTime: boolean } => {
+      if (!input || typeof input !== 'string') throw new Error('Neplatný vstup data');
+      const raw = input.trim().toLowerCase();
+
+      // Normalize spaces
+      const s = raw.replace(/\s+/g, ' ').replace(/,/, '');
+
+      // ISO like 2025-04-26 or 2025-04-26T10:00
+      const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[t\s](\d{2}):(\d{2})(?::(\d{2}))?)?$/i);
+      if (isoMatch) {
+        const [, y, m, d, hh, mm, ss] = isoMatch;
+        const year = Number(y), month = Number(m) - 1, day = Number(d);
+        const hasTime = hh !== undefined && mm !== undefined;
+        const hours = hasTime ? Number(hh) : 0;
+        const minutes = hasTime ? Number(mm) : 0;
+        const seconds = hasTime && ss ? Number(ss) : 0;
+        // Construct as local Europe/Prague time; Google API will use provided timeZone
+        return { date: new Date(year, month, day, hours, minutes, seconds), hasTime };
+      }
+
+      // Czech formats: 26. 4. 2025, 26.4.2025, 26/4/2025
+      const czMatch = s.match(/(\d{1,2})[\.\-/\s](\d{1,2})[\.\-/\s](\d{4})(?:\s+v\s+)?(?:(\d{1,2})[:.](\d{2}))?/);
+      if (czMatch) {
+        const [, dStr, mStr, yStr, hh, mm] = czMatch;
+        const day = Number(dStr), month = Number(mStr) - 1, year = Number(yStr);
+        const hasTime = !!(hh && mm);
+        const hours = hasTime ? Number(hh) : 0;
+        const minutes = hasTime ? Number(mm) : 0;
+        return { date: new Date(year, month, day, hours, minutes, 0), hasTime };
+      }
+
+      // Fallback to native parsing as last resort
+      const parsed = new Date(input);
+      if (!isFinite(parsed.getTime())) throw new Error(`Neumím zpracovat datum: ${input}`);
+      // Heuristic: contains time?
+      const hasTime = /\d{1,2}[:.]\d{2}/.test(s) || /t\d{2}:\d{2}/.test(s);
+      return { date: parsed, hasTime };
+    };
+
+    const { date: startDateTime, hasTime: startHasTime } = parseCzechDateTime(start);
+
+    // Decide all-day by presence of explicit time in input
+    const isAllDay = !startHasTime;
+
     let event: any;
-    
+
     if (isAllDay) {
       // For all-day events, use date format (YYYY-MM-DD) without time
       const formatDate = (d: Date): string => {
@@ -124,11 +164,17 @@ serve(async (req) => {
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      
-      const endDate = end ? new Date(end) : new Date(startDateTime);
+
+      let endDate: Date;
+      if (end) {
+        const { date: endParsed } = parseCzechDateTime(end);
+        endDate = endParsed;
+      } else {
+        endDate = new Date(startDateTime);
+      }
       // For all-day events, end date is exclusive, so add 1 day
       endDate.setDate(endDate.getDate() + 1);
-      
+
       event = {
         summary,
         location,
@@ -145,7 +191,13 @@ serve(async (req) => {
       console.log("Creating all-day event:", event);
     } else {
       // For timed events, use dateTime format
-      const endDateTime = end ? new Date(end) : new Date(startDateTime.getTime() + 60 * 60 * 1000);
+      let endDateTime: Date;
+      if (end) {
+        const { date: endParsed } = parseCzechDateTime(end);
+        endDateTime = endParsed;
+      } else {
+        endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+      }
 
       const formatPragueTime = (d: Date): string => {
         const year = d.getFullYear();
