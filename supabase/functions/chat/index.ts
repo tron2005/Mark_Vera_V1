@@ -612,13 +612,26 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     const normalizeText = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, '');
     const lastUserTextNorm = normalizeText(lastUserText);
     const calendarKeywords = [
+      // Czech variants (normalized diacritics handled below)
+      "kalend",          // matches kalendář, kalendare, kalendari
+      "v kalend",
+      "do kalend",
+      "událost",
+      "udalost",
+      "schůzk",
+      "schuzk",
+      "celodenn",
+      // Common explicit phrases
       "vytvoř v kalendáři",
       "přidej do kalendáře",
-      "naplánuj",
-      "upomeň",
-      "upomínku",
       "vytvoř událost",
       "přidej schůzku",
+      // Intent words strongly tied to calendar actions
+      "naplánuj",
+      "naplan",
+      "upomeň",
+      "upomínku",
+      "upominku",
     ];
 
     // Strava klíčová slova (CZ/EN) pro dotazy na tréninky/aktivity
@@ -723,6 +736,91 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
     });
 
     if (!response.ok) {
+      if ((response.status === 402 || response.status === 429) && shouldForceCalendar && lastUserText) {
+        // No AI credits/rate limit but user asked for calendar → create event deterministically and stream a single message
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              console.log("AI credits/rate limit; using calendar fallback for:", lastUserText);
+              // Simple CZ parser: today/tomorrow + HH[:MM]; default 9:00
+              const nowLocal = new Date();
+              let base = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate(), 9, 0, 0, 0);
+              if (lastUserText.includes("zítra") || lastUserText.includes("zitra")) {
+                base.setDate(base.getDate() + 1);
+              }
+              const timeMatch = lastUserText.match(/(\d{1,2})(?::|(\.))?(\d{2})?/);
+              let hour = 9;
+              let minute = 0;
+              if (timeMatch) {
+                hour = parseInt(timeMatch[1], 10);
+                if (timeMatch[3]) minute = parseInt(timeMatch[3], 10) || 0;
+              }
+              const year = base.getFullYear();
+              const month = String(base.getMonth() + 1).padStart(2, '0');
+              const day = String(base.getDate()).padStart(2, '0');
+              const hourStr = String(hour).padStart(2, '0');
+              const minuteStr = String(minute).padStart(2, '0');
+              const startIso = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00`;
+
+              let summary = "Událost";
+              const colonIdx = lastUserText.indexOf(":");
+              if (colonIdx !== -1) {
+                const s = lastUserText.slice(colonIdx + 1).trim();
+                if (s) summary = s;
+              } else if (lastUserText.includes("upom")) {
+                summary = "Upomínka";
+              } else if (lastUserText.includes("schůz") || lastUserText.includes("schuz")) {
+                summary = "Schůzka";
+              }
+
+              const calResp = await supabase.functions.invoke("create-calendar-event", {
+                headers: { Authorization: authHeader || "" },
+                body: { summary, start: startIso }
+              });
+
+              let text = "";
+              if (calResp.error || !(calResp.data as any)?.success) {
+                const errorMsg = calResp.error?.message || (calResp.data as any)?.error || "Nepodařilo se vytvořit událost v Google Kalendáři";
+                text = `Chyba AI (kredity/limit), ale zkusil jsem vytvořit událost přímo: ${errorMsg}.`;
+              } else {
+                const eventLink = (calResp.data as any)?.eventLink;
+                const created = new Date(startIso).toLocaleString("cs-CZ");
+                text = eventLink 
+                  ? `Událost "${summary}" vytvořena v Google Kalendáři (${created}). Odkaz: ${eventLink}`
+                  : `Událost "${summary}" vytvořena v Google Kalendáři (${created}).`;
+              }
+
+              const delta = {
+                id: `gen-${Date.now()}`,
+                provider: "internal",
+                model: "internal",
+                object: "chat.completion.chunk",
+                created: Date.now(),
+                choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: null }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+            } catch (e) {
+              console.error("Calendar fallback (no AI) failed:", e);
+              const errDelta = {
+                id: `gen-${Date.now()}`,
+                provider: "internal",
+                model: "internal",
+                object: "chat.completion.chunk",
+                created: Date.now(),
+                choices: [{ index: 0, delta: { role: "assistant", content: "Nepodařilo se vytvořit událost. Otevři Nastavení → Test Google Kalendáře a vyzkoušej to prosím přímo." }, finish_reason: null }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(errDelta)}\n\n`));
+              controller.enqueue(encoder.encode(`data: [DONE]` + "\n\n"));
+              controller.close();
+            }
+          }
+        });
+        return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+      }
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Překročen limit požadavků. Zkuste to prosím později." }),
