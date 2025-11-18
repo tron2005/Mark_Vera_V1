@@ -822,11 +822,18 @@ export default function Settings() {
                 <h4 className="font-medium text-sm mb-1">📊 Vizualizace a statistiky</h4>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
                   <li>Vyobrazení aktivit dle časového období (výchozí: poslední týden)</li>
-                  <li>Shrnutí ke každému grafu (denní/týdenní)</li>
+                  <li>AI shrnutí ke každému grafu - denní a týdenní přehledy s analýzou trendů</li>
                   <li>Tlačítko pro generování sumářů (spánek, poslední trénink atd.)</li>
                   <li>Počasí na základě umístění tréninku při exportu bez GPS</li>
-                  <li>Vizualizace svalových partií v nastavení</li>
-                  <li>3D figurína s označením svalových skupin dle cvičení</li>
+                  <li>3D figurína lidského těla (předek/zadek) se svalovými partiemi</li>
+                  <li>Interaktivní zobrazení cvičených svalových skupin s barevným kódováním:
+                    <ul className="ml-4 mt-1">
+                      <li>🟢 Zelená = svalové partie, které byly aktivně cvičeny</li>
+                      <li>🟡 Žlutá = partie, které by měly být více zapojeny do tréninku</li>
+                      <li>⚪ Šedá = nevyužité nebo málo cvičené partie</li>
+                    </ul>
+                  </li>
+                  <li>Jednotný graf spánku při datech z více zařízení s možností přepnutí mezi zdroji</li>
                 </ul>
               </div>
 
@@ -850,10 +857,12 @@ export default function Settings() {
               </div>
 
               <div>
-                <h4 className="font-medium text-sm mb-1">🔗 Další integrace</h4>
+                <h4 className="font-medium text-sm mb-1">🔗 API klíče a personalizace</h4>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
-                  <li>Nastavení vlastních API klíčů pro Strava a další služby</li>
-                  <li>Individuální přístupy pro každého uživatele</li>
+                  <li>Možnost zadat vlastní API klíče nebo autorizační kódy v Nastavení</li>
+                  <li>Podpora pro Strava, Garmin, Weather API a další služby</li>
+                  <li>Každý uživatel má své vlastní přístupové údaje uložené bezpečně</li>
+                  <li>Nezávislé integrace pro multi-user prostředí</li>
                 </ul>
               </div>
 
