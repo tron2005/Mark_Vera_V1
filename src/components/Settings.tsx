@@ -780,17 +780,100 @@ export default function Settings() {
 
           <div>
             <h3 className="font-semibold mb-2">🚀 Plánované funkce (Roadmapa)</h3>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>📊 Pokročilá analytika - týdenní/měsíční přehledy, trendy, PDF reporty</li>
-              <li>🎯 AI generování tréninkových plánů na míru</li>
-              <li>⚡ Adaptivní plány reagující na únavu a přetrénování</li>
-              <li>🍎 Nutriční tracking s USDA Food Database</li>
-              <li>📸 AI rozpoznávání jídla z fotek a odhad kalorií</li>
-              <li>🥗 Doporučení jídelníčku podle cílů a BMR</li>
-              <li>👥 Sociální funkce - sdílení výkonů s přáteli</li>
-              <li>🏆 Gamifikace - body, odznaky, levely, streak counter</li>
-              <li>💪 Výzvy a týmové tréninky</li>
-            </ul>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-sm mb-1">📥 Import a správa dat</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Nahrávání textových souborů z Runalyze (všechny typy exportů)</li>
+                  <li>Import FIT souborů z různých zdrojů</li>
+                  <li>Integrace s Intervals.icu</li>
+                  <li>Detekce duplicit při importu dat</li>
+                  <li>Zobrazení statusu aktualizací v chatu</li>
+                  <li>Multi-user testování a správa přístupů</li>
+                  <li>Ruční export z RingConn - vlastní záložka pro lepší data o spánku</li>
+                  <li>Integrace s Health Connect</li>
+                  <li>Jednotný graf spánku při datech z více zařízení (s možností přepnutí)</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">🏋️ Tréninkové plány a výživa</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>AI generování tréninkových plánů pro hubnutí a budování kondice</li>
+                  <li>Kalorické tabulky a tracking příjmu</li>
+                  <li>Cílová hmotnost s predikci data dosažení</li>
+                  <li>Automatická kompenzace oslav, večírků a nemocí v plánu</li>
+                  <li>Plán upravený na aktuální kondici a pokrok</li>
+                  <li>AI doporučení suplementů a dávkování</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">📅 Kalendář a plánování</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Vizualizace dodržování plánu v kalendáři (dny úspěch/neúspěch)</li>
+                  <li>Predikce dosažení cíle s ohledem na životní události</li>
+                  <li>Automatické přeplánování při nemoci nebo nepředvídaných událostech</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">📊 Vizualizace a statistiky</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Vyobrazení aktivit dle časového období (výchozí: poslední týden)</li>
+                  <li>Shrnutí ke každému grafu (denní/týdenní)</li>
+                  <li>Tlačítko pro generování sumářů (spánek, poslední trénink atd.)</li>
+                  <li>Počasí na základě umístění tréninku při exportu bez GPS</li>
+                  <li>Vizualizace svalových partií v nastavení</li>
+                  <li>3D figurína s označením svalových skupin dle cvičení</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">💪 Tréninková knihovna</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Karta tréninkové rady pro různé délky běhu (videa, články, odkazy)</li>
+                  <li>Tréninky VR brýle Les Mills BodyCombat</li>
+                  <li>Import Excel tréninků (Roman Maršálek, Tomáš Jehličná)</li>
+                  <li>Kruhák, švihadlo, přitahy doma, flankyrovka</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">🧠 Paměť a konverzace</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Statistiky: počet poznámek, počet konverzací</li>
+                  <li>Nastavení doby uchování konverzací</li>
+                  <li>Dlouhodobá paměť napříč sezeními</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">🔗 Další integrace</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Nastavení vlastních API klíčů pro Strava a další služby</li>
+                  <li>Individuální přístupy pro každého uživatele</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">🚗 Správa vozidel</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Údaje o vozidlech (TK, pojistné, výměny oleje, rozvody)</li>
+                  <li>Typ oleje, pneumatiky, připomínky servisů</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm mb-1">📚 Vzdělávání a osobní rozvoj</h4>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
+                  <li>Upomínky Duolingo, Udemy</li>
+                  <li>Sledování času na učení a pokroku</li>
+                  <li>Vlastní záložka pro jazykového lektora</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 border-t">
