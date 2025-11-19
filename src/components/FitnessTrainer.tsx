@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Activity, Heart, TrendingUp, Calendar } from "lucide-react";
+import { Activity, Heart, TrendingUp, Calendar, Sparkles, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FitnessStats } from "./FitnessStats";
 import { GarminImport } from "./GarminImport";
 import { SleepImport } from "./SleepImport";
@@ -22,6 +23,12 @@ export const FitnessTrainer = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [summaryDialog, setSummaryDialog] = useState<{ open: boolean; type: string; content: string; loading: boolean }>({
+    open: false,
+    type: '',
+    content: '',
+    loading: false
+  });
 
   useEffect(() => {
     checkConnections();
@@ -177,6 +184,33 @@ export const FitnessTrainer = () => {
       ));
     } catch (error: any) {
       console.error("Chyba při načítání Garmin aktivit:", error);
+    }
+  };
+
+  const generateSummary = async (type: 'sleep' | 'last_workout' | 'weekly_overview') => {
+    setSummaryDialog({ open: true, type, content: '', loading: true });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { summaryType: type }
+      });
+
+      if (error) throw error;
+
+      setSummaryDialog(prev => ({ ...prev, content: data.summary, loading: false }));
+    } catch (error: any) {
+      console.error('Error generating summary:', error);
+      toast.error('Nepodařilo se vygenerovat shrnutí');
+      setSummaryDialog({ open: false, type: '', content: '', loading: false });
+    }
+  };
+
+  const getSummaryTitle = () => {
+    switch (summaryDialog.type) {
+      case 'sleep': return 'AI Shrnutí spánku';
+      case 'last_workout': return 'AI Shrnutí posledního tréninku';
+      case 'weekly_overview': return 'AI Týdenní přehled';
+      default: return 'AI Shrnutí';
     }
   };
 
@@ -375,6 +409,47 @@ export const FitnessTrainer = () => {
       {/* Health Data Charts */}
       <HealthDataCharts />
 
+      {/* AI Summary Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Sumáře a analýzy
+          </CardTitle>
+          <CardDescription>
+            Získejte inteligentní shrnutí vašich dat s doporučeními a analýzou trendů
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Button
+              variant="outline"
+              onClick={() => generateSummary('sleep')}
+              className="w-full"
+            >
+              <Moon className="mr-2 h-4 w-4" />
+              Shrnutí spánku
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => generateSummary('last_workout')}
+              className="w-full"
+            >
+              <Activity className="mr-2 h-4 w-4" />
+              Poslední trénink
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => generateSummary('weekly_overview')}
+              className="w-full"
+            >
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Týdenní přehled
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* AI Coach Section */}
       <Card>
         <CardHeader>
@@ -417,6 +492,30 @@ export const FitnessTrainer = () => {
           </p>
         </CardContent>
       </Card>
+
+      {/* Summary Dialog */}
+      <Dialog open={summaryDialog.open} onOpenChange={(open) => setSummaryDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {getSummaryTitle()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {summaryDialog.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Activity className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-3 text-muted-foreground">Generuji AI analýzu...</span>
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <p className="whitespace-pre-line">{summaryDialog.content}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
