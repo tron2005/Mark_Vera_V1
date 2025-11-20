@@ -93,3 +93,6 @@ verify_jwt = true
 
 [functions.search-gmail]
 verify_jwt = true
+
+[functions.get-weather-recommendation]
+verify_jwt = true

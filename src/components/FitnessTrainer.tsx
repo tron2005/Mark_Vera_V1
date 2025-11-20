@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Activity, Heart, TrendingUp, Calendar, Sparkles, Moon } from "lucide-react";
+import { Activity, Heart, TrendingUp, Calendar, Sparkles, Moon, Cloud, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FitnessStats } from "./FitnessStats";
@@ -27,6 +27,12 @@ export const FitnessTrainer = () => {
     open: false,
     type: '',
     content: '',
+    loading: false
+  });
+  const [weatherDialog, setWeatherDialog] = useState<{ open: boolean; data: any; recommendation: string; loading: boolean }>({
+    open: false,
+    data: null,
+    recommendation: '',
     loading: false
   });
 
@@ -188,8 +194,7 @@ export const FitnessTrainer = () => {
   };
 
   const generateSummary = async (type: 'sleep' | 'last_workout' | 'weekly_overview') => {
-    setSummaryDialog({ open: true, type, content: '', loading: true });
-
+    setSummaryDialog(prev => ({ ...prev, open: true, type, loading: true, content: '' }));
     try {
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: { summaryType: type }
@@ -198,10 +203,32 @@ export const FitnessTrainer = () => {
       if (error) throw error;
 
       setSummaryDialog(prev => ({ ...prev, content: data.summary, loading: false }));
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error generating summary:', error);
       toast.error('Nepodařilo se vygenerovat shrnutí');
-      setSummaryDialog({ open: false, type: '', content: '', loading: false });
+      setSummaryDialog(prev => ({ ...prev, open: false, loading: false }));
+    }
+  };
+
+  const getWeatherRecommendation = async () => {
+    setWeatherDialog(prev => ({ ...prev, open: true, loading: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('get-weather-recommendation', {
+        body: { city: 'Plzeň', country: 'CZ' }
+      });
+
+      if (error) throw error;
+
+      setWeatherDialog(prev => ({ 
+        ...prev, 
+        data: data.weather, 
+        recommendation: data.recommendation, 
+        loading: false 
+      }));
+    } catch (error) {
+      console.error('Error getting weather:', error);
+      toast.error('Nepodařilo se načíst počasí');
+      setWeatherDialog(prev => ({ ...prev, open: false, loading: false }));
     }
   };
 
@@ -421,30 +448,57 @@ export const FitnessTrainer = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <Button
               variant="outline"
               onClick={() => generateSummary('sleep')}
+              disabled={summaryDialog.loading}
               className="w-full"
             >
-              <Moon className="mr-2 h-4 w-4" />
+              {summaryDialog.loading && summaryDialog.type === 'sleep' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Moon className="mr-2 h-4 w-4" />
+              )}
               Shrnutí spánku
             </Button>
             <Button
               variant="outline"
               onClick={() => generateSummary('last_workout')}
+              disabled={summaryDialog.loading}
               className="w-full"
             >
-              <Activity className="mr-2 h-4 w-4" />
+              {summaryDialog.loading && summaryDialog.type === 'last_workout' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Activity className="mr-2 h-4 w-4" />
+              )}
               Poslední trénink
             </Button>
             <Button
               variant="outline"
               onClick={() => generateSummary('weekly_overview')}
+              disabled={summaryDialog.loading}
               className="w-full"
             >
-              <TrendingUp className="mr-2 h-4 w-4" />
+              {summaryDialog.loading && summaryDialog.type === 'weekly_overview' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <TrendingUp className="mr-2 h-4 w-4" />
+              )}
               Týdenní přehled
+            </Button>
+            <Button
+              onClick={getWeatherRecommendation}
+              disabled={weatherDialog.loading}
+              className="w-full"
+            >
+              {weatherDialog.loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Cloud className="mr-2 h-4 w-4" />
+              )}
+              Počasí pro běh
             </Button>
           </div>
         </CardContent>
@@ -514,6 +568,72 @@ export const FitnessTrainer = () => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Weather Dialog */}
+      <Dialog open={weatherDialog.open} onOpenChange={(open) => setWeatherDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Cloud className="h-5 w-5" />
+              Počasí a doporučení pro běh
+            </DialogTitle>
+          </DialogHeader>
+          
+          {weatherDialog.loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Načítám počasí...</span>
+            </div>
+          ) : weatherDialog.data ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                <img 
+                  src={`https://openweathermap.org/img/wn/${weatherDialog.data.icon}@2x.png`} 
+                  alt={weatherDialog.data.description}
+                  className="w-16 h-16"
+                />
+                <div className="flex-1">
+                  <div className="text-2xl font-bold">{weatherDialog.data.temp}°C</div>
+                  <div className="text-sm text-muted-foreground">
+                    Pocitově {weatherDialog.data.feelsLike}°C
+                  </div>
+                  <div className="text-sm capitalize">{weatherDialog.data.description}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-xs text-muted-foreground">Vlhkost</div>
+                  <div className="text-lg font-semibold">{weatherDialog.data.humidity}%</div>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-xs text-muted-foreground">Vítr</div>
+                  <div className="text-lg font-semibold">{weatherDialog.data.windSpeed} m/s</div>
+                </div>
+              </div>
+
+              {weatherDialog.data.rain > 0 && (
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-xs text-blue-900 dark:text-blue-100">Déšť (1h)</div>
+                  <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                    {weatherDialog.data.rain} mm
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 border rounded-lg">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Doporučení trenéra:
+                </h3>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <p className="whitespace-pre-line">{weatherDialog.recommendation}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
