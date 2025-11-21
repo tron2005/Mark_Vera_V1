@@ -27,7 +27,8 @@ export default function Settings() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("male");
   const [bmi, setBmi] = useState<number | null>(null);
-   const [bmr, setBmr] = useState<number | null>(null);
+  const [bmr, setBmr] = useState<number | null>(null);
+  const [location, setLocation] = useState("");
 
    // Test Google Calendar fields
    const [testingCalendar, setTestingCalendar] = useState(false);
@@ -62,7 +63,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr")
+        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr, location")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -80,6 +81,7 @@ export default function Settings() {
         setHeightCm(profile.height_cm?.toString() || "");
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
+        setLocation(profile.location || "");
         
         if (profile.bmr) {
           setBmr(profile.bmr);
@@ -203,6 +205,7 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
+            location: location || null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -229,6 +232,7 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
+            location: location || null,
           });
         error = insertError;
       }
@@ -440,6 +444,20 @@ export default function Settings() {
             />
             <p className="text-sm text-muted-foreground">
               Email pro odesílání sumářů poznámek
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">📍 Vaše lokace</Label>
+            <Input
+              id="location"
+              type="text"
+              placeholder="Přísovice"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+            <p className="text-sm text-muted-foreground">
+              Město pro doporučení počasí při běhání
             </p>
           </div>
 
