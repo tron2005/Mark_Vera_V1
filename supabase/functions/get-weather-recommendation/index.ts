@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { city = "Plzeň", country = "CZ" } = await req.json();
+    const { city, country } = await req.json().catch(() => ({}));
     
     const authHeader = req.headers.get('Authorization')!;
     const supabaseClient = createClient(
@@ -24,12 +24,26 @@ serve(async (req) => {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
+    // Načíst lokaci z profilu uživatele
+    let userCity = city;
+    if (!userCity) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('location')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      userCity = profile?.location || "Plzeň";
+    }
+    
+    const userCountry = country || "CZ";
+
     const OPENWEATHER_API_KEY = Deno.env.get('OPENWEATHER_API_KEY');
     if (!OPENWEATHER_API_KEY) throw new Error('OPENWEATHER_API_KEY is not configured');
 
     // Získat aktuální počasí z OpenWeatherMap
     const weatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city},${country}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=cs`
+      `https://api.openweathermap.org/data/2.5/weather?q=${userCity},${userCountry}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=cs`
     );
 
     if (!weatherResponse.ok) {
@@ -49,7 +63,7 @@ serve(async (req) => {
     const rain = weatherData.rain?.['1h'] || 0;
 
     // Připravit data pro AI analýzu
-    const weatherSummary = `Aktuální počasí v ${city}:
+    const weatherSummary = `Aktuální počasí v ${userCity}:
 - Teplota: ${temp}°C (pocitově ${feelsLike}°C)
 - Podmínky: ${description}
 - Vlhkost: ${humidity}%
@@ -97,7 +111,7 @@ serve(async (req) => {
           description,
           icon,
           rain,
-          city
+          city: userCity
         },
         recommendation 
       }),
