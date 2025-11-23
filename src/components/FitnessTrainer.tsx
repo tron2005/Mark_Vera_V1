@@ -13,6 +13,7 @@ import { SleepCharts } from "./SleepCharts";
 import { RunalyzeBackupAnalyzer } from "./RunalyzeBackupAnalyzer";
 import { RunalyzeFullImport } from "./RunalyzeFullImport";
 import { HealthDataCharts } from "./HealthDataCharts";
+import { BodyCombatTracker } from "./BodyCombatTracker";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -311,6 +312,9 @@ export const FitnessTrainer = () => {
           loadGarminActivities();
           toast.success("Spánková data importována");
         }} />
+
+        {/* BodyCombat Tracker */}
+        <BodyCombatTracker />
 
         {/* Runalyze Backup Analyzer */}
         <RunalyzeBackupAnalyzer />

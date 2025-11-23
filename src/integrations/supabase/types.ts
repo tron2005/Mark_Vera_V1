@@ -53,6 +53,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bodycombat_workouts: {
+        Row: {
+          calories_estimate: number | null
+          created_at: string | null
+          duration_minutes: number
+          id: string
+          intensity: number | null
+          notes: string | null
+          track_number: string | null
+          updated_at: string | null
+          user_id: string
+          workout_date: string
+        }
+        Insert: {
+          calories_estimate?: number | null
+          created_at?: string | null
+          duration_minutes: number
+          id?: string
+          intensity?: number | null
+          notes?: string | null
+          track_number?: string | null
+          updated_at?: string | null
+          user_id: string
+          workout_date: string
+        }
+        Update: {
+          calories_estimate?: number | null
+          created_at?: string | null
+          duration_minutes?: number
+          id?: string
+          intensity?: number | null
+          notes?: string | null
+          track_number?: string | null
+          updated_at?: string | null
+          user_id?: string
+          workout_date?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string | null
