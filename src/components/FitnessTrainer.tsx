@@ -14,6 +14,9 @@ import { RunalyzeBackupAnalyzer } from "./RunalyzeBackupAnalyzer";
 import { RunalyzeFullImport } from "./RunalyzeFullImport";
 import { HealthDataCharts } from "./HealthDataCharts";
 import { BodyCombatTracker } from "./BodyCombatTracker";
+import { WeightChart } from "./WeightChart";
+import { BodyCombatStats } from "./BodyCombatStats";
+import { CalorieTracker } from "./CalorieTracker";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -439,6 +442,15 @@ export const FitnessTrainer = () => {
 
       {/* Health Data Charts */}
       <HealthDataCharts />
+
+      {/* Weight Chart */}
+      <WeightChart />
+
+      {/* BodyCombat Stats */}
+      <BodyCombatStats />
+
+      {/* Calorie Tracker */}
+      <CalorieTracker />
 
       {/* AI Summary Section */}
       <Card>
