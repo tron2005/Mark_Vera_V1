@@ -17,6 +17,8 @@ import { BodyCombatTracker } from "./BodyCombatTracker";
 import { WeightChart } from "./WeightChart";
 import { BodyCombatStats } from "./BodyCombatStats";
 import { CalorieTracker } from "./CalorieTracker";
+import { RaceGoalsWidget } from "./RaceGoalsWidget";
+import { WeeklyOverview } from "./WeeklyOverview";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -451,6 +453,12 @@ export const FitnessTrainer = () => {
 
       {/* Calorie Tracker */}
       <CalorieTracker />
+
+      {/* Race Goals Widget */}
+      <RaceGoalsWidget />
+
+      {/* Weekly Overview */}
+      <WeeklyOverview />
 
       {/* AI Summary Section */}
       <Card>
