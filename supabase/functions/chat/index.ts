@@ -240,6 +240,57 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "add_race_goal",
+          description: "Přidá nový závodní cíl - maraton, půlmaraton, běh nebo jiný typ závodu s cílovým časem a datem",
+          parameters: {
+            type: "object",
+            properties: {
+              race_name: {
+                type: "string",
+                description: "Název závodu (např. 'Pražský maraton', 'Běchovice - Pražský půlmaraton')"
+              },
+              race_type: {
+                type: "string",
+                description: "Typ závodu (např. 'Maraton', 'Půlmaraton', '10 km', '5 km', 'Ultra')"
+              },
+              race_date: {
+                type: "string",
+                description: "Datum závodu ve formátu YYYY-MM-DD"
+              },
+              target_time: {
+                type: "string",
+                description: "Cílový čas (volitelné, např. '3:30:00', '1:45:00')"
+              },
+              notes: {
+                type: "string",
+                description: "Poznámky k závodu (volitelné)"
+              }
+            },
+            required: ["race_name", "race_type", "race_date"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_race_goals",
+          description: "Zobrazí naplánované závodní cíle - aktuální i budoucí závody včetně typu, data a cílového času",
+          parameters: {
+            type: "object",
+            properties: {
+              include_completed: {
+                type: "boolean",
+                description: "Zda zahrnout dokončené závody (výchozí: false)"
+              }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "create_calendar_event",
           description: "Vytvoří událost/upomínku/schůzku v Google Calendar uživatele. Použij VŽDY když uživatel řekne 'vytvoř v kalendáři', 'přidej do kalendáře', 'naplánuj', 'upomeň mě', 'vytvoř událost', 'přidej schůzku' nebo podobně.",
           parameters: {
