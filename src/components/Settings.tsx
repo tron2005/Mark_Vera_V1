@@ -39,6 +39,14 @@ export default function Settings() {
   useEffect(() => {
     loadSettings();
     loadVoices();
+    
+    // Refresh settings when returning from OAuth callback
+    const handleFocus = () => {
+      loadSettings();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const loadVoices = () => {
@@ -63,7 +71,7 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr, location")
+        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr, location, google_access_token, strava_access_token")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -75,8 +83,9 @@ export default function Settings() {
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);
-        setGoogleCalendarConnected(!!profile.google_refresh_token);
-        setStravaConnected(!!profile.strava_refresh_token);
+        // Check both refresh and access tokens for more reliable status
+        setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
+        setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
         setWeightKg(profile.weight_kg?.toString() || "");
         setHeightCm(profile.height_cm?.toString() || "");
         setAge(profile.age?.toString() || "");
