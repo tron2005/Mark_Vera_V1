@@ -40,13 +40,21 @@ export default function Settings() {
     loadSettings();
     loadVoices();
     
-    // Refresh settings when returning from OAuth callback
+    // Refresh settings every 2 seconds to catch OAuth callback updates
+    const intervalId = setInterval(() => {
+      loadSettings();
+    }, 2000);
+    
+    // Also refresh on window focus
     const handleFocus = () => {
       loadSettings();
     };
     
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const loadVoices = () => {

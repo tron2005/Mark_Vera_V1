@@ -21,6 +21,27 @@ export const RaceGoalsWidget = () => {
 
   useEffect(() => {
     loadUpcomingRaces();
+
+    // Set up realtime subscription for race goals updates
+    const channel = supabase
+      .channel('race_goals_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'race_goals'
+        },
+        (payload) => {
+          console.log('Race goals updated:', payload);
+          loadUpcomingRaces();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadUpcomingRaces = async () => {
