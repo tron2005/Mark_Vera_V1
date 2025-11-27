@@ -79,14 +79,16 @@ export default function Settings() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, strava_refresh_token, weight_kg, height_cm, age, gender, bmr, location, google_access_token, strava_access_token")
+        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, location")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
 
       if (error) throw error;
 
-      if (data) {
-        const profile = data as any;
+      const profile = (data && data[0]) as any;
+
+      if (profile) {
         setEmail(profile.email || "");
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
@@ -99,11 +101,15 @@ export default function Settings() {
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
         setLocation(profile.location || "");
-        
+
         if (profile.bmr) {
           setBmr(profile.bmr);
         }
-        
+
+        if (profile.bmi) {
+          setBmi(Number(profile.bmi));
+        }
+
         if (profile.weight_kg && profile.height_cm) {
           calculateBMI(profile.weight_kg, profile.height_cm);
         }
