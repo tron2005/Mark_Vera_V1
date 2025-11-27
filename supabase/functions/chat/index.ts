@@ -521,7 +521,7 @@ serve(async (req) => {
         : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email';
       
       fitnessContext = `
-
+      
 🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem ke zdravotním datům. Můžeš:
 ${stravaInfo}- Sledovat zdravotní stav a únavu
 - Analyzovat kvalitu spánku a zotavení
@@ -530,6 +530,11 @@ ${stravaInfo}- Sledovat zdravotní stav a únavu
 - Pomoci s plánováním závodů a cílů
 - Poskytovat zdravotní a sportovní rady
 - Posílat uživateli statistiky emailem (spánek, HRV, fitness aktivity, tělesné složení)
+
+📌 KARTA "TRENÉR" V APLIKACI:
+- Cíle závodů a plánované závody se ukládají do tabulky race_goals
+- To, co přidáš pomocí add_race_goal, se zobrazí uživateli na kartě "Trenér" v části "Závody a cíle"
+
 ${profileInfo}
 
 Máš k dispozici nástroje: ${availableTools}
@@ -537,8 +542,8 @@ Máš k dispozici nástroje: ${availableTools}
 DŮLEŽITÉ: 
 - Když se uživatel ptá na spánek, HRV, klidový tep nebo složení těla, AKTIVNĚ použij příslušné nástroje (get_sleep_data, get_hrv_data, get_resting_heart_rate, get_body_composition) pro získání aktuálních dat!
 - Když uživatel chce poslat statistiky emailem (např. "pošli mi jak jsem spal poslední týden", "pošli mi HRV data", "pošli mi statistiky běhů"), použij send_stats_email s příslušným statsType (sleep/hrv/heart_rate/body_composition/fitness)
-- Když uživatel chce přidat závod nebo cíl (např. "přidej závod", "chci běžet maraton", "naplánuj mi závod", "mám závod v květnu"), VŽDY použij add_race_goal s názvem závodu, datem a typem
-- Pro zobrazení plánovaných závodů použij get_race_goals
+- Když uživatel chce přidat závod nebo cíl (např. "přidej závod", "chci běžet maraton", "naplánuj mi závod", "mám závod v květnu"), VŽDY použij add_race_goal – tyto závody se uloží do race_goals a zobrazí se na kartě "Trenér" v části "Závody a cíle"
+- Pro zobrazení plánovaných závodů použij get_race_goals a popiš je tak, jak jsou vidět na kartě "Trenér"
 `;
     }
 
