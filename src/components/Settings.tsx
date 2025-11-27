@@ -77,16 +77,13 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
-        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, location")
+        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .maybeSingle();
 
       if (error) throw error;
-
-      const profile = (data && data[0]) as any;
 
       if (profile) {
         setEmail(profile.email || "");
@@ -100,7 +97,6 @@ export default function Settings() {
         setHeightCm(profile.height_cm?.toString() || "");
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
-        setLocation(profile.location || "");
 
         if (profile.bmr) {
           setBmr(profile.bmr);
@@ -228,7 +224,6 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
-            location: location || null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -255,7 +250,6 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
-            location: location || null,
           });
         error = insertError;
       }
