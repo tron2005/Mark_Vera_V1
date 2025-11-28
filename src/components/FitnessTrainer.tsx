@@ -553,24 +553,6 @@ export const FitnessTrainer = () => {
         </CardContent>
       </Card>
 
-      {/* Race Goals */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Závody a cíle
-          </CardTitle>
-          <CardDescription>
-            Plánované závody a tréninkové cíle
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Přidávejte cíle a závody v konverzaci s asistentem
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Summary Dialog */}
       <Dialog open={summaryDialog.open} onOpenChange={(open) => setSummaryDialog(prev => ({ ...prev, open }))}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
