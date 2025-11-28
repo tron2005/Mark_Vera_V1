@@ -52,16 +52,16 @@ export const FitnessTrainer = () => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("strava_refresh_token, garmin_refresh_token, weight_kg, age, height_cm, bmi, bmr")
+      .select("strava_refresh_token, strava_access_token, garmin_refresh_token, weight_kg, age, height_cm, bmi, bmr")
       .eq("user_id", user.id)
       .single();
 
     if (profile) {
-      setStravaConnected(!!profile.strava_refresh_token);
+      setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
       setGarminConnected(!!profile.garmin_refresh_token);
       setUserProfile(profile);
       
-      if (profile.strava_refresh_token) {
+      if (profile.strava_refresh_token || profile.strava_access_token) {
         // Load from database
         loadStravaActivitiesFromDB();
         loadLastSyncTime();
