@@ -291,6 +291,28 @@ serve(async (req) => {
       {
         type: "function",
         function: {
+          name: "remove_race_goal",
+          description: "Odstraní závod z plánu podle názvu nebo data",
+          parameters: {
+            type: "object",
+            properties: {
+              race_name: {
+                type: "string",
+                description: "Název závodu k odstranění"
+              },
+              race_date: {
+                type: "string",
+                description: "Datum závodu (YYYY-MM-DD) - volitelné pro přesnější identifikaci"
+              }
+            },
+            required: ["race_name"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "create_calendar_event",
           description: "Vytvoří událost/upomínku/schůzku v Google Calendar uživatele. Použij VŽDY když uživatel řekne 'vytvoř v kalendáři', 'přidej do kalendáře', 'naplánuj', 'upomeň mě', 'vytvoř událost', 'přidej schůzku' nebo podobně.",
           parameters: {
@@ -1834,6 +1856,24 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     completed: false
                   });
                   result = error ? { error: error.message } : { success: true, message: `Závod "${args.race_name}" byl přidán do plánu` };
+                } else if (tc.name === "remove_race_goal") {
+                  const args = JSON.parse(tc.arguments);
+                  let query = supabase
+                    .from("race_goals")
+                    .delete()
+                    .eq("user_id", userId)
+                    .ilike("race_name", `%${args.race_name}%`);
+                  
+                  if (args.race_date) {
+                    query = query.eq("race_date", args.race_date);
+                  }
+                  
+                  const { error, count } = await query;
+                  result = error 
+                    ? { error: error.message } 
+                    : count && count > 0 
+                      ? { success: true, message: `Závod "${args.race_name}" byl odstraněn z plánu` }
+                      : { error: `Závod "${args.race_name}" nebyl nalezen` };
                 } else if (tc.name === "search_gmail") {
                   const args = JSON.parse(tc.arguments);
                   console.log("search_gmail called with args:", args);
