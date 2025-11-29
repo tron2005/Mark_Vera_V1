@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Target, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Target, Clock, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { cs } from "date-fns/locale";
 
@@ -18,6 +20,7 @@ interface RaceGoal {
 export const RaceGoalsWidget = () => {
   const [upcomingRaces, setUpcomingRaces] = useState<RaceGoal[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadUpcomingRaces();
@@ -64,6 +67,31 @@ export const RaceGoalsWidget = () => {
       console.error("Error loading race goals:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRace = async (raceId: string, raceName: string) => {
+    try {
+      const { error } = await supabase
+        .from("race_goals")
+        .delete()
+        .eq("id", raceId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Závod odstraněn",
+        description: `"${raceName}" byl úspěšně odstraněn z plánu.`,
+      });
+
+      loadUpcomingRaces();
+    } catch (error) {
+      console.error("Error deleting race:", error);
+      toast({
+        title: "Chyba",
+        description: "Nepodařilo se odstranit závod.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -130,9 +158,19 @@ export const RaceGoalsWidget = () => {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-primary">{daysUntil}</div>
-                  <div className="text-xs text-muted-foreground">dní</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-primary">{daysUntil}</div>
+                    <div className="text-xs text-muted-foreground">dní</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleDeleteRace(race.id, race.race_name)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
               <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
