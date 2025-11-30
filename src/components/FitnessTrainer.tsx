@@ -12,6 +12,7 @@ import { SleepImport } from "./SleepImport";
 import { SleepCharts } from "./SleepCharts";
 import { RunalyzeBackupAnalyzer } from "./RunalyzeBackupAnalyzer";
 import { RunalyzeFullImport } from "./RunalyzeFullImport";
+import { RingConnImport } from "./RingConnImport";
 import { HealthDataCharts } from "./HealthDataCharts";
 import { BodyCombatTracker } from "./BodyCombatTracker";
 import { WeightChart } from "./WeightChart";
@@ -329,6 +330,12 @@ export const FitnessTrainer = () => {
         <RunalyzeFullImport onComplete={() => {
           loadGarminActivities();
           toast.success("Všechna data importována");
+        }} />
+
+        {/* RingConn Import */}
+        <RingConnImport onComplete={() => {
+          loadGarminActivities();
+          toast.success("RingConn data importována");
         }} />
 
         {/* User Profile */}
