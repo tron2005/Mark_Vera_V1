@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Activity, Clock, TrendingUp, Weight, Scale } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Heart, Activity, Clock, TrendingUp, Weight, Scale, ArrowUp, ArrowDown, Minus, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LongevityMetrics {
@@ -17,6 +18,9 @@ interface LongevityMetrics {
   idealWeight: number | null;
   height: number | null;
   gender: string | null;
+  rhrTrend: 'up' | 'down' | 'stable' | null;
+  hrvTrend: 'up' | 'down' | 'stable' | null;
+  recommendations: string[];
 }
 
 export const LongevityCard = () => {
@@ -32,6 +36,9 @@ export const LongevityCard = () => {
     idealWeight: null,
     height: null,
     gender: null,
+    rhrTrend: null,
+    hrvTrend: null,
+    recommendations: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +76,55 @@ export const LongevityCard = () => {
         .limit(1)
         .maybeSingle();
 
+      // Načíst HRV trendy (posledních 7 dní vs předchozích 7 dní)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+      const { data: recentHRV } = await supabase
+        .from("hrv_logs")
+        .select("hrv")
+        .eq("user_id", user.id)
+        .gte("date", sevenDaysAgo.toISOString().split('T')[0])
+        .order("date", { ascending: false });
+
+      const { data: previousHRV } = await supabase
+        .from("hrv_logs")
+        .select("hrv")
+        .eq("user_id", user.id)
+        .gte("date", fourteenDaysAgo.toISOString().split('T')[0])
+        .lt("date", sevenDaysAgo.toISOString().split('T')[0])
+        .order("date", { ascending: false });
+
+      const { data: recentRHR } = await supabase
+        .from("heart_rate_rest")
+        .select("heart_rate")
+        .eq("user_id", user.id)
+        .gte("date", sevenDaysAgo.toISOString().split('T')[0])
+        .order("date", { ascending: false });
+
+      const { data: previousRHR } = await supabase
+        .from("heart_rate_rest")
+        .select("heart_rate")
+        .eq("user_id", user.id)
+        .gte("date", fourteenDaysAgo.toISOString().split('T')[0])
+        .lt("date", sevenDaysAgo.toISOString().split('T')[0])
+        .order("date", { ascending: false });
+
+      // Načíst běžecké aktivity pro VO2max odhad
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: runningActivities } = await supabase
+        .from("strava_activities")
+        .select("distance_meters, moving_time_seconds, average_heartrate, max_heartrate")
+        .eq("user_id", user.id)
+        .eq("activity_type", "Run")
+        .gte("start_date", thirtyDaysAgo.toISOString())
+        .order("start_date", { ascending: false })
+        .limit(10);
+
       const chronologicalAge = profile?.age || null;
       const rhr = restingHR?.heart_rate || null;
       const hrv = hrvData?.hrv || null;
@@ -102,19 +158,99 @@ export const LongevityCard = () => {
         idealWeight = Number((targetBMI * heightInMeters * heightInMeters).toFixed(1));
       }
 
-      // Zjednodušený výpočet biologického věku na základě klidové tepové frekvence a HRV
+      // Vypočítat trendy
+      const avgRecentHRV = recentHRV && recentHRV.length > 0
+        ? recentHRV.reduce((sum, r) => sum + Number(r.hrv), 0) / recentHRV.length
+        : null;
+      const avgPreviousHRV = previousHRV && previousHRV.length > 0
+        ? previousHRV.reduce((sum, r) => sum + Number(r.hrv), 0) / previousHRV.length
+        : null;
+
+      let hrvTrend: 'up' | 'down' | 'stable' | null = null;
+      if (avgRecentHRV && avgPreviousHRV) {
+        const diff = avgRecentHRV - avgPreviousHRV;
+        hrvTrend = Math.abs(diff) < 3 ? 'stable' : diff > 0 ? 'up' : 'down';
+      }
+
+      const avgRecentRHR = recentRHR && recentRHR.length > 0
+        ? recentRHR.reduce((sum, r) => sum + Number(r.heart_rate), 0) / recentRHR.length
+        : null;
+      const avgPreviousRHR = previousRHR && previousRHR.length > 0
+        ? previousRHR.reduce((sum, r) => sum + Number(r.heart_rate), 0) / previousRHR.length
+        : null;
+
+      let rhrTrend: 'up' | 'down' | 'stable' | null = null;
+      if (avgRecentRHR && avgPreviousRHR) {
+        const diff = avgRecentRHR - avgPreviousRHR;
+        rhrTrend = Math.abs(diff) < 2 ? 'stable' : diff > 0 ? 'up' : 'down';
+      }
+
+      // Vypočítat VO2max z běžeckých dat (zjednodušený vzorec)
+      let vo2max = null;
+      if (runningActivities && runningActivities.length > 0 && chronologicalAge && gender) {
+        // Průměrná rychlost v km/h z posledních běhů
+        const avgSpeed = runningActivities.reduce((sum, a) => {
+          const distance = a.distance_meters ? a.distance_meters / 1000 : 0;
+          const time = a.moving_time_seconds ? a.moving_time_seconds / 3600 : 1;
+          return sum + (distance / time);
+        }, 0) / runningActivities.length;
+
+        // Zjednodušený odhad VO2max podle rychlosti běhu a věku
+        // Formula: VO2max ≈ (speed × 3.5) + age_adjustment + gender_adjustment
+        const ageAdjustment = chronologicalAge > 30 ? -(chronologicalAge - 30) * 0.5 : 0;
+        const genderAdjustment = gender === 'male' ? 5 : 0;
+        vo2max = Math.round((avgSpeed * 3.5) + ageAdjustment + genderAdjustment);
+        
+        // Korekce podle tepové frekvence, pokud je k dispozici
+        const avgMaxHR = runningActivities
+          .filter(a => a.max_heartrate)
+          .reduce((sum, a) => sum + (a.max_heartrate || 0), 0) / runningActivities.filter(a => a.max_heartrate).length;
+        
+        if (avgMaxHR && rhr && avgMaxHR > 0) {
+          // Cooper formula variant: VO2max = 15 × (maxHR / RHR)
+          const cooperEstimate = 15 * (avgMaxHR / rhr);
+          vo2max = Math.round((vo2max + cooperEstimate) / 2); // Průměr obou odhadů
+        }
+      }
+
+      // Zjednodušený výpočet biologického věku na základě klidové tepové frekvence, HRV a VO2max
       let biologicalAge = chronologicalAge;
       if (chronologicalAge && rhr) {
         // Lepší tepová frekvence = mladší biologický věk
         const hrFactor = rhr < 60 ? -2 : rhr > 70 ? 2 : 0;
         const hrvFactor = hrv && hrv > 50 ? -1 : hrv && hrv < 30 ? 1 : 0;
-        biologicalAge = chronologicalAge + hrFactor + hrvFactor;
+        const vo2Factor = vo2max && vo2max > 45 ? -2 : vo2max && vo2max < 35 ? 2 : 0;
+        biologicalAge = chronologicalAge + hrFactor + hrvFactor + vo2Factor;
+      }
+
+      // Generovat doporučení
+      const recommendations: string[] = [];
+      if (rhr && rhr > 70) {
+        recommendations.push("Tvá klidová tepová frekvence je vyšší. Pravidelný aerobní trénink 3-4× týdně může pomoci ji snížit.");
+      }
+      if (hrv && hrv < 30) {
+        recommendations.push("Nízká HRV může signalizovat přetrénování nebo stres. Zvažte aktivní odpočinek a kvalitní spánek.");
+      }
+      if (bmi && bmi > 25) {
+        recommendations.push("BMI ukazuje nadváhu. Zvažte kalorický deficit a pravidelný pohyb pro zdravější váhu.");
+      }
+      if (bmi && bmi < 18.5) {
+        recommendations.push("BMI ukazuje podváhu. Konzultuj s lékařem nebo nutricionistou správný jídelníček.");
+      }
+      if (vo2max && vo2max < 35) {
+        recommendations.push("VO2max je nižší. Intervalové běhy a tempo běhy mohou pomoci zlepšit aerobní kapacitu.");
+      }
+      if (rhrTrend === 'up') {
+        recommendations.push("Klidová tepová frekvence roste. Zkontroluj, zda nedochází k přetrénování nebo nedostatku odpočinku.");
+      }
+      if (hrvTrend === 'down') {
+        recommendations.push("HRV klesá - signál, že tělo potřebuje více regenerace. Zvažte lehčí týden nebo den volna.");
       }
 
       setMetrics({
         biologicalAge,
         chronologicalAge,
-        vo2max: null,
+        vo2max,
         restingHeartRate: rhr,
         hrv: hrv ? Math.round(hrv) : null,
         bmi,
@@ -123,6 +259,9 @@ export const LongevityCard = () => {
         idealWeight,
         height,
         gender,
+        rhrTrend,
+        hrvTrend,
+        recommendations,
       });
     } catch (error) {
       console.error("Error loading longevity metrics:", error);
@@ -186,6 +325,20 @@ export const LongevityCard = () => {
     if (hrv > 50) return { label: "Dobrá", color: "text-blue-500", progress: 75 };
     if (hrv > 30) return { label: "Průměrná", color: "text-yellow-500", progress: 55 };
     return { label: "Slabá", color: "text-red-500", progress: 35 };
+  };
+
+  const getVO2MaxStatus = (vo2max: number) => {
+    if (vo2max > 55) return { label: "Vynikající", color: "text-green-500", progress: 95 };
+    if (vo2max > 45) return { label: "Výborná", color: "text-blue-500", progress: 80 };
+    if (vo2max > 35) return { label: "Průměrná", color: "text-yellow-500", progress: 60 };
+    return { label: "Nízká", color: "text-red-500", progress: 40 };
+  };
+
+  const getTrendIcon = (trend: 'up' | 'down' | 'stable' | null) => {
+    if (!trend) return null;
+    if (trend === 'up') return <ArrowUp className="h-4 w-4 text-green-500" />;
+    if (trend === 'down') return <ArrowDown className="h-4 w-4 text-red-500" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   return (
@@ -298,7 +451,10 @@ export const LongevityCard = () => {
               <TrendingUp className="h-5 w-5 mt-1 text-primary" />
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">HRV (variabilita tepové frekvence)</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium">HRV (variabilita tepové frekvence)</div>
+                    {getTrendIcon(metrics.hrvTrend)}
+                  </div>
                   <Badge className={getHRVStatus(metrics.hrv).color}>
                     {getHRVStatus(metrics.hrv).label}
                   </Badge>
@@ -307,7 +463,52 @@ export const LongevityCard = () => {
               </div>
             </div>
             <Progress value={getHRVStatus(metrics.hrv).progress} className="h-2" />
+            {metrics.hrvTrend && (
+              <div className="text-xs text-muted-foreground">
+                Trend za poslední týden: {metrics.hrvTrend === 'up' ? 'roste' : metrics.hrvTrend === 'down' ? 'klesá' : 'stabilní'}
+              </div>
+            )}
           </div>
+        )}
+
+        {/* VO2max */}
+        {metrics.vo2max && (
+          <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+            <div className="flex items-start gap-3">
+              <Activity className="h-5 w-5 mt-1 text-primary" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">VO2max (aerobní kapacita)</div>
+                  <Badge className={getVO2MaxStatus(metrics.vo2max).color}>
+                    {getVO2MaxStatus(metrics.vo2max).label}
+                  </Badge>
+                </div>
+                <div className="text-2xl font-bold mt-1">{metrics.vo2max} ml/kg/min</div>
+              </div>
+            </div>
+            <Progress value={getVO2MaxStatus(metrics.vo2max).progress} className="h-2" />
+            <div className="text-xs text-muted-foreground">
+              Odhad na základě běžeckých aktivit za poslední měsíc
+            </div>
+          </div>
+        )}
+
+        {/* Doporučení */}
+        {metrics.recommendations.length > 0 && (
+          <Alert>
+            <Lightbulb className="h-4 w-4" />
+            <AlertDescription>
+              <div className="font-medium mb-2">Doporučení pro zlepšení:</div>
+              <ul className="space-y-1.5 text-sm">
+                {metrics.recommendations.map((rec, idx) => (
+                  <li key={idx} className="flex gap-2">
+                    <span className="text-primary">•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Placeholder pro další metriky */}
