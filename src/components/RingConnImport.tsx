@@ -42,8 +42,14 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('RingConn import started, file:', file);
+    
+    if (!file) {
+      console.log('RingConn: No file selected');
+      return;
+    }
 
+    console.log('RingConn file name:', file.name);
     if (!file.name.endsWith('.zip')) {
       toast.error("Prosím nahrajte ZIP soubor z RingConn exportu");
       return;
@@ -55,12 +61,15 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('RingConn: User check, user_id:', user?.id);
+      
       if (!user) {
         toast.error("Musíte být přihlášeni");
         return;
       }
 
       setProgress(10);
+      console.log('RingConn: Starting ZIP extraction...');
 
       const zip = new JSZip();
       const zipContent = await zip.loadAsync(file);
