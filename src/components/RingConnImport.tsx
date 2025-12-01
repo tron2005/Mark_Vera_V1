@@ -67,9 +67,14 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
       
       setProgress(20);
 
-      const csvFiles = Object.keys(zipContent.files).filter(name => 
+      const allFiles = Object.keys(zipContent.files);
+      console.log('RingConn ZIP files:', allFiles);
+      
+      const csvFiles = allFiles.filter(name => 
         name.endsWith('.csv') && name.includes('Vital Signs')
       );
+      
+      console.log('RingConn CSV files found:', csvFiles);
 
       if (csvFiles.length === 0) {
         toast.error("V ZIP souboru nebyl nalezen Vital Signs CSV soubor");
@@ -82,9 +87,15 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
       setProgress(30);
 
       const lines = csvText.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
+      console.log('RingConn CSV total lines:', lines.length);
       
+      const headers = parseCsvLine(lines[0]);
       console.log('RingConn CSV headers:', headers);
+      
+      if (lines.length > 1) {
+        const firstDataRow = parseCsvLine(lines[1]);
+        console.log('RingConn first data row:', firstDataRow);
+      }
 
       const importedStats: ImportStats = { sleep: 0, hrv: 0, restingHR: 0, weight: 0 };
       const totalRows = lines.length - 1;
