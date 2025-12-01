@@ -100,6 +100,37 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
       
       const headers = parseCsvLine(lines[0]);
       console.log('RingConn CSV headers:', headers);
+
+      const findHeader = (keywords: string[]): string | null => {
+        const lowerKeywords = keywords.map((k) => k.toLowerCase());
+        const found = headers.find((header) => {
+          const h = header.toLowerCase();
+          return lowerKeywords.every((k) => h.includes(k));
+        });
+        return found || null;
+      };
+
+      const headerMap = {
+        date: findHeader(['date']),
+        sleepDuration: findHeader(['sleep', 'duration']),
+        deepSleep: findHeader(['deep', 'sleep']),
+        lightSleep: findHeader(['light', 'sleep']),
+        remSleep: findHeader(['rem', 'sleep']),
+        bedtime: findHeader(['bed', 'time']),
+        wakeTime: findHeader(['wake', 'time']),
+        hrv: findHeader(['hrv']),
+        restingHR: findHeader(['rest', 'hr']),
+        weight: findHeader(['weight']),
+      } as const;
+
+      console.log('RingConn resolved header map:', headerMap);
+
+      if (!headerMap.date) {
+        toast.error("V CSV souboru nebyl nalezen sloupec s datem. Zkontrolujte prosím, že jde o 'Vital Signs' export.");
+        return;
+      }
+
+      const dateHeader = headerMap.date;
       
       if (lines.length > 1) {
         const firstDataRow = parseCsvLine(lines[1]);
@@ -121,15 +152,30 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
         setProgress(baseProgress);
 
         // Parse date and time
-        const date = row['Date'] || row['date'];
+        const date = dateHeader ? row[dateHeader] : row['Date'] || row['date'];
         if (!date) continue;
 
-        // Import Sleep Data
-        if (row['Sleep Duration (h)'] || row['Deep Sleep (h)'] || row['Light Sleep (h)'] || row['REM Sleep (h)']) {
-          const sleepDuration = parseFloat(row['Sleep Duration (h)'] || '0') * 60;
-          const deepSleep = parseFloat(row['Deep Sleep (h)'] || '0') * 60;
-          const lightSleep = parseFloat(row['Light Sleep (h)'] || '0') * 60;
-          const remSleep = parseFloat(row['REM Sleep (h)'] || '0') * 60;
+        const hasSleepColumns =
+          headerMap.sleepDuration || headerMap.deepSleep || headerMap.lightSleep || headerMap.remSleep;
+
+        if (hasSleepColumns) {
+          const sleepDurationHours = headerMap.sleepDuration
+            ? parseFloat(row[headerMap.sleepDuration] || '0')
+            : 0;
+          const deepSleepHours = headerMap.deepSleep
+            ? parseFloat(row[headerMap.deepSleep] || '0')
+            : 0;
+          const lightSleepHours = headerMap.lightSleep
+            ? parseFloat(row[headerMap.lightSleep] || '0')
+            : 0;
+          const remSleepHours = headerMap.remSleep
+            ? parseFloat(row[headerMap.remSleep] || '0')
+            : 0;
+
+          const sleepDuration = sleepDurationHours * 60;
+          const deepSleep = deepSleepHours * 60;
+          const lightSleep = lightSleepHours * 60;
+          const remSleep = remSleepHours * 60;
 
           if (sleepDuration > 0) {
             const { error } = await supabase
@@ -141,8 +187,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
                 deep_sleep_minutes: Math.round(deepSleep),
                 light_sleep_minutes: Math.round(lightSleep),
                 rem_duration_minutes: Math.round(remSleep),
-                start_time: row['Bedtime'] || null,
-                end_time: row['Wake-up Time'] || null,
+                start_time: headerMap.bedtime ? row[headerMap.bedtime] || null : null,
+                end_time: headerMap.wakeTime ? row[headerMap.wakeTime] || null : null,
               }, {
                 onConflict: 'user_id,sleep_date',
                 ignoreDuplicates: false
@@ -153,8 +199,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
         }
 
         // Import HRV Data
-        if (row['HRV'] || row['Avg HRV (ms)']) {
-          const hrvValue = parseFloat(row['HRV'] || row['Avg HRV (ms)'] || '0');
+        if (headerMap.hrv) {
+          const hrvValue = parseFloat(row[headerMap.hrv] || '0');
           if (hrvValue > 0) {
             const { error } = await supabase
               .from('hrv_logs')
@@ -174,8 +220,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
         }
 
         // Import Resting Heart Rate
-        if (row['Resting HR (bpm)'] || row['Avg Resting HR (bpm)']) {
-          const rhr = parseInt(row['Resting HR (bpm)'] || row['Avg Resting HR (bpm)'] || '0');
+        if (headerMap.restingHR) {
+          const rhr = parseInt(row[headerMap.restingHR] || '0');
           if (rhr > 0) {
             const { error } = await supabase
               .from('heart_rate_rest')
@@ -193,8 +239,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
         }
 
         // Import Weight Data
-        if (row['Weight (kg)']) {
-          const weight = parseFloat(row['Weight (kg)']);
+        if (headerMap.weight) {
+          const weight = parseFloat(row[headerMap.weight] || '0');
           if (weight > 0) {
             const { error } = await supabase
               .from('body_composition')
@@ -214,8 +260,14 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
 
       setProgress(100);
       setStats(importedStats);
-      toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}, Váha: ${importedStats.weight}`);
-      
+
+      const totalImported = importedStats.sleep + importedStats.hrv + importedStats.restingHR + importedStats.weight;
+
+      if (totalImported > 0) {
+        toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}, Váha: ${importedStats.weight}`);
+      } else {
+        toast.error("CSV soubor byl načten, ale nenašel jsem žádná nová použitelná data k importu. Zkontrolujte, prosím, typ exportu a období.");
+      }
       if (onComplete) {
         onComplete();
       }
