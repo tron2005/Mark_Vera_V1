@@ -203,6 +203,7 @@ export type Database = {
           date: string
           heart_rate: number
           id: string
+          source: string | null
           time: string | null
           user_id: string
         }
@@ -211,6 +212,7 @@ export type Database = {
           date: string
           heart_rate: number
           id?: string
+          source?: string | null
           time?: string | null
           user_id: string
         }
@@ -219,6 +221,7 @@ export type Database = {
           date?: string
           heart_rate?: number
           id?: string
+          source?: string | null
           time?: string | null
           user_id?: string
         }
@@ -478,6 +481,7 @@ export type Database = {
           rem_duration_minutes: number | null
           respiration_rate: number | null
           sleep_date: string
+          source: string | null
           start_time: string | null
           unknown_sleep_minutes: number | null
           user_id: string
@@ -496,6 +500,7 @@ export type Database = {
           rem_duration_minutes?: number | null
           respiration_rate?: number | null
           sleep_date: string
+          source?: string | null
           start_time?: string | null
           unknown_sleep_minutes?: number | null
           user_id: string
@@ -514,6 +519,7 @@ export type Database = {
           rem_duration_minutes?: number | null
           respiration_rate?: number | null
           sleep_date?: string
+          source?: string | null
           start_time?: string | null
           unknown_sleep_minutes?: number | null
           user_id?: string

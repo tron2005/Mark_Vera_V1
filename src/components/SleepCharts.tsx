@@ -3,6 +3,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SelectWithLabel } from "@/components/ui/select-with-label";
 
 interface SleepData {
   sleep_date: string;
@@ -14,11 +15,14 @@ interface SleepData {
   quality: number | null;
   hr_lowest: number | null;
   hr_average: number | null;
+  source: string | null;
 }
 
 export const SleepCharts = () => {
   const [sleepData, setSleepData] = useState<SleepData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSource, setSelectedSource] = useState<string | 'all'>('all');
+  const [availableSources, setAvailableSources] = useState<string[]>([]);
 
   useEffect(() => {
     loadSleepData();
@@ -38,6 +42,10 @@ export const SleepCharts = () => {
 
       if (error) throw error;
       setSleepData(data || []);
+      
+      // Get unique sources
+      const sources = [...new Set((data || []).map(d => d.source).filter(Boolean))];
+      setAvailableSources(sources as string[]);
     } catch (error) {
       console.error("Chyba při načítání spánkových dat:", error);
     } finally {
@@ -53,8 +61,13 @@ export const SleepCharts = () => {
     return null;
   }
 
+  // Filter data by selected source
+  const filteredData = selectedSource === 'all' 
+    ? sleepData 
+    : sleepData.filter(d => d.source === selectedSource);
+
   // Prepare data for charts (reverse to show oldest first)
-  const chartData = [...sleepData].reverse().map(sleep => ({
+  const chartData = [...filteredData].reverse().map(sleep => ({
     date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
     celkem: sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0,
     hluboky: sleep.deep_sleep_minutes ? Math.round(sleep.deep_sleep_minutes / 60 * 10) / 10 : 0,
@@ -65,8 +78,30 @@ export const SleepCharts = () => {
     tep: sleep.hr_lowest || 0,
   }));
 
+  const sourceOptions = [
+    { value: 'all', label: 'Všechny zdroje' },
+    ...availableSources.map(source => ({ value: source, label: source }))
+  ];
+
   return (
     <div className="space-y-6">
+      {availableSources.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtr zdrojů dat</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SelectWithLabel
+              label="Zdroj dat"
+              value={selectedSource}
+              onValueChange={setSelectedSource}
+              options={sourceOptions}
+              placeholder="Vyberte zdroj"
+            />
+          </CardContent>
+        </Card>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
