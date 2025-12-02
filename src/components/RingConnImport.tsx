@@ -124,7 +124,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
               deep_sleep_minutes: Math.round(deep),
               light_sleep_minutes: Math.round(light),
               start_time: startTime,
-              end_time: endTime
+              end_time: endTime,
+              source: 'RingConn'
             }, {
               onConflict: 'user_id,sleep_date'
             });
@@ -184,7 +185,8 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
               .upsert({
                 user_id: user.id,
                 date: date,
-                heart_rate: Math.round(minHR)
+                heart_rate: Math.round(minHR),
+                source: 'RingConn'
               }, {
                 onConflict: 'user_id,date'
               });

@@ -3,17 +3,24 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Heart, Activity, Weight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SelectWithLabel } from "@/components/ui/select-with-label";
 
 interface ChartData {
   date: string;
   restingHR?: number;
+  restingHRSource?: string;
   hrv?: number;
+  hrvSource?: string;
   weight?: number;
 }
 
 export const HealthDataCharts = () => {
   const [data, setData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedHRSource, setSelectedHRSource] = useState<string | 'all'>('all');
+  const [selectedHRVSource, setSelectedHRVSource] = useState<string | 'all'>('all');
+  const [hrSources, setHRSources] = useState<string[]>([]);
+  const [hrvSources, setHRVSources] = useState<string[]>([]);
 
   useEffect(() => {
     loadHealthData();
@@ -31,13 +38,13 @@ export const HealthDataCharts = () => {
       const [hrData, hrvData, weightData] = await Promise.all([
         supabase
           .from("heart_rate_rest")
-          .select("date, heart_rate")
+          .select("date, heart_rate, source")
           .eq("user_id", user.id)
           .gte("date", thirtyDaysAgo.toISOString().split('T')[0])
           .order("date", { ascending: true }),
         supabase
           .from("hrv_logs")
-          .select("date, hrv")
+          .select("date, hrv, source")
           .eq("user_id", user.id)
           .gte("date", thirtyDaysAgo.toISOString().split('T')[0])
           .order("date", { ascending: true }),
@@ -49,6 +56,12 @@ export const HealthDataCharts = () => {
           .order("date", { ascending: true })
       ]);
 
+      // Get unique sources
+      const uniqueHRSources = [...new Set(hrData.data?.map(d => d.source).filter(Boolean))];
+      const uniqueHRVSources = [...new Set(hrvData.data?.map(d => d.source).filter(Boolean))];
+      setHRSources(uniqueHRSources as string[]);
+      setHRVSources(uniqueHRVSources as string[]);
+
       // Merge data by date
       const dateMap = new Map<string, ChartData>();
 
@@ -56,12 +69,14 @@ export const HealthDataCharts = () => {
         const date = new Date(item.date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
         if (!dateMap.has(date)) dateMap.set(date, { date });
         dateMap.get(date)!.restingHR = item.heart_rate;
+        dateMap.get(date)!.restingHRSource = item.source || undefined;
       });
 
       hrvData.data?.forEach(item => {
         const date = new Date(item.date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
         if (!dateMap.has(date)) dateMap.set(date, { date });
         dateMap.get(date)!.hrv = Math.round(item.hrv);
+        dateMap.get(date)!.hrvSource = item.source || undefined;
       });
 
       weightData.data?.forEach(item => {
@@ -86,12 +101,61 @@ export const HealthDataCharts = () => {
     return null;
   }
 
-  const hasHRData = data.some(d => d.restingHR);
-  const hasHRVData = data.some(d => d.hrv);
+  // Filter data by selected sources
+  const filteredHRData = data.map(d => ({
+    ...d,
+    restingHR: (selectedHRSource === 'all' || d.restingHRSource === selectedHRSource) ? d.restingHR : undefined
+  }));
+
+  const filteredHRVData = data.map(d => ({
+    ...d,
+    hrv: (selectedHRVSource === 'all' || d.hrvSource === selectedHRVSource) ? d.hrv : undefined
+  }));
+
+  const hasHRData = filteredHRData.some(d => d.restingHR);
+  const hasHRVData = filteredHRVData.some(d => d.hrv);
   const hasWeightData = data.some(d => d.weight);
+
+  const hrSourceOptions = [
+    { value: 'all', label: 'Všechny zdroje' },
+    ...hrSources.map(source => ({ value: source, label: source }))
+  ];
+
+  const hrvSourceOptions = [
+    { value: 'all', label: 'Všechny zdroje' },
+    ...hrvSources.map(source => ({ value: source, label: source }))
+  ];
 
   return (
     <div className="space-y-6">
+      {(hrSources.length > 1 || hrvSources.length > 1) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtr zdrojů dat</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {hrSources.length > 1 && (
+              <SelectWithLabel
+                label="Zdroj klidového tepu"
+                value={selectedHRSource}
+                onValueChange={setSelectedHRSource}
+                options={hrSourceOptions}
+                placeholder="Vyberte zdroj"
+              />
+            )}
+            {hrvSources.length > 1 && (
+              <SelectWithLabel
+                label="Zdroj HRV"
+                value={selectedHRVSource}
+                onValueChange={setSelectedHRVSource}
+                options={hrvSourceOptions}
+                placeholder="Vyberte zdroj"
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
       {hasHRData && (
         <Card>
           <CardHeader>
@@ -103,7 +167,7 @@ export const HealthDataCharts = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={data}>
+              <AreaChart data={filteredHRData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" />
                 <YAxis className="text-xs" domain={['dataMin - 5', 'dataMax + 5']} />
@@ -140,7 +204,7 @@ export const HealthDataCharts = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data}>
+              <LineChart data={filteredHRVData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" />
                 <YAxis className="text-xs" />
