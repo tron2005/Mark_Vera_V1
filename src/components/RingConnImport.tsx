@@ -12,7 +12,6 @@ interface ImportStats {
   sleep: number;
   hrv: number;
   restingHR: number;
-  weight: number;
 }
 
 export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
@@ -78,195 +77,134 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
 
       const allFiles = Object.keys(zipContent.files);
       console.log('RingConn ZIP files:', allFiles);
-      
-      const csvFiles = allFiles.filter(name => 
-        name.endsWith('.csv') && name.includes('Vital Signs')
+
+      const importedStats: ImportStats = { sleep: 0, hrv: 0, restingHR: 0 };
+
+      // Process Sleep CSV
+      const sleepFiles = allFiles.filter(name => 
+        name.endsWith('.csv') && name.includes('Sleep')
       );
       
-      console.log('RingConn CSV files found:', csvFiles);
+      console.log('RingConn Sleep CSV files:', sleepFiles);
 
-      if (csvFiles.length === 0) {
-        toast.error("V ZIP souboru nebyl nalezen Vital Signs CSV soubor");
-        return;
-      }
-
-      const csvFile = zipContent.files[csvFiles[0]];
-      const csvText = await csvFile.async('text');
-      
-      setProgress(30);
-
-      const lines = csvText.split('\n').filter(line => line.trim());
-      console.log('RingConn CSV total lines:', lines.length);
-      
-      const headers = parseCsvLine(lines[0]);
-      console.log('RingConn CSV headers:', headers);
-
-      const findHeader = (keywords: string[]): string | null => {
-        const lowerKeywords = keywords.map((k) => k.toLowerCase());
-        const found = headers.find((header) => {
-          const h = header.toLowerCase();
-          return lowerKeywords.every((k) => h.includes(k));
-        });
-        return found || null;
-      };
-
-      const headerMap = {
-        date: findHeader(['date']),
-        sleepDuration: findHeader(['sleep', 'duration']),
-        deepSleep: findHeader(['deep', 'sleep']),
-        lightSleep: findHeader(['light', 'sleep']),
-        remSleep: findHeader(['rem', 'sleep']),
-        bedtime: findHeader(['bed', 'time']),
-        wakeTime: findHeader(['wake', 'time']),
-        hrv: findHeader(['hrv']),
-        restingHR: findHeader(['rest', 'hr']),
-        weight: findHeader(['weight']),
-      } as const;
-
-      console.log('RingConn resolved header map:', headerMap);
-
-      if (!headerMap.date) {
-        toast.error("V CSV souboru nebyl nalezen sloupec s datem. Zkontrolujte prosím, že jde o 'Vital Signs' export.");
-        return;
-      }
-
-      const dateHeader = headerMap.date;
-      
-      if (lines.length > 1) {
-        const firstDataRow = parseCsvLine(lines[1]);
-        console.log('RingConn first data row:', firstDataRow);
-      }
-
-      const importedStats: ImportStats = { sleep: 0, hrv: 0, restingHR: 0, weight: 0 };
-      const totalRows = lines.length - 1;
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row: Record<string, string> = {};
+      for (const sleepFileName of sleepFiles) {
+        const sleepCsv = zipContent.files[sleepFileName];
+        const sleepText = await sleepCsv.async('text');
+        const sleepLines = sleepText.split('\n').filter(line => line.trim());
         
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
+        console.log('Sleep CSV lines:', sleepLines.length);
+        
+        if (sleepLines.length < 2) continue;
 
-        const baseProgress = 30 + ((i / totalRows) * 60);
-        setProgress(baseProgress);
+        // Sleep CSV: Start Time,End Time,Falling Asleep Time,Wake-up time,Sleep Time Ratio(%),Time Asleep(min),Sleep Stages - Awake(min),Sleep Stages - REM(min),Sleep Stages - Light Sleep(min),Sleep Stages - Deep Sleep(min)
+        for (let i = 1; i < sleepLines.length; i++) {
+          const values = parseCsvLine(sleepLines[i]);
+          if (values.length < 10) continue;
 
-        // Parse date and time
-        const date = dateHeader ? row[dateHeader] : row['Date'] || row['date'];
-        if (!date) continue;
+          const startTime = values[0];
+          const endTime = values[1];
+          const sleepDuration = parseFloat(values[5]) || 0;
+          const awake = parseFloat(values[6]) || 0;
+          const rem = parseFloat(values[7]) || 0;
+          const light = parseFloat(values[8]) || 0;
+          const deep = parseFloat(values[9]) || 0;
 
-        const hasSleepColumns =
-          headerMap.sleepDuration || headerMap.deepSleep || headerMap.lightSleep || headerMap.remSleep;
+          if (!startTime || sleepDuration === 0) continue;
 
-        if (hasSleepColumns) {
-          const sleepDurationHours = headerMap.sleepDuration
-            ? parseFloat(row[headerMap.sleepDuration] || '0')
-            : 0;
-          const deepSleepHours = headerMap.deepSleep
-            ? parseFloat(row[headerMap.deepSleep] || '0')
-            : 0;
-          const lightSleepHours = headerMap.lightSleep
-            ? parseFloat(row[headerMap.lightSleep] || '0')
-            : 0;
-          const remSleepHours = headerMap.remSleep
-            ? parseFloat(row[headerMap.remSleep] || '0')
-            : 0;
+          const sleepDate = startTime.split(' ')[0];
 
-          const sleepDuration = sleepDurationHours * 60;
-          const deepSleep = deepSleepHours * 60;
-          const lightSleep = lightSleepHours * 60;
-          const remSleep = remSleepHours * 60;
+          const { error } = await supabase
+            .from('sleep_logs')
+            .upsert({
+              user_id: user.id,
+              sleep_date: sleepDate,
+              duration_minutes: Math.round(sleepDuration),
+              rem_duration_minutes: Math.round(rem),
+              awake_duration_minutes: Math.round(awake),
+              deep_sleep_minutes: Math.round(deep),
+              light_sleep_minutes: Math.round(light),
+              start_time: startTime,
+              end_time: endTime
+            }, {
+              onConflict: 'user_id,sleep_date'
+            });
 
-          if (sleepDuration > 0) {
-            const { error } = await supabase
-              .from('sleep_logs')
-              .upsert({
-                user_id: user.id,
-                sleep_date: date,
-                duration_minutes: Math.round(sleepDuration),
-                deep_sleep_minutes: Math.round(deepSleep),
-                light_sleep_minutes: Math.round(lightSleep),
-                rem_duration_minutes: Math.round(remSleep),
-                start_time: headerMap.bedtime ? row[headerMap.bedtime] || null : null,
-                end_time: headerMap.wakeTime ? row[headerMap.wakeTime] || null : null,
-              }, {
-                onConflict: 'user_id,sleep_date',
-                ignoreDuplicates: false
-              });
-
-            if (!error) importedStats.sleep++;
-          }
+          if (!error) importedStats.sleep++;
+          setProgress(30 + Math.round((i / sleepLines.length) * 30));
         }
+      }
 
-        // Import HRV Data
-        if (headerMap.hrv) {
-          const hrvValue = parseFloat(row[headerMap.hrv] || '0');
-          if (hrvValue > 0) {
+      // Process Vital Signs CSV
+      const vitalFiles = allFiles.filter(name => 
+        name.endsWith('.csv') && name.includes('Vital')
+      );
+
+      console.log('RingConn Vital Signs CSV files:', vitalFiles);
+
+      for (const vitalFileName of vitalFiles) {
+        const vitalCsv = zipContent.files[vitalFileName];
+        const vitalText = await vitalCsv.async('text');
+        const vitalLines = vitalText.split('\n').filter(line => line.trim());
+        
+        console.log('Vital Signs CSV lines:', vitalLines.length);
+        
+        if (vitalLines.length < 2) continue;
+
+        // Vital Signs CSV: Date,Avg. Heart Rate(bpm),Min. Heart Rate(bpm),Max. Heart Rate(bpm),Avg. Spo2(%),Min. Spo2(%),Max. Spo2(%),Avg. HRV(ms),Min. HRV(ms),Max. HRV(ms)
+        for (let i = 1; i < vitalLines.length; i++) {
+          const values = parseCsvLine(vitalLines[i]);
+          if (values.length < 10) continue;
+
+          const date = values[0];
+          const minHR = parseFloat(values[2]) || 0;
+          const avgHRV = parseFloat(values[7]) || 0;
+
+          if (!date) continue;
+
+          // Import HRV
+          if (avgHRV > 0) {
             const { error } = await supabase
               .from('hrv_logs')
               .upsert({
                 user_id: user.id,
                 date: date,
-                hrv: hrvValue,
-                source: 'RingConn',
-                metric: 'RMSSD',
+                hrv: avgHRV,
+                source: 'RingConn'
               }, {
-                onConflict: 'user_id,date',
-                ignoreDuplicates: false
+                onConflict: 'user_id,date'
               });
 
             if (!error) importedStats.hrv++;
           }
-        }
 
-        // Import Resting Heart Rate
-        if (headerMap.restingHR) {
-          const rhr = parseInt(row[headerMap.restingHR] || '0');
-          if (rhr > 0) {
+          // Import Resting Heart Rate
+          if (minHR > 0) {
             const { error } = await supabase
               .from('heart_rate_rest')
               .upsert({
                 user_id: user.id,
                 date: date,
-                heart_rate: rhr,
+                heart_rate: Math.round(minHR)
               }, {
-                onConflict: 'user_id,date',
-                ignoreDuplicates: false
+                onConflict: 'user_id,date'
               });
 
             if (!error) importedStats.restingHR++;
           }
-        }
 
-        // Import Weight Data
-        if (headerMap.weight) {
-          const weight = parseFloat(row[headerMap.weight] || '0');
-          if (weight > 0) {
-            const { error } = await supabase
-              .from('body_composition')
-              .upsert({
-                user_id: user.id,
-                date: date,
-                weight_kg: weight,
-              }, {
-                onConflict: 'user_id,date',
-                ignoreDuplicates: false
-              });
-
-            if (!error) importedStats.weight++;
-          }
+          setProgress(60 + Math.round((i / vitalLines.length) * 40));
         }
       }
 
       setProgress(100);
       setStats(importedStats);
 
-      const totalImported = importedStats.sleep + importedStats.hrv + importedStats.restingHR + importedStats.weight;
+      const totalImported = importedStats.sleep + importedStats.hrv + importedStats.restingHR;
 
       if (totalImported > 0) {
-        toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}, Váha: ${importedStats.weight}`);
+        toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}`);
       } else {
-        toast.error("CSV soubor byl načten, ale nenašel jsem žádná nová použitelná data k importu. Zkontrolujte, prosím, typ exportu a období.");
+        toast.error("CSV soubory byly načteny, ale nenašel jsem žádná nová použitelná data k importu.");
       }
       if (onComplete) {
         onComplete();
@@ -336,7 +274,6 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
                   <li>• Spánkových záznamů: {stats.sleep}</li>
                   <li>• HRV měření: {stats.hrv}</li>
                   <li>• Klidový tep: {stats.restingHR}</li>
-                  <li>• Váhových měření: {stats.weight}</li>
                 </ul>
               </div>
             </AlertDescription>
