@@ -21,6 +21,7 @@ import { CalorieTracker } from "./CalorieTracker";
 import { RaceGoalsWidget } from "./RaceGoalsWidget";
 import { WeeklyOverview } from "./WeeklyOverview";
 import { LongevityCard } from "./LongevityCard";
+import { ActivityCharts } from "./ActivityCharts";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -452,6 +453,9 @@ export const FitnessTrainer = () => {
 
       {/* Health Data Charts */}
       <HealthDataCharts />
+
+      {/* Activity Charts (Steps, Calories from RingConn) */}
+      <ActivityCharts />
 
       {/* Weight Chart */}
       <WeightChart />

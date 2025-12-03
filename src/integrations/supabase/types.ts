@@ -119,6 +119,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_activity: {
+        Row: {
+          calories: number | null
+          created_at: string
+          date: string
+          id: string
+          source: string | null
+          steps: number | null
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          date: string
+          id?: string
+          source?: string | null
+          steps?: number | null
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          source?: string | null
+          steps?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       garmin_activities: {
         Row: {
           activity_type: string
