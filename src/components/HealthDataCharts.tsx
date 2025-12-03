@@ -5,6 +5,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SelectWithLabel } from "@/components/ui/select-with-label";
 
+// Define colors for different sources
+const SOURCE_COLORS: Record<string, string> = {
+  'RingConn': 'hsl(280, 70%, 50%)', // Purple for RingConn
+  'Garmin': 'hsl(var(--chart-1))',
+  'default': 'hsl(var(--chart-2))'
+};
+
 interface ChartData {
   date: string;
   restingHR?: number;
@@ -12,6 +19,8 @@ interface ChartData {
   hrv?: number;
   hrvSource?: string;
   weight?: number;
+  // Multi-source data
+  [key: string]: number | string | undefined;
 }
 
 export const HealthDataCharts = () => {
@@ -62,21 +71,29 @@ export const HealthDataCharts = () => {
       setHRSources(uniqueHRSources as string[]);
       setHRVSources(uniqueHRVSources as string[]);
 
-      // Merge data by date
+      // Merge data by date with source-specific keys
       const dateMap = new Map<string, ChartData>();
 
       hrData.data?.forEach(item => {
         const date = new Date(item.date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
         if (!dateMap.has(date)) dateMap.set(date, { date });
-        dateMap.get(date)!.restingHR = item.heart_rate;
-        dateMap.get(date)!.restingHRSource = item.source || undefined;
+        const entry = dateMap.get(date)!;
+        entry.restingHR = item.heart_rate;
+        entry.restingHRSource = item.source || undefined;
+        // Add source-specific key for multi-source display
+        const sourceKey = `hr_${item.source || 'unknown'}`;
+        entry[sourceKey] = item.heart_rate;
       });
 
       hrvData.data?.forEach(item => {
         const date = new Date(item.date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
         if (!dateMap.has(date)) dateMap.set(date, { date });
-        dateMap.get(date)!.hrv = Math.round(item.hrv);
-        dateMap.get(date)!.hrvSource = item.source || undefined;
+        const entry = dateMap.get(date)!;
+        entry.hrv = Math.round(item.hrv);
+        entry.hrvSource = item.source || undefined;
+        // Add source-specific key for multi-source display
+        const sourceKey = `hrv_${item.source || 'unknown'}`;
+        entry[sourceKey] = Math.round(item.hrv);
       });
 
       weightData.data?.forEach(item => {
@@ -91,6 +108,10 @@ export const HealthDataCharts = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSourceColor = (source: string) => {
+    return SOURCE_COLORS[source] || SOURCE_COLORS['default'];
   };
 
   if (loading) {
@@ -167,27 +188,55 @@ export const HealthDataCharts = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={filteredHRData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" className="text-xs" />
-                <YAxis className="text-xs" domain={['dataMin - 5', 'dataMax + 5']} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
-                  }}
-                />
-                <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="restingHR" 
-                  stroke="hsl(var(--chart-1))" 
-                  fill="hsl(var(--chart-1))"
-                  fillOpacity={0.3}
-                  name="Klidový tep (bpm)"
-                />
-              </AreaChart>
+              {selectedHRSource === 'all' && hrSources.length > 1 ? (
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" />
+                  <YAxis className="text-xs" domain={['dataMin - 5', 'dataMax + 5']} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Legend />
+                  {hrSources.map(source => (
+                    <Line 
+                      key={source}
+                      type="monotone" 
+                      dataKey={`hr_${source}`}
+                      stroke={getSourceColor(source)}
+                      strokeWidth={2}
+                      dot={{ fill: getSourceColor(source), r: 3 }}
+                      name={`${source} (bpm)`}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              ) : (
+                <AreaChart data={filteredHRData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" />
+                  <YAxis className="text-xs" domain={['dataMin - 5', 'dataMax + 5']} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="restingHR" 
+                    stroke={selectedHRSource !== 'all' ? getSourceColor(selectedHRSource) : "hsl(var(--chart-1))"}
+                    fill={selectedHRSource !== 'all' ? getSourceColor(selectedHRSource) : "hsl(var(--chart-1))"}
+                    fillOpacity={0.3}
+                    name="Klidový tep (bpm)"
+                  />
+                </AreaChart>
+              )}
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -204,7 +253,7 @@ export const HealthDataCharts = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={filteredHRVData}>
+              <LineChart data={selectedHRVSource === 'all' && hrvSources.length > 1 ? data : filteredHRVData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" />
                 <YAxis className="text-xs" />
@@ -216,14 +265,29 @@ export const HealthDataCharts = () => {
                   }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="hrv" 
-                  stroke="hsl(var(--chart-2))" 
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
-                  name="HRV (ms)"
-                />
+                {selectedHRVSource === 'all' && hrvSources.length > 1 ? (
+                  hrvSources.map(source => (
+                    <Line 
+                      key={source}
+                      type="monotone" 
+                      dataKey={`hrv_${source}`}
+                      stroke={getSourceColor(source)}
+                      strokeWidth={2}
+                      dot={{ fill: getSourceColor(source), r: 3 }}
+                      name={`${source} (ms)`}
+                      connectNulls
+                    />
+                  ))
+                ) : (
+                  <Line 
+                    type="monotone" 
+                    dataKey="hrv" 
+                    stroke={selectedHRVSource !== 'all' ? getSourceColor(selectedHRVSource) : "hsl(var(--chart-2))"}
+                    strokeWidth={2}
+                    dot={{ fill: selectedHRVSource !== 'all' ? getSourceColor(selectedHRVSource) : "hsl(var(--chart-2))", r: 3 }}
+                    name="HRV (ms)"
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
