@@ -5,6 +5,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SelectWithLabel } from "@/components/ui/select-with-label";
 
+// Define colors for different sources
+const SOURCE_COLORS: Record<string, string> = {
+  'RingConn': 'hsl(280, 70%, 50%)', // Purple for RingConn
+  'Garmin': 'hsl(var(--chart-1))',
+  'default': 'hsl(var(--primary))'
+};
+
 interface SleepData {
   sleep_date: string;
   duration_minutes: number | null;
@@ -16,6 +23,19 @@ interface SleepData {
   hr_lowest: number | null;
   hr_average: number | null;
   source: string | null;
+}
+
+interface ChartDataPoint {
+  date: string;
+  source?: string;
+  celkem: number;
+  hluboky: number;
+  lehky: number;
+  rem: number;
+  bdely: number;
+  kvalita: number;
+  tep: number;
+  [key: string]: number | string | undefined;
 }
 
 export const SleepCharts = () => {
@@ -53,6 +73,10 @@ export const SleepCharts = () => {
     }
   };
 
+  const getSourceColor = (source: string) => {
+    return SOURCE_COLORS[source] || SOURCE_COLORS['default'];
+  };
+
   if (loading) {
     return <div>Načítání...</div>;
   }
@@ -67,21 +91,60 @@ export const SleepCharts = () => {
     : sleepData.filter(d => d.source === selectedSource);
 
   // Prepare data for charts (reverse to show oldest first)
-  const chartData = [...filteredData].reverse().map(sleep => ({
-    date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
-    celkem: sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0,
-    hluboky: sleep.deep_sleep_minutes ? Math.round(sleep.deep_sleep_minutes / 60 * 10) / 10 : 0,
-    lehky: sleep.light_sleep_minutes ? Math.round(sleep.light_sleep_minutes / 60 * 10) / 10 : 0,
-    rem: sleep.rem_duration_minutes ? Math.round(sleep.rem_duration_minutes / 60 * 10) / 10 : 0,
-    bdely: sleep.awake_duration_minutes ? Math.round(sleep.awake_duration_minutes / 60 * 10) / 10 : 0,
-    kvalita: sleep.quality || 0,
-    tep: sleep.hr_lowest || 0,
-  }));
+  const chartData: ChartDataPoint[] = [...filteredData].reverse().map(sleep => {
+    const base: ChartDataPoint = {
+      date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
+      source: sleep.source || undefined,
+      celkem: sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0,
+      hluboky: sleep.deep_sleep_minutes ? Math.round(sleep.deep_sleep_minutes / 60 * 10) / 10 : 0,
+      lehky: sleep.light_sleep_minutes ? Math.round(sleep.light_sleep_minutes / 60 * 10) / 10 : 0,
+      rem: sleep.rem_duration_minutes ? Math.round(sleep.rem_duration_minutes / 60 * 10) / 10 : 0,
+      bdely: sleep.awake_duration_minutes ? Math.round(sleep.awake_duration_minutes / 60 * 10) / 10 : 0,
+      kvalita: sleep.quality || 0,
+      tep: sleep.hr_lowest || 0,
+    };
+    // Add source-specific keys for multi-source display
+    if (sleep.source) {
+      base[`celkem_${sleep.source}`] = base.celkem;
+      base[`kvalita_${sleep.source}`] = base.kvalita;
+      base[`tep_${sleep.source}`] = base.tep;
+    }
+    return base;
+  });
+
+  // Create merged data for multi-source charts
+  const mergedChartData = selectedSource === 'all' && availableSources.length > 1
+    ? [...sleepData].reverse().reduce((acc: ChartDataPoint[], sleep) => {
+        const dateStr = new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
+        let existing = acc.find(d => d.date === dateStr);
+        if (!existing) {
+          existing = {
+            date: dateStr,
+            celkem: 0,
+            hluboky: 0,
+            lehky: 0,
+            rem: 0,
+            bdely: 0,
+            kvalita: 0,
+            tep: 0
+          };
+          acc.push(existing);
+        }
+        if (sleep.source) {
+          existing[`celkem_${sleep.source}`] = sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0;
+          existing[`kvalita_${sleep.source}`] = sleep.quality || 0;
+          existing[`tep_${sleep.source}`] = sleep.hr_lowest || 0;
+        }
+        return acc;
+      }, [])
+    : chartData;
 
   const sourceOptions = [
     { value: 'all', label: 'Všechny zdroje' },
     ...availableSources.map(source => ({ value: source, label: source }))
   ];
+
+  const showMultiSource = selectedSource === 'all' && availableSources.length > 1;
 
   return (
     <div className="space-y-6">
@@ -112,7 +175,7 @@ export const SleepCharts = () => {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+            <BarChart data={showMultiSource ? mergedChartData : chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-xs" />
               <YAxis className="text-xs" />
@@ -124,7 +187,24 @@ export const SleepCharts = () => {
                 }}
               />
               <Legend />
-              <Bar dataKey="celkem" fill="hsl(var(--primary))" name="Celkem (h)" />
+              {showMultiSource ? (
+                availableSources.map(source => (
+                  <Bar 
+                    key={source}
+                    dataKey={`celkem_${source}`}
+                    fill={getSourceColor(source)}
+                    name={`${source} (h)`}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))
+              ) : (
+                <Bar 
+                  dataKey="celkem" 
+                  fill={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--primary))"} 
+                  name="Celkem (h)" 
+                  radius={[4, 4, 0, 0]}
+                />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -165,7 +245,7 @@ export const SleepCharts = () => {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
+            <LineChart data={showMultiSource ? mergedChartData : chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-xs" />
               <YAxis yAxisId="left" className="text-xs" />
@@ -178,26 +258,58 @@ export const SleepCharts = () => {
                 }}
               />
               <Legend />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="kvalita" 
-                stroke="hsl(var(--chart-1))" 
-                name="Kvalita (0-100)"
-                strokeWidth={3}
-                dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="tep" 
-                stroke="hsl(var(--chart-2))" 
-                name="Nejnižší tep (bpm)"
-                strokeWidth={3}
-                dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
-                activeDot={{ r: 6 }}
-              />
+              {showMultiSource ? (
+                availableSources.flatMap(source => [
+                  <Line 
+                    key={`kvalita_${source}`}
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey={`kvalita_${source}`}
+                    stroke={getSourceColor(source)}
+                    name={`Kvalita ${source}`}
+                    strokeWidth={3}
+                    dot={{ fill: getSourceColor(source), r: 4 }}
+                    activeDot={{ r: 6 }}
+                    connectNulls
+                  />,
+                  <Line 
+                    key={`tep_${source}`}
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey={`tep_${source}`}
+                    stroke={getSourceColor(source)}
+                    strokeDasharray="5 5"
+                    name={`Tep ${source}`}
+                    strokeWidth={2}
+                    dot={{ fill: getSourceColor(source), r: 3 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls
+                  />
+                ])
+              ) : (
+                <>
+                  <Line 
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey="kvalita" 
+                    stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))"}
+                    name="Kvalita (0-100)"
+                    strokeWidth={3}
+                    dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="tep" 
+                    stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-2))"}
+                    name="Nejnižší tep (bpm)"
+                    strokeWidth={3}
+                    dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-2))", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </>
+              )}
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
