@@ -12,6 +12,7 @@ interface ImportStats {
   sleep: number;
   hrv: number;
   restingHR: number;
+  activity: number;
 }
 
 export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
@@ -78,7 +79,7 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
       const allFiles = Object.keys(zipContent.files);
       console.log('RingConn ZIP files:', allFiles);
 
-      const importedStats: ImportStats = { sleep: 0, hrv: 0, restingHR: 0 };
+      const importedStats: ImportStats = { sleep: 0, hrv: 0, restingHR: 0, activity: 0 };
 
       // Process Sleep CSV
       const sleepFiles = allFiles.filter(name => 
@@ -194,17 +195,67 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
             if (!error) importedStats.restingHR++;
           }
 
-          setProgress(60 + Math.round((i / vitalLines.length) * 40));
+          setProgress(50 + Math.round((i / vitalLines.length) * 20));
+        }
+      }
+
+      // ========== Process Activity CSV ==========
+      const activityFiles = allFiles.filter(name => 
+        name.endsWith('.csv') && name.toLowerCase().includes('activity')
+      );
+      console.log('RingConn Activity CSV files:', activityFiles);
+
+      for (const activityFileName of activityFiles) {
+        const activityCsv = zipContent.files[activityFileName];
+        const activityText = await activityCsv.async('text');
+        const activityLines = activityText.split('\n').filter(line => line.trim());
+        
+        console.log('Activity CSV lines:', activityLines.length);
+        console.log('Activity CSV header:', activityLines[0]);
+        
+        if (activityLines.length < 2) continue;
+
+        // Activity CSV columns: Date,Steps,Calories(kcal)
+        for (let i = 1; i < activityLines.length; i++) {
+          const values = parseCsvLine(activityLines[i]);
+          console.log(`Activity row ${i}:`, values);
+          
+          if (values.length < 3) continue;
+
+          const date = values[0];
+          const steps = parseInt(values[1]) || 0;
+          const calories = parseInt(values[2]) || 0;
+
+          if (!date || (steps === 0 && calories === 0)) continue;
+
+          const { error } = await supabase
+            .from('daily_activity' as any)
+            .upsert({
+              user_id: user.id,
+              date: date,
+              steps: steps,
+              calories: calories,
+              source: 'RingConn'
+            }, {
+              onConflict: 'user_id,date,source'
+            });
+
+          if (error) {
+            console.error('Activity insert error:', error);
+          } else {
+            importedStats.activity++;
+          }
+          setProgress(70 + Math.round((i / activityLines.length) * 25));
         }
       }
 
       setProgress(100);
       setStats(importedStats);
 
-      const totalImported = importedStats.sleep + importedStats.hrv + importedStats.restingHR;
+      const totalImported = importedStats.sleep + importedStats.hrv + importedStats.restingHR + importedStats.activity;
 
       if (totalImported > 0) {
-        toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}`);
+        toast.success(`Import dokončen! Spánek: ${importedStats.sleep}, HRV: ${importedStats.hrv}, RHR: ${importedStats.restingHR}, Aktivita: ${importedStats.activity}`);
       } else {
         toast.error("CSV soubory byly načteny, ale nenašel jsem žádná nová použitelná data k importu.");
       }
@@ -276,6 +327,7 @@ export const RingConnImport = ({ onComplete }: { onComplete?: () => void }) => {
                   <li>• Spánkových záznamů: {stats.sleep}</li>
                   <li>• HRV měření: {stats.hrv}</li>
                   <li>• Klidový tep: {stats.restingHR}</li>
+                  <li>• Denní aktivita (kroky/kalorie): {stats.activity}</li>
                 </ul>
               </div>
             </AlertDescription>
