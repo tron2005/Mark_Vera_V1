@@ -22,6 +22,7 @@ import { RaceGoalsWidget } from "./RaceGoalsWidget";
 import { WeeklyOverview } from "./WeeklyOverview";
 import { LongevityCard } from "./LongevityCard";
 import { ActivityCharts } from "./ActivityCharts";
+import { MuscleVisualization } from "./MuscleVisualization";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -468,6 +469,9 @@ export const FitnessTrainer = () => {
 
       {/* Race Goals Widget */}
       <RaceGoalsWidget />
+
+      {/* Muscle Visualization */}
+      <MuscleVisualization />
 
       {/* Longevity Card */}
       <LongevityCard />
