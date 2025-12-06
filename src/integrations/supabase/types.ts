@@ -649,6 +649,80 @@ export type Database = {
         }
         Relationships: []
       }
+      weight_loss_plans: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          start_date: string
+          start_weight_kg: number
+          target_date: string
+          target_weight_kg: number
+          updated_at: string
+          user_id: string
+          weekly_loss_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string
+          start_weight_kg: number
+          target_date: string
+          target_weight_kg: number
+          updated_at?: string
+          user_id: string
+          weekly_loss_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string
+          start_weight_kg?: number
+          target_date?: string
+          target_weight_kg?: number
+          updated_at?: string
+          user_id?: string
+          weekly_loss_kg?: number | null
+        }
+        Relationships: []
+      }
+      weight_plan_pauses: {
+        Row: {
+          created_at: string
+          id: string
+          pause_date: string
+          plan_id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pause_date: string
+          plan_id: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pause_date?: string
+          plan_id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weight_plan_pauses_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "weight_loss_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
