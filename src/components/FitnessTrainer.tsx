@@ -23,6 +23,7 @@ import { WeeklyOverview } from "./WeeklyOverview";
 import { LongevityCard } from "./LongevityCard";
 import { ActivityCharts } from "./ActivityCharts";
 import { MuscleVisualization } from "./MuscleVisualization";
+import { WeightLossPlan } from "./WeightLossPlan";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -472,6 +473,9 @@ export const FitnessTrainer = () => {
 
       {/* Muscle Visualization */}
       <MuscleVisualization />
+
+      {/* Weight Loss Plan */}
+      <WeightLossPlan />
 
       {/* Longevity Card */}
       <LongevityCard />
