@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
-import { TrendingUp, Target } from "lucide-react";
+import { TrendingUp, Target, Plus, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface WeightPlan {
   start_weight_kg: number;
@@ -15,6 +18,9 @@ export const WeightChart = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<WeightPlan | null>(null);
+  const [showInput, setShowInput] = useState(false);
+  const [newWeight, setNewWeight] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadWeightData();
@@ -25,7 +31,6 @@ export const WeightChart = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load weight data and active plan in parallel
       const [weightResult, planResult] = await Promise.all([
         supabase
           .from("body_composition")
@@ -46,7 +51,6 @@ export const WeightChart = () => {
       const activePlan = planResult.data;
       setPlan(activePlan);
 
-      // Calculate planned weight for each date if plan exists
       const chartData = (weightResult.data || []).map((item: any) => {
         const dataPoint: any = {
           date: new Date(item.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
@@ -88,6 +92,42 @@ export const WeightChart = () => {
     return plan.start_weight_kg - (weightDiff * progress);
   };
 
+  const handleAddWeight = async () => {
+    const weight = parseFloat(newWeight);
+    if (isNaN(weight) || weight < 30 || weight > 300) {
+      toast.error("Zadejte platnou váhu (30-300 kg)");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nepřihlášen");
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { error } = await supabase
+        .from("body_composition")
+        .upsert({
+          user_id: user.id,
+          date: today,
+          weight_kg: weight
+        }, { onConflict: 'user_id,date' });
+
+      if (error) throw error;
+
+      toast.success(`Váha ${weight} kg uložena`);
+      setNewWeight("");
+      setShowInput(false);
+      loadWeightData();
+    } catch (error) {
+      console.error("Chyba při ukládání váhy:", error);
+      toast.error("Nepodařilo se uložit váhu");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -103,99 +143,117 @@ export const WeightChart = () => {
     );
   }
 
-  if (data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Graf váhy
-          </CardTitle>
-          <CardDescription>Sledujte vývoj váhy v čase</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Zatím nejsou k dispozici žádná data o váze. Importujte data nebo je přidejte ručně.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
-          Graf váhy
-        </CardTitle>
-        <CardDescription className="flex items-center gap-2">
-          Vývoj váhy za posledních 90 dní
-          {plan && (
-            <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-              <Target className="h-3 w-3" />
-              Cíl: {plan.target_weight_kg} kg
-            </span>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Graf váhy
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-1">
+              Vývoj váhy za posledních 90 dní
+              {plan && (
+                <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  <Target className="h-3 w-3" />
+                  Cíl: {plan.target_weight_kg} kg
+                </span>
+              )}
+            </CardDescription>
+          </div>
+          {showInput ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                placeholder="kg"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                className="w-20 h-8"
+                step="0.1"
+                min="30"
+                max="300"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleAddWeight()}
+              />
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleAddWeight} disabled={saving}>
+                <Check className="h-4 w-4 text-green-500" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setShowInput(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setShowInput(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Přidat
+            </Button>
           )}
-        </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            <XAxis 
-              dataKey="date" 
-              className="text-xs"
-              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-            />
-            <YAxis 
-              className="text-xs"
-              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              domain={['dataMin - 2', 'dataMax + 2']}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
-            />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="weight" 
-              stroke="hsl(var(--primary))" 
-              strokeWidth={2}
-              name="Skutečná váha (kg)"
-              dot={{ fill: 'hsl(var(--primary))' }}
-            />
-            {plan && (
+        {data.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Zatím nejsou k dispozici žádná data. Klikněte na "Přidat" pro zadání váhy.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis 
+                dataKey="date" 
+                className="text-xs"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis 
+                className="text-xs"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                domain={['dataMin - 2', 'dataMax + 2']}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+                labelStyle={{ color: 'hsl(var(--foreground))' }}
+              />
+              <Legend />
               <Line 
                 type="monotone" 
-                dataKey="planned" 
-                stroke="hsl(var(--chart-2))" 
+                dataKey="weight" 
+                stroke="hsl(var(--primary))" 
                 strokeWidth={2}
-                strokeDasharray="5 5"
-                name="Plánovaná váha (kg)"
-                dot={false}
+                name="Skutečná váha (kg)"
+                dot={{ fill: 'hsl(var(--primary))' }}
               />
-            )}
-            {plan && (
-              <ReferenceLine 
-                y={plan.target_weight_kg} 
-                stroke="hsl(var(--chart-3))" 
-                strokeDasharray="3 3"
-                label={{ 
-                  value: `Cíl: ${plan.target_weight_kg} kg`, 
-                  fill: 'hsl(var(--chart-3))',
-                  fontSize: 12,
-                  position: 'right'
-                }}
-              />
-            )}
-          </LineChart>
-        </ResponsiveContainer>
+              {plan && (
+                <Line 
+                  type="monotone" 
+                  dataKey="planned" 
+                  stroke="hsl(var(--chart-2))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  name="Plánovaná váha (kg)"
+                  dot={false}
+                />
+              )}
+              {plan && (
+                <ReferenceLine 
+                  y={plan.target_weight_kg} 
+                  stroke="hsl(var(--chart-3))" 
+                  strokeDasharray="3 3"
+                  label={{ 
+                    value: `Cíl: ${plan.target_weight_kg} kg`, 
+                    fill: 'hsl(var(--chart-3))',
+                    fontSize: 12,
+                    position: 'right'
+                  }}
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );
