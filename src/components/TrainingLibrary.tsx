@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Footprints, 
   Dumbbell, 
@@ -9,53 +10,78 @@ import {
   Clock, 
   Target, 
   Zap,
-  BookOpen
+  BookOpen,
+  Youtube,
+  ExternalLink,
+  Timer,
+  Flame,
+  Trophy,
+  Heart
 } from "lucide-react";
-
 const runningGuides = [
   {
     distance: "5K",
     time: "25-30 min",
+    icon: Timer,
     tips: [
       "Začněte pomalým tempem, první 2 km jako zahřátí",
       "Udržujte stabilní dechový rytmus (3:2 nebo 2:2)",
       "Poslední kilometr můžete zrychlit",
       "Trénujte intervalovky 400m pro rychlost"
     ],
-    weeklyPlan: "3-4 běhy týdně: 1x intervaly, 1x tempo běh, 1-2x lehký běh"
+    weeklyPlan: "3-4 běhy týdně: 1x intervaly, 1x tempo běh, 1-2x lehký běh",
+    videos: [
+      { title: "5K běžecká technika", url: "https://www.youtube.com/watch?v=brFHyOtTwH4" },
+      { title: "Intervalový trénink", url: "https://www.youtube.com/watch?v=R8tFDN8_spQ" }
+    ]
   },
   {
     distance: "10K",
     time: "50-60 min",
+    icon: Flame,
     tips: [
       "Budujte základnu pomalými běhy 8-12 km",
       "Přidejte tempo běhy v závodním tempu",
       "Hydratace před a po tréninku je klíčová",
       "Trénujte kopce pro sílu nohou"
     ],
-    weeklyPlan: "4-5 běhů týdně: 1x dlouhý běh, 1x intervaly, 1x tempo, 2x regenerační"
+    weeklyPlan: "4-5 běhů týdně: 1x dlouhý běh, 1x intervaly, 1x tempo, 2x regenerační",
+    videos: [
+      { title: "10K tréninkový plán", url: "https://www.youtube.com/watch?v=9L2b2khySLE" },
+      { title: "Tempo běhy vysvětlení", url: "https://www.youtube.com/watch?v=vcslaoxHdaE" }
+    ]
   },
   {
     distance: "Půlmaraton",
     time: "1:45-2:15",
+    icon: Heart,
     tips: [
       "Dlouhé běhy 16-20 km každý víkend",
       "Naučte se jíst a pít za běhu",
       "Testujte výživu před závodem",
       "Tapering 2 týdny před závodem"
     ],
-    weeklyPlan: "5 běhů týdně: 1x dlouhý (16-22km), 1x tempo, 1x intervaly, 2x lehký"
+    weeklyPlan: "5 běhů týdně: 1x dlouhý (16-22km), 1x tempo, 1x intervaly, 2x lehký",
+    videos: [
+      { title: "Půlmaraton příprava", url: "https://www.youtube.com/watch?v=3a3CW6cQG1o" },
+      { title: "Výživa při běhu", url: "https://www.youtube.com/watch?v=JcPO2aOg2RY" }
+    ]
   },
   {
     distance: "Maraton",
     time: "3:30-5:00",
+    icon: Trophy,
     tips: [
       "Minimálně 16 týdnů přípravy",
       "Dlouhé běhy až 32 km",
       "Strategie výživy (gely, elektrolyty)",
       "Mentální příprava je polovinou úspěchu"
     ],
-    weeklyPlan: "5-6 běhů týdně: celkem 50-80 km, včetně jednoho dlouhého běhu"
+    weeklyPlan: "5-6 běhů týdně: celkem 50-80 km, včetně jednoho dlouhého běhu",
+    videos: [
+      { title: "Maraton kompletní průvodce", url: "https://www.youtube.com/watch?v=0Y87Xj6Zn80" },
+      { title: "Mentální příprava", url: "https://www.youtube.com/watch?v=5tSTk1083VY" }
+    ]
   }
 ];
 
@@ -75,29 +101,32 @@ const bodyCombatTracks = [
 const exercises = [
   {
     category: "Core",
+    icon: "🔥",
     items: [
-      { name: "Plank", reps: "30-60s", description: "Základní pozice pro posílení středu těla" },
-      { name: "Dead bug", reps: "10-15", description: "Střídavé natahování rukou a nohou v leže" },
-      { name: "Russian twist", reps: "20", description: "Rotace s váhou pro šikmé svaly" },
-      { name: "Mountain climbers", reps: "30s", description: "Dynamické posilování břicha" }
+      { name: "Plank", reps: "30-60s", description: "Základní pozice pro posílení středu těla", video: "https://www.youtube.com/watch?v=ASdvN_XEl_c" },
+      { name: "Dead bug", reps: "10-15", description: "Střídavé natahování rukou a nohou v leže", video: "https://www.youtube.com/watch?v=I5xbsA71vxE" },
+      { name: "Russian twist", reps: "20", description: "Rotace s váhou pro šikmé svaly", video: "https://www.youtube.com/watch?v=wkD8rjkodUI" },
+      { name: "Mountain climbers", reps: "30s", description: "Dynamické posilování břicha", video: "https://www.youtube.com/watch?v=nmwgirgXLYM" }
     ]
   },
   {
     category: "Nohy",
+    icon: "🦵",
     items: [
-      { name: "Dřepy", reps: "15-20", description: "Základní cvik pro stehna a hýždě" },
-      { name: "Výpady", reps: "12 na stranu", description: "Unilaterální síla nohou" },
-      { name: "Wall sit", reps: "45-60s", description: "Izometrická výdrž u zdi" },
-      { name: "Calf raises", reps: "20-25", description: "Posilování lýtek" }
+      { name: "Dřepy", reps: "15-20", description: "Základní cvik pro stehna a hýždě", video: "https://www.youtube.com/watch?v=aclHkVaku9U" },
+      { name: "Výpady", reps: "12 na stranu", description: "Unilaterální síla nohou", video: "https://www.youtube.com/watch?v=QOVaHwm-Q6U" },
+      { name: "Wall sit", reps: "45-60s", description: "Izometrická výdrž u zdi", video: "https://www.youtube.com/watch?v=y-wV4Venusw" },
+      { name: "Calf raises", reps: "20-25", description: "Posilování lýtek", video: "https://www.youtube.com/watch?v=-M4-G8p8fmc" }
     ]
   },
   {
     category: "Horní tělo",
+    icon: "💪",
     items: [
-      { name: "Kliky", reps: "10-20", description: "Prsa, ramena, triceps" },
-      { name: "Pike push-ups", reps: "8-12", description: "Důraz na ramena" },
-      { name: "Triceps dips", reps: "12-15", description: "Na židli nebo lavičce" },
-      { name: "Superman", reps: "15", description: "Posilování zad v leže na břiše" }
+      { name: "Kliky", reps: "10-20", description: "Prsa, ramena, triceps", video: "https://www.youtube.com/watch?v=IODxDxX7oi4" },
+      { name: "Pike push-ups", reps: "8-12", description: "Důraz na ramena", video: "https://www.youtube.com/watch?v=sposDXWEB0A" },
+      { name: "Triceps dips", reps: "12-15", description: "Na židli nebo lavičce", video: "https://www.youtube.com/watch?v=6kALZikXxLc" },
+      { name: "Superman", reps: "15", description: "Posilování zad v leže na břiše", video: "https://www.youtube.com/watch?v=z6PJMT2y8GQ" }
     ]
   }
 ];
@@ -183,35 +212,53 @@ export const TrainingLibrary = () => {
           </TabsList>
 
           <TabsContent value="running" className="mt-4 space-y-4">
-            {runningGuides.map((guide) => (
-              <Card key={guide.distance} className="bg-muted/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      {guide.distance}
-                    </CardTitle>
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {guide.time}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-1">
-                    {guide.tips.map((tip, i) => (
-                      <li key={i} className="text-sm flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        {tip}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="bg-primary/10 p-2 rounded text-sm">
-                    <strong>Týdenní plán:</strong> {guide.weeklyPlan}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {runningGuides.map((guide) => {
+              const IconComponent = guide.icon;
+              return (
+                <Card key={guide.distance} className="bg-muted/30">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <IconComponent className="h-5 w-5 text-primary" />
+                        {guide.distance}
+                      </CardTitle>
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {guide.time}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <ul className="space-y-1">
+                      {guide.tips.map((tip, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2">
+                          <span className="text-primary mt-1">•</span>
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="bg-primary/10 p-2 rounded text-sm">
+                      <strong>Týdenní plán:</strong> {guide.weeklyPlan}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {guide.videos.map((video, i) => (
+                        <Button
+                          key={i}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-xs"
+                          onClick={() => window.open(video.url, "_blank")}
+                        >
+                          <Youtube className="h-3 w-3 text-red-500" />
+                          {video.title}
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </TabsContent>
 
           <TabsContent value="bodycombat" className="mt-4 space-y-2">
@@ -261,22 +308,35 @@ export const TrainingLibrary = () => {
             {exercises.map((category) => (
               <Card key={category.category} className="bg-muted/30">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{category.category}</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span>{category.icon}</span>
+                    {category.category}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-2">
                     {category.items.map((exercise) => (
                       <div
                         key={exercise.name}
-                        className="flex items-center justify-between p-2 rounded bg-background/50"
+                        className="flex items-center justify-between p-2 rounded bg-background/50 group hover:bg-background/80 transition-colors"
                       >
-                        <div>
+                        <div className="flex-1">
                           <span className="font-medium">{exercise.name}</span>
                           <p className="text-xs text-muted-foreground">
                             {exercise.description}
                           </p>
                         </div>
-                        <Badge variant="secondary">{exercise.reps}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{exercise.reps}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => window.open(exercise.video, "_blank")}
+                          >
+                            <Youtube className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
