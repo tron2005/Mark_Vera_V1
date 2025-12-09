@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, Check, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, AlertCircle, Calendar } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface ImportedMeal {
@@ -18,6 +18,8 @@ interface ImportResult {
   meals: ImportedMeal[];
   totalCalories: number;
   activities: { name: string; calories: number }[];
+  date: string | null; // Date from sheet name
+  sheetName: string;
 }
 
 export const CalorieImport = () => {
@@ -25,13 +27,30 @@ export const CalorieImport = () => {
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Parse date from sheet name like "8.12.2024" or "08.12.2024"
+  const parseDateFromSheetName = (sheetName: string): string | null => {
+    // Try to match date pattern DD.MM.YYYY or D.M.YYYY
+    const match = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const month = match[2].padStart(2, '0');
+      const year = match[3];
+      return `${year}-${month}-${day}`; // ISO format
+    }
+    return null;
+  };
+
   const parseKalorickeTabulky = (workbook: XLSX.WorkBook): ImportResult => {
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
     
     const meals: ImportedMeal[] = [];
     const activities: { name: string; calories: number }[] = [];
     let currentSection = "";
+    
+    // Extract date from sheet name
+    const date = parseDateFromSheetName(sheetName);
     
     for (const row of data) {
       if (!row || row.length === 0) continue;
@@ -81,7 +100,7 @@ export const CalorieImport = () => {
     
     const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
     
-    return { meals, totalCalories, activities };
+    return { meals, totalCalories, activities, date, sheetName };
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +122,10 @@ export const CalorieImport = () => {
         return;
       }
       
-      toast.success(`Načteno ${parsed.meals.length} položek`);
+      const dateInfo = parsed.date 
+        ? `pro ${new Date(parsed.date).toLocaleDateString('cs-CZ')}`
+        : "";
+      toast.success(`Načteno ${parsed.meals.length} položek ${dateInfo}`);
     } catch (error) {
       console.error("Chyba při čtení souboru:", error);
       toast.error("Nepodařilo se přečíst soubor");
@@ -115,7 +137,7 @@ export const CalorieImport = () => {
     }
   };
 
-  const handleSaveToday = async () => {
+  const handleSave = async () => {
     if (!result || result.meals.length === 0) return;
     
     setImporting(true);
@@ -123,16 +145,22 @@ export const CalorieImport = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nepřihlášen");
       
+      // Use the date from sheet name, or today if not found
+      const targetDate = result.date || new Date().toISOString().split('T')[0];
+      const targetDateTime = new Date(`${targetDate}T12:00:00`).toISOString();
+      
       const notes = result.meals.map(meal => ({
         user_id: user.id,
         text: `${meal.name}: ${meal.calories} kcal`,
-        category: "calories"
+        category: "calories",
+        created_at: targetDateTime
       }));
       
       const { error } = await supabase.from("notes").insert(notes);
       if (error) throw error;
       
-      toast.success(`Uloženo ${result.meals.length} položek jako dnešní kalorie`);
+      const dateStr = new Date(targetDate).toLocaleDateString('cs-CZ');
+      toast.success(`Uloženo ${result.meals.length} položek pro ${dateStr}`);
       setResult(null);
     } catch (error) {
       console.error("Chyba při ukládání:", error);
@@ -140,6 +168,18 @@ export const CalorieImport = () => {
     } finally {
       setImporting(false);
     }
+  };
+
+  const formatDate = (dateStr: string | null, sheetName: string) => {
+    if (dateStr) {
+      return new Date(dateStr).toLocaleDateString('cs-CZ', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+    }
+    return sheetName;
   };
 
   return (
@@ -176,6 +216,14 @@ export const CalorieImport = () => {
 
         {result && (
           <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+            {/* Date info from sheet */}
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="font-medium">
+                {formatDate(result.date, result.sheetName)}
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-medium">Nalezeno {result.meals.length} jídel</div>
@@ -216,9 +264,9 @@ export const CalorieImport = () => {
               </div>
             )}
 
-            <Button onClick={handleSaveToday} disabled={importing} className="w-full">
+            <Button onClick={handleSave} disabled={importing || result.meals.length === 0} className="w-full">
               <Check className="h-4 w-4 mr-2" />
-              Uložit jako dnešní kalorie
+              Uložit pro {result.date ? new Date(result.date).toLocaleDateString('cs-CZ') : 'dnes'}
             </Button>
           </div>
         )}
@@ -226,7 +274,7 @@ export const CalorieImport = () => {
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu
+            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu. Datum se načte z názvu listu.
           </span>
         </div>
       </CardContent>
