@@ -18,6 +18,8 @@ import { BodyCombatTracker } from "./BodyCombatTracker";
 import { WeightChart } from "./WeightChart";
 import { BodyCombatStats } from "./BodyCombatStats";
 import { CalorieTracker } from "./CalorieTracker";
+import { CalorieImport } from "./CalorieImport";
+import { BodyCompositionChart } from "./BodyCompositionChart";
 import { RaceGoalsWidget } from "./RaceGoalsWidget";
 import { WeeklyOverview } from "./WeeklyOverview";
 import { LongevityCard } from "./LongevityCard";
@@ -463,11 +465,17 @@ export const FitnessTrainer = () => {
       {/* Weight Chart */}
       <WeightChart />
 
+      {/* Body Composition Chart - Fat/Muscle/Water */}
+      <BodyCompositionChart />
+
       {/* BodyCombat Stats */}
       <BodyCombatStats />
 
       {/* Calorie Tracker */}
       <CalorieTracker />
+
+      {/* Calorie Import */}
+      <CalorieImport />
 
       {/* Race Goals Widget */}
       <RaceGoalsWidget />
