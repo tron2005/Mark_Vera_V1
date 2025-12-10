@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, Check, AlertCircle, Calendar } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, AlertCircle, Calendar, TrendingUp } from "lucide-react";
 import * as XLSX from "xlsx";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
 interface ImportedMeal {
   name: string;
@@ -18,24 +20,92 @@ interface ImportResult {
   meals: ImportedMeal[];
   totalCalories: number;
   activities: { name: string; calories: number }[];
-  date: string | null; // Date from sheet name
+  date: string | null;
   sheetName: string;
+}
+
+interface DailyCalories {
+  date: string;
+  calories: number;
+  label: string;
 }
 
 export const CalorieImport = () => {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [calorieHistory, setCalorieHistory] = useState<DailyCalories[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Parse date from sheet name like "8.12.2024" or "08.12.2024"
+  useEffect(() => {
+    loadCalorieHistory();
+  }, []);
+
+  const loadCalorieHistory = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from("notes")
+        .select("text, created_at")
+        .eq("user_id", user.id)
+        .eq("category", "calories")
+        .gte("created_at", thirtyDaysAgo.toISOString())
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      // Group by day and sum calories
+      const dailyMap = new Map<string, number>();
+      data?.forEach(note => {
+        const day = note.created_at?.split('T')[0];
+        if (!day) return;
+        const match = note.text.match(/(\d+)\s*kcal/i);
+        const kcal = match ? parseInt(match[1]) : 0;
+        dailyMap.set(day, (dailyMap.get(day) || 0) + kcal);
+      });
+
+      const history: DailyCalories[] = Array.from(dailyMap.entries()).map(([date, calories]) => ({
+        date,
+        calories,
+        label: new Date(date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })
+      }));
+
+      setCalorieHistory(history);
+    } catch (error) {
+      console.error("Error loading calorie history:", error);
+    }
+  };
+
+  // Parse date from sheet name like "8.12.2024" or content
   const parseDateFromSheetName = (sheetName: string): string | null => {
-    // Try to match date pattern DD.MM.YYYY or D.M.YYYY
     const match = sheetName.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
     if (match) {
       const day = match[1].padStart(2, '0');
       const month = match[2].padStart(2, '0');
       const year = match[3];
-      return `${year}-${month}-${day}`; // ISO format
+      return `${year}-${month}-${day}`;
+    }
+    return null;
+  };
+
+  // Try to find date in cell content
+  const findDateInContent = (data: string[][]): string | null => {
+    for (const row of data.slice(0, 10)) {
+      for (const cell of row) {
+        if (!cell) continue;
+        const str = String(cell);
+        const match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (match) {
+          const day = match[1].padStart(2, '0');
+          const month = match[2].padStart(2, '0');
+          const year = match[3];
+          return `${year}-${month}-${day}`;
+        }
+      }
     }
     return null;
   };
@@ -49,15 +119,17 @@ export const CalorieImport = () => {
     const activities: { name: string; calories: number }[] = [];
     let currentSection = "";
     
-    // Extract date from sheet name
-    const date = parseDateFromSheetName(sheetName);
+    // Try sheet name first, then content
+    let date = parseDateFromSheetName(sheetName);
+    if (!date) {
+      date = findDateInContent(data);
+    }
     
     for (const row of data) {
       if (!row || row.length === 0) continue;
       
       const firstCell = String(row[0] || "").trim();
       
-      // Detect sections
       if (firstCell.includes("Snídaně") || firstCell.includes("Oběd") || 
           firstCell.includes("Večeře") || firstCell.includes("svačina")) {
         currentSection = "food";
@@ -74,7 +146,6 @@ export const CalorieImport = () => {
         continue;
       }
       
-      // Parse food items
       if (currentSection === "food" && row[3]) {
         const name = String(row[0] || "").trim();
         const calories = parseInt(String(row[3] || "0"));
@@ -87,7 +158,6 @@ export const CalorieImport = () => {
         }
       }
       
-      // Parse activities
       if (currentSection === "activities" && row[3]) {
         const name = String(row[0] || "").trim();
         const calories = parseInt(String(row[3] || "0"));
@@ -162,6 +232,7 @@ export const CalorieImport = () => {
       const dateStr = new Date(targetDate).toLocaleDateString('cs-CZ');
       toast.success(`Uloženo ${result.meals.length} položek pro ${dateStr}`);
       setResult(null);
+      loadCalorieHistory(); // Refresh chart
     } catch (error) {
       console.error("Chyba při ukládání:", error);
       toast.error("Nepodařilo se uložit");
@@ -274,9 +345,29 @@ export const CalorieImport = () => {
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu. Datum se načte z názvu listu.
+            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu.
           </span>
         </div>
+
+        {/* Calorie History Chart */}
+        {calorieHistory.length > 0 && (
+          <div className="pt-4 border-t">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="font-medium text-sm">Kalorie za posledních 30 dní</span>
+            </div>
+            <ChartContainer config={{ calories: { label: "Kalorie", color: "hsl(var(--primary))" } }} className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={calorieHistory}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="calories" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
