@@ -409,6 +409,10 @@ export default function Settings() {
     window.location.href = authUrl;
   };
 
+  // OAuth Redirect URLs for configuration
+  const googleRedirectUri = `${window.location.origin}/auth/callback`;
+  const stravaRedirectUri = `${window.location.origin}/auth/strava-callback`;
+
   const disconnectStrava = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -720,6 +724,70 @@ export default function Settings() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">Test volá přímo backend funkci a vypíše přesnou chybu, pokud nastane.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>OAuth Nastavení (pro adminy)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Tyto URL musí být nastaveny v OAuth konzolích pro správné fungování integrace:
+          </p>
+          
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Google OAuth Redirect URI</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 bg-muted px-3 py-2 rounded text-sm break-all">
+                  {googleRedirectUri}
+                </code>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(googleRedirectUri);
+                    toast({ title: "Zkopírováno", description: "Google Redirect URI zkopírováno" });
+                  }}
+                >
+                  Kopírovat
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Přidej do Google Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Strava OAuth Callback Domain</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 bg-muted px-3 py-2 rounded text-sm break-all">
+                  {window.location.host}
+                </code>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.host);
+                    toast({ title: "Zkopírováno", description: "Strava domain zkopírováno" });
+                  }}
+                >
+                  Kopírovat
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Přidej do Strava API → My API Application → Authorization Callback Domain
+              </p>
+            </div>
+
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                <strong>Google:</strong> Uživatelé musí být přidáni jako Test Users v OAuth Consent Screen, nebo aplikace musí být publikovaná.<br/>
+                <strong>Strava:</strong> Callback domain musí obsahovat produkční doménu (bez https://).
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
