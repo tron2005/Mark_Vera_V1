@@ -178,8 +178,18 @@ export default function StravaTesterManager() {
 
   return (
     <div className="space-y-4">
+      <div className="p-3 bg-muted/50 rounded-lg text-sm">
+        <p className="font-medium mb-2">📋 Jak přidat testera:</p>
+        <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+          <li>Tester si vytvoří aplikaci na <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" className="text-primary underline">strava.com/settings/api</a></li>
+          <li>Do "Authorization Callback Domain" zadá: <code className="bg-background px-1 rounded">{window.location.host}</code></li>
+          <li>Zkopíruje <strong>Client ID</strong> a <strong>Client Secret</strong> sem</li>
+          <li>Zadá email, pod kterým se tester přihlašuje do aplikace</li>
+        </ol>
+      </div>
+
       <p className="text-sm text-muted-foreground">
-        Každý tester může mít vlastní Strava API credentials pro obejití limitu 100 atletů na jednu aplikaci.
+        Každý tester může mít vlastní Strava API credentials pro obejití limitu 100 atletů.
       </p>
 
       {/* Existující testeři */}
