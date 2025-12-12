@@ -34,6 +34,26 @@ serve(async (req) => {
       throw new Error("Failed to get user");
     }
 
+    // Get user's email for tester lookup
+    const userEmail = user.email;
+    
+    // First check if user has custom Strava credentials in strava_testers
+    let stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
+    let stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
+    
+    const { data: testerConfig } = await supabase
+      .from("strava_testers")
+      .select("strava_client_id, strava_client_secret")
+      .eq("tester_email", userEmail)
+      .eq("is_active", true)
+      .maybeSingle();
+    
+    if (testerConfig?.strava_client_id && testerConfig?.strava_client_secret) {
+      console.log("Using custom Strava credentials for tester:", userEmail);
+      stravaClientId = testerConfig.strava_client_id;
+      stravaClientSecret = testerConfig.strava_client_secret;
+    }
+
     // Get user's Strava tokens
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -58,9 +78,6 @@ serve(async (req) => {
 
       if (now >= expiryDate) {
         console.log("Refreshing Strava access token");
-
-        const stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
-        const stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
 
         const refreshResponse = await fetch("https://www.strava.com/oauth/token", {
           method: "POST",
