@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Volume2 } from "lucide-react";
+import StravaTesterManager from "./StravaTesterManager";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -689,6 +690,16 @@ export default function Settings() {
               Umožní asistentovi přístup k vašim aktivitám, běhům, cyklistickým výkonům a segmentům pro fitness koučování.
             </p>
           </div>
+
+          {/* Správa Strava testerů */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-lg">Strava Testeři</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StravaTesterManager />
+            </CardContent>
+          </Card>
 
           <Button onClick={saveSettings} disabled={saving} className="w-full">
             {saving ? "Ukládání..." : "Uložit nastavení"}
