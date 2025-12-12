@@ -649,6 +649,42 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_testers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          owner_user_id: string
+          strava_client_id: string | null
+          strava_client_secret: string | null
+          strava_refresh_token: string | null
+          tester_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          owner_user_id: string
+          strava_client_id?: string | null
+          strava_client_secret?: string | null
+          strava_refresh_token?: string | null
+          tester_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          owner_user_id?: string
+          strava_client_id?: string | null
+          strava_client_secret?: string | null
+          strava_refresh_token?: string | null
+          tester_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       weight_loss_plans: {
         Row: {
           created_at: string
