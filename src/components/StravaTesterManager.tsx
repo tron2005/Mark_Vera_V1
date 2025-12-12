@@ -10,6 +10,7 @@ import { Trash2, Plus, Eye, EyeOff, Save } from "lucide-react";
 interface StravaTester {
   id: string;
   tester_name: string;
+  tester_email: string | null;
   strava_client_id: string | null;
   strava_client_secret: string | null;
   strava_refresh_token: string | null;
@@ -24,6 +25,7 @@ export default function StravaTesterManager() {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [newTester, setNewTester] = useState({
     tester_name: "",
+    tester_email: "",
     strava_client_id: "",
     strava_client_secret: "",
     strava_refresh_token: "",
@@ -72,6 +74,7 @@ export default function StravaTesterManager() {
       const { error } = await supabase.from("strava_testers").insert({
         owner_user_id: user.id,
         tester_name: newTester.tester_name,
+        tester_email: newTester.tester_email || null,
         strava_client_id: newTester.strava_client_id || null,
         strava_client_secret: newTester.strava_client_secret || null,
         strava_refresh_token: newTester.strava_refresh_token || null,
@@ -86,6 +89,7 @@ export default function StravaTesterManager() {
 
       setNewTester({
         tester_name: "",
+        tester_email: "",
         strava_client_id: "",
         strava_client_secret: "",
         strava_refresh_token: "",
@@ -109,6 +113,7 @@ export default function StravaTesterManager() {
         .from("strava_testers")
         .update({
           tester_name: tester.tester_name,
+          tester_email: tester.tester_email,
           strava_client_id: tester.strava_client_id,
           strava_client_secret: tester.strava_client_secret,
           strava_refresh_token: tester.strava_refresh_token,
@@ -217,6 +222,15 @@ export default function StravaTesterManager() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1">
+                <Label className="text-xs">Email testera (pro propojení s účtem)</Label>
+                <Input
+                  type="email"
+                  value={tester.tester_email || ""}
+                  onChange={(e) => updateTesterField(tester.id, "tester_email", e.target.value)}
+                  placeholder="tester@email.cz"
+                />
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">Client ID</Label>
                 <Input
                   type={showSecrets[tester.id] ? "text" : "password"}
@@ -265,6 +279,15 @@ export default function StravaTesterManager() {
                   value={newTester.tester_name}
                   onChange={(e) => setNewTester({ ...newTester, tester_name: e.target.value })}
                   placeholder="např. Jan Novák"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Email testera (pro propojení s účtem)</Label>
+                <Input
+                  type="email"
+                  value={newTester.tester_email}
+                  onChange={(e) => setNewTester({ ...newTester, tester_email: e.target.value })}
+                  placeholder="tester@email.cz"
                 />
               </div>
               <div className="space-y-1">

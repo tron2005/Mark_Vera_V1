@@ -658,6 +658,7 @@ export type Database = {
           strava_client_id: string | null
           strava_client_secret: string | null
           strava_refresh_token: string | null
+          tester_email: string | null
           tester_name: string
           updated_at: string
         }
@@ -669,6 +670,7 @@ export type Database = {
           strava_client_id?: string | null
           strava_client_secret?: string | null
           strava_refresh_token?: string | null
+          tester_email?: string | null
           tester_name: string
           updated_at?: string
         }
@@ -680,6 +682,7 @@ export type Database = {
           strava_client_id?: string | null
           strava_client_secret?: string | null
           strava_refresh_token?: string | null
+          tester_email?: string | null
           tester_name?: string
           updated_at?: string
         }

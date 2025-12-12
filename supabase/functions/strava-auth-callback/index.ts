@@ -15,8 +15,46 @@ serve(async (req) => {
     const { code } = await req.json();
     console.log("Strava OAuth callback received code");
 
-    const stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
-    const stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
+    // Get user from authorization header first to check for custom credentials
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("No authorization header");
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error("Failed to get user");
+    }
+
+    // Check if user has custom Strava credentials
+    let stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
+    let stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
+    
+    const userEmail = user.email;
+    const { data: testerConfig } = await supabase
+      .from("strava_testers")
+      .select("strava_client_id, strava_client_secret")
+      .eq("tester_email", userEmail)
+      .eq("is_active", true)
+      .maybeSingle();
+    
+    if (testerConfig?.strava_client_id && testerConfig?.strava_client_secret) {
+      console.log("Using custom Strava credentials for tester:", userEmail);
+      stravaClientId = testerConfig.strava_client_id;
+      stravaClientSecret = testerConfig.strava_client_secret;
+    }
 
     if (!stravaClientId || !stravaClientSecret) {
       throw new Error("Strava credentials not configured");
@@ -44,29 +82,6 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
     console.log("Strava tokens obtained successfully");
-
-    // Get user from authorization header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      throw new Error("Failed to get user");
-    }
 
     // Calculate token expiry
     const expiryDate = new Date(Date.now() + tokenData.expires_in * 1000);
