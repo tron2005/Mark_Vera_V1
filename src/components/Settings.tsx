@@ -866,9 +866,9 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-semibold mb-2">Verze 1.0.0</h3>
+            <h3 className="font-semibold mb-2">Verze 1.1.0</h3>
             <p className="text-sm text-muted-foreground">
-              První stabilní verze s kompletním fitness asistentským systémem
+              Rozšířená verze s multi-user podporou a správou Strava testerů
             </p>
           </div>
 
@@ -878,17 +878,24 @@ export default function Settings() {
               <li>🤖 Dva AI asistenti (M.A.R.K. fitness trenér & V.E.R.A. wellness asistentka)</li>
               <li>🔊 Text-to-speech s vlastním výběrem hlasů</li>
               <li>🏃 Strava integrace - import aktivit a statistik</li>
+              <li>👥 <strong>Správa Strava testerů</strong> - každý tester může mít vlastní API credentials</li>
+              <li>🔐 <strong>Multi-user autentizace</strong> - izolovaná data pro každého uživatele</li>
               <li>💪 Import z Garmin (.FIT soubory) - aktivity, spánek, HRV</li>
               <li>📊 Import z Runalyze - kompletní běžecká historie</li>
-              <li>😴 Sledování spánku s pokročilými metrikami</li>
+              <li>💍 Import z RingConn - spánek, HRV, kroky, kalorie</li>
+              <li>😴 Sledování spánku s pokročilými metrikami a multi-source grafy</li>
               <li>❤️ Monitoring HRV a klidové srdeční frekvence</li>
               <li>⚖️ Tělesné složení a BMI tracking</li>
               <li>🎯 Správa závodních cílů a tréninková periodizace</li>
-              <li>📈 Grafy a vizualizace všech fitness dat</li>
+              <li>📈 Grafy a vizualizace všech fitness dat s filtrováním podle zdroje</li>
+              <li>🧬 Longevity karta - biologický věk, VO2max, zdravotní doporučení</li>
+              <li>💪 3D vizualizace svalových partií podle tréninku</li>
               <li>📝 Chytré poznámky s AI analýzou</li>
               <li>📅 Google Calendar integrace</li>
               <li>📧 Export poznámek emailem</li>
               <li>🧮 BMR kalkulačka podle pohlaví a věku</li>
+              <li>🍽️ Import kalorií z Kalorických Tabulek</li>
+              <li>📉 Plán hubnutí s vizualizací pokroku a pauzami</li>
             </ul>
           </div>
 
@@ -900,14 +907,9 @@ export default function Settings() {
                 <h4 className="font-medium text-sm mb-1">📥 Import a správa dat</h4>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-2">
                   <li>Nahrávání textových souborů z Runalyze (všechny typy exportů)</li>
-                  <li>Import FIT souborů z různých zdrojů</li>
                   <li>Integrace s Intervals.icu</li>
                   <li>Detekce duplicit při importu dat</li>
-                  <li>Zobrazení statusu aktualizací v chatu</li>
-                  <li>Multi-user testování a správa přístupů</li>
-                  <li>Ruční export z RingConn - vlastní záložka pro lepší data o spánku</li>
                   <li>Integrace s Health Connect</li>
-                  <li>Jednotný graf spánku při datech z více zařízení (s možností přepnutí)</li>
                 </ul>
               </div>
 
