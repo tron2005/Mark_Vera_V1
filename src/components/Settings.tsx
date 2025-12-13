@@ -384,30 +384,72 @@ export default function Settings() {
     }
   };
 
-  const connectStrava = () => {
-    const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
-    
-    if (!clientId) {
+  const connectStrava = async () => {
+    try {
+      // First check if user has custom credentials in strava_testers
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Chyba",
+          description: "Nejste přihlášeni",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get user's email to check for tester credentials
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
+
+      // Check if this user has custom Strava credentials
+      if (profile?.email) {
+        const { data: testerConfig } = await supabase
+          .from("strava_testers")
+          .select("strava_client_id")
+          .eq("tester_email", profile.email)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (testerConfig?.strava_client_id) {
+          clientId = testerConfig.strava_client_id;
+          console.log("Using custom Strava Client ID for tester");
+        }
+      }
+
+      if (!clientId) {
+        toast({
+          title: "Chyba konfigurace",
+          description: "Strava Client ID není nastaven. Přidejte vlastní credentials v sekci Strava Testeři.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const redirectUri = `${window.location.origin}/auth/strava-callback`;
+      const scope = "read,activity:read_all,profile:read_all";
+      
+      const authUrl = `https://www.strava.com/oauth/authorize?${new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: scope,
+        approval_prompt: "force",
+      })}`;
+      
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error("Error connecting Strava:", error);
       toast({
-        title: "Chyba konfigurace",
-        description: "Strava Client ID není nastaven v .env",
+        title: "Chyba",
+        description: "Nepodařilo se připojit ke Stravě",
         variant: "destructive",
       });
-      return;
     }
-    
-    const redirectUri = `${window.location.origin}/auth/strava-callback`;
-    const scope = "read,activity:read_all,profile:read_all";
-    
-    const authUrl = `https://www.strava.com/oauth/authorize?${new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: scope,
-      approval_prompt: "force",
-    })}`;
-    
-    window.location.href = authUrl;
   };
 
   // OAuth Redirect URLs for configuration
