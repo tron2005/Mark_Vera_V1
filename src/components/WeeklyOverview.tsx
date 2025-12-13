@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
-import { Activity, TrendingUp, Clock, Flame, Target } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Clock, Flame, Target, Minus } from "lucide-react";
 
 interface WeekData {
   week: string;
@@ -12,18 +12,30 @@ interface WeekData {
   calories: number;
 }
 
+interface TrendInfo {
+  value: number;
+  isUp: boolean;
+  isEqual: boolean;
+}
+
 interface StatCard {
   label: string;
   value: string;
   icon: React.ReactNode;
-  trend?: string;
-  trendUp?: boolean;
+  trend?: TrendInfo;
+  color?: string;
 }
 
 export const WeeklyOverview = () => {
   const [weeklyData, setWeeklyData] = useState<WeekData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalStats, setTotalStats] = useState({
+  const [currentWeekStats, setCurrentWeekStats] = useState({
+    trainings: 0,
+    kilometers: 0,
+    minutes: 0,
+    calories: 0,
+  });
+  const [lastWeekStats, setLastWeekStats] = useState({
     trainings: 0,
     kilometers: 0,
     minutes: 0,
@@ -130,18 +142,32 @@ export const WeeklyOverview = () => {
           };
         });
 
-      // Calculate totals
-      const totals = weeks.reduce(
-        (acc, week) => ({
-          trainings: acc.trainings + week.trainings,
-          kilometers: acc.kilometers + week.kilometers,
-          minutes: acc.minutes + week.minutes,
-          calories: acc.calories + week.calories,
-        }),
-        { trainings: 0, kilometers: 0, minutes: 0, calories: 0 }
-      );
+      // Set current and last week stats for trend calculation
+      if (weeks.length >= 2) {
+        const current = weeks[weeks.length - 1];
+        const last = weeks[weeks.length - 2];
+        setCurrentWeekStats({
+          trainings: current.trainings,
+          kilometers: current.kilometers,
+          minutes: current.minutes,
+          calories: current.calories,
+        });
+        setLastWeekStats({
+          trainings: last.trainings,
+          kilometers: last.kilometers,
+          minutes: last.minutes,
+          calories: last.calories,
+        });
+      } else if (weeks.length === 1) {
+        const current = weeks[0];
+        setCurrentWeekStats({
+          trainings: current.trainings,
+          kilometers: current.kilometers,
+          minutes: current.minutes,
+          calories: current.calories,
+        });
+      }
 
-      setTotalStats(totals);
       setWeeklyData(weeks);
     } catch (error) {
       console.error("Error loading weekly data:", error);
@@ -156,46 +182,81 @@ export const WeeklyOverview = () => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  const calculateTrend = (current: number, last: number): TrendInfo => {
+    if (last === 0 && current === 0) return { value: 0, isUp: false, isEqual: true };
+    if (last === 0) return { value: 100, isUp: true, isEqual: false };
+    const diff = ((current - last) / last) * 100;
+    return {
+      value: Math.abs(Math.round(diff)),
+      isUp: diff > 0,
+      isEqual: Math.abs(diff) < 1,
+    };
+  };
+
+  const TrendBadge = ({ trend }: { trend: TrendInfo }) => {
+    if (trend.isEqual) {
+      return (
+        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+          <Minus className="h-3 w-3" />
+        </span>
+      );
+    }
+    return (
+      <span className={`flex items-center gap-0.5 text-xs ${trend.isUp ? 'text-green-500' : 'text-red-500'}`}>
+        {trend.isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        {trend.value}%
+      </span>
+    );
+  };
+
   const stats: StatCard[] = [
     {
       label: "Tréninky",
-      value: totalStats.trainings.toString(),
+      value: currentWeekStats.trainings.toString(),
       icon: <Activity className="h-4 w-4" />,
+      trend: calculateTrend(currentWeekStats.trainings, lastWeekStats.trainings),
+      color: "from-blue-500/20 to-blue-600/10",
     },
     {
       label: "Kilometry",
-      value: `${totalStats.kilometers.toFixed(1)} km`,
+      value: `${currentWeekStats.kilometers.toFixed(1)}`,
       icon: <Target className="h-4 w-4" />,
+      trend: calculateTrend(currentWeekStats.kilometers, lastWeekStats.kilometers),
+      color: "from-green-500/20 to-green-600/10",
     },
     {
       label: "Čas",
-      value: formatTime(totalStats.minutes),
+      value: formatTime(currentWeekStats.minutes),
       icon: <Clock className="h-4 w-4" />,
+      trend: calculateTrend(currentWeekStats.minutes, lastWeekStats.minutes),
+      color: "from-purple-500/20 to-purple-600/10",
     },
     {
       label: "Kalorie",
-      value: totalStats.calories.toLocaleString(),
+      value: currentWeekStats.calories.toLocaleString(),
       icon: <Flame className="h-4 w-4" />,
+      trend: calculateTrend(currentWeekStats.calories, lastWeekStats.calories),
+      color: "from-orange-500/20 to-orange-600/10",
     },
   ];
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-5 w-5" />
             Týdenní přehled
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <div className="animate-pulse space-y-4">
             <div className="grid grid-cols-4 gap-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded-lg" />
+                <div key={i} className="h-20 bg-muted rounded-xl" />
               ))}
             </div>
-            <div className="h-48 bg-muted rounded-lg" />
+            <div className="h-48 bg-muted rounded-xl" />
           </div>
         </CardContent>
       </Card>
@@ -204,62 +265,74 @@ export const WeeklyOverview = () => {
 
   if (weeklyData.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-5 w-5" />
             Týdenní přehled
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Žádné aktivity za posledních 4 týdny. Připoj Strava nebo Garmin v nastavení.
-          </p>
+        <CardContent className="pt-4">
+          <div className="text-center py-12 space-y-2">
+            <Activity className="h-12 w-12 mx-auto text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">
+              Žádné aktivity za posledních 4 týdny
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Připoj Strava nebo Garmin v nastavení
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" />
-          Týdenní přehled (4 týdny)
+    <Card className="overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-base">
+            <Activity className="h-5 w-5 text-primary" />
+            Tento týden
+          </span>
+          <span className="text-xs font-normal text-muted-foreground">
+            vs. minulý týden
+          </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-4 space-y-4">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="bg-muted/50 rounded-lg p-3 flex flex-col items-center justify-center text-center"
+              className={`bg-gradient-to-br ${stat.color} rounded-xl p-3 border border-border/50 transition-transform hover:scale-[1.02]`}
             >
-              <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                {stat.icon}
-                <span className="text-xs">{stat.label}</span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  {stat.icon}
+                  <span className="text-xs font-medium">{stat.label}</span>
+                </div>
+                {stat.trend && <TrendBadge trend={stat.trend} />}
               </div>
-              <span className="text-lg font-bold">{stat.value}</span>
+              <span className="text-xl font-bold">{stat.value}</span>
             </div>
           ))}
         </div>
 
         {/* Chart */}
-        <div className="h-56">
+        <div className="h-52 bg-muted/30 rounded-xl p-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
               <XAxis
                 dataKey="week"
-                className="text-xs"
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 yAxisId="left"
-                className="text-xs"
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -267,7 +340,6 @@ export const WeeklyOverview = () => {
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                className="text-xs"
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -276,55 +348,53 @@ export const WeeklyOverview = () => {
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   fontSize: "12px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                 }}
                 formatter={(value: number, name: string) => {
                   if (name === "Čas (min)") return [formatTime(value), "Čas"];
                   return [value, name];
                 }}
               />
-              <Legend
-                wrapperStyle={{ fontSize: "11px" }}
-                iconSize={8}
-              />
+              <Legend wrapperStyle={{ fontSize: "11px" }} iconSize={8} />
               <Bar
                 yAxisId="left"
                 dataKey="trainings"
-                fill="hsl(var(--primary))"
+                fill="hsl(217 91% 60%)"
                 name="Tréninky"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={40}
+                radius={[6, 6, 0, 0]}
+                maxBarSize={35}
               />
               <Bar
                 yAxisId="right"
                 dataKey="kilometers"
-                fill="hsl(var(--chart-2))"
+                fill="hsl(142 71% 45%)"
                 name="Kilometry"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={40}
+                radius={[6, 6, 0, 0]}
+                maxBarSize={35}
               />
               <Bar
                 yAxisId="left"
                 dataKey="minutes"
-                fill="hsl(var(--chart-3))"
+                fill="hsl(262 83% 58%)"
                 name="Čas (min)"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={40}
+                radius={[6, 6, 0, 0]}
+                maxBarSize={35}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Calories Trend Line */}
-        <div className="h-32">
-          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-            <Flame className="h-3 w-3" />
-            Kalorie podle týdnů
+        <div className="h-28 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-xl p-3">
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5 font-medium">
+            <Flame className="h-3.5 w-3.5 text-orange-500" />
+            Spálené kalorie
           </p>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
               <XAxis
                 dataKey="week"
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
@@ -340,16 +410,16 @@ export const WeeklyOverview = () => {
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   fontSize: "12px",
                 }}
               />
               <Line
                 type="monotone"
                 dataKey="calories"
-                stroke="hsl(var(--destructive))"
-                strokeWidth={2}
-                dot={{ fill: "hsl(var(--destructive))", r: 4 }}
+                stroke="hsl(25 95% 53%)"
+                strokeWidth={2.5}
+                dot={{ fill: "hsl(25 95% 53%)", r: 4, strokeWidth: 2, stroke: "hsl(var(--background))" }}
                 name="Kalorie"
               />
             </LineChart>
