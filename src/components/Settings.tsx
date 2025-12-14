@@ -78,23 +78,38 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Load profile and latest body composition in parallel
+      const [profileResult, bodyCompResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("body_composition")
+          .select("weight_kg, date")
+          .eq("user_id", user.id)
+          .order("date", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
 
-      if (error) throw error;
+      if (profileResult.error) throw profileResult.error;
+
+      const profile = profileResult.data;
+      const latestBodyComp = bodyCompResult.data;
 
       if (profile) {
         setEmail(profile.email || "");
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);
-        // Check both refresh and access tokens for more reliable status
         setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
         setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
-        setWeightKg(profile.weight_kg?.toString() || "");
+        
+        // Use latest body composition weight if available, otherwise profile weight
+        const currentWeight = latestBodyComp?.weight_kg ?? profile.weight_kg;
+        setWeightKg(currentWeight?.toString() || "");
         setHeightCm(profile.height_cm?.toString() || "");
         setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
@@ -107,11 +122,11 @@ export default function Settings() {
           setBmi(Number(profile.bmi));
         }
 
-        if (profile.weight_kg && profile.height_cm) {
-          calculateBMI(profile.weight_kg, profile.height_cm);
+        if (currentWeight && profile.height_cm) {
+          calculateBMI(currentWeight, profile.height_cm);
         }
-        if (profile.weight_kg && profile.height_cm && profile.age) {
-          calculateBMR(profile.weight_kg, profile.height_cm, profile.age, profile.gender || "male");
+        if (currentWeight && profile.height_cm && profile.age) {
+          calculateBMR(currentWeight, profile.height_cm, profile.age, profile.gender || "male");
         }
       }
     } catch (error) {
