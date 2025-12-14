@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, Check, AlertCircle, Calendar, TrendingUp } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, AlertCircle, Calendar, TrendingUp, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
@@ -16,12 +16,13 @@ interface ImportedMeal {
   fat?: number;
 }
 
-interface ImportResult {
+interface DayResult {
   meals: ImportedMeal[];
   totalCalories: number;
   activities: { name: string; calories: number }[];
   date: string | null;
   sheetName: string;
+  existingRecords: number;
 }
 
 interface DailyCalories {
@@ -32,7 +33,7 @@ interface DailyCalories {
 
 export const CalorieImport = () => {
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [results, setResults] = useState<DayResult[]>([]);
   const [calorieHistory, setCalorieHistory] = useState<DailyCalories[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,9 +111,7 @@ export const CalorieImport = () => {
     return null;
   };
 
-  const parseKalorickeTabulky = (workbook: XLSX.WorkBook): ImportResult => {
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+  const parseSheet = (sheet: XLSX.WorkSheet, sheetName: string): Omit<DayResult, 'existingRecords'> => {
     const data = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
     
     const meals: ImportedMeal[] = [];
@@ -173,29 +172,83 @@ export const CalorieImport = () => {
     return { meals, totalCalories, activities, date, sheetName };
   };
 
+  const checkExistingRecords = async (dates: (string | null)[]): Promise<Map<string, number>> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return new Map();
+
+    const validDates = dates.filter((d): d is string => d !== null);
+    if (validDates.length === 0) return new Map();
+
+    // Get count of existing calorie records for these dates
+    const existingMap = new Map<string, number>();
+    
+    for (const date of validDates) {
+      const startOfDay = `${date}T00:00:00`;
+      const endOfDay = `${date}T23:59:59`;
+      
+      const { count } = await supabase
+        .from("notes")
+        .select("*", { count: 'exact', head: true })
+        .eq("user_id", user.id)
+        .eq("category", "calories")
+        .gte("created_at", startOfDay)
+        .lte("created_at", endOfDay);
+      
+      existingMap.set(date, count || 0);
+    }
+    
+    return existingMap;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     setImporting(true);
-    setResult(null);
+    setResults([]);
     
     try {
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer);
       
-      const parsed = parseKalorickeTabulky(workbook);
-      setResult(parsed);
+      // Parse ALL sheets, not just the first one
+      const parsedDays: Omit<DayResult, 'existingRecords'>[] = [];
       
-      if (parsed.meals.length === 0) {
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const parsed = parseSheet(sheet, sheetName);
+        
+        // Only include sheets that have actual meal data
+        if (parsed.meals.length > 0) {
+          parsedDays.push(parsed);
+        }
+      }
+      
+      if (parsedDays.length === 0) {
         toast.warning("Nebyla nalezena žádná jídla v souboru");
         return;
       }
       
-      const dateInfo = parsed.date 
-        ? `pro ${new Date(parsed.date).toLocaleDateString('cs-CZ')}`
-        : "";
-      toast.success(`Načteno ${parsed.meals.length} položek ${dateInfo}`);
+      // Check for existing records
+      const dates = parsedDays.map(d => d.date);
+      const existingMap = await checkExistingRecords(dates);
+      
+      // Add existing record counts to results
+      const resultsWithExisting: DayResult[] = parsedDays.map(day => ({
+        ...day,
+        existingRecords: day.date ? (existingMap.get(day.date) || 0) : 0
+      }));
+      
+      setResults(resultsWithExisting);
+      
+      const totalMeals = parsedDays.reduce((sum, d) => sum + d.meals.length, 0);
+      const daysWithDuplicates = resultsWithExisting.filter(d => d.existingRecords > 0).length;
+      
+      if (daysWithDuplicates > 0) {
+        toast.warning(`Načteno ${totalMeals} položek za ${parsedDays.length} dní. ${daysWithDuplicates} dní už má záznamy!`);
+      } else {
+        toast.success(`Načteno ${totalMeals} položek za ${parsedDays.length} dní`);
+      }
     } catch (error) {
       console.error("Chyba při čtení souboru:", error);
       toast.error("Nepodařilo se přečíst soubor");
@@ -207,19 +260,30 @@ export const CalorieImport = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (!result || result.meals.length === 0) return;
-    
+  const handleSaveDay = async (dayResult: DayResult, replaceExisting: boolean = false) => {
     setImporting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nepřihlášen");
       
-      // Use the date from sheet name, or today if not found
-      const targetDate = result.date || new Date().toISOString().split('T')[0];
+      const targetDate = dayResult.date || new Date().toISOString().split('T')[0];
       const targetDateTime = new Date(`${targetDate}T12:00:00`).toISOString();
       
-      const notes = result.meals.map(meal => ({
+      // If replacing, delete existing records for this day first
+      if (replaceExisting && dayResult.existingRecords > 0) {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        
+        await supabase
+          .from("notes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("category", "calories")
+          .gte("created_at", startOfDay)
+          .lte("created_at", endOfDay);
+      }
+      
+      const notes = dayResult.meals.map(meal => ({
         user_id: user.id,
         text: `${meal.name}: ${meal.calories} kcal`,
         category: "calories",
@@ -230,9 +294,11 @@ export const CalorieImport = () => {
       if (error) throw error;
       
       const dateStr = new Date(targetDate).toLocaleDateString('cs-CZ');
-      toast.success(`Uloženo ${result.meals.length} položek pro ${dateStr}`);
-      setResult(null);
-      loadCalorieHistory(); // Refresh chart
+      toast.success(`Uloženo ${dayResult.meals.length} položek pro ${dateStr}`);
+      
+      // Remove this day from results
+      setResults(prev => prev.filter(r => r !== dayResult));
+      loadCalorieHistory();
     } catch (error) {
       console.error("Chyba při ukládání:", error);
       toast.error("Nepodařilo se uložit");
@@ -241,16 +307,74 @@ export const CalorieImport = () => {
     }
   };
 
+  const handleSaveAll = async () => {
+    setImporting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nepřihlášen");
+      
+      let savedCount = 0;
+      let skippedCount = 0;
+      
+      for (const dayResult of results) {
+        // Skip days that already have records (don't create duplicates)
+        if (dayResult.existingRecords > 0) {
+          skippedCount++;
+          continue;
+        }
+        
+        const targetDate = dayResult.date || new Date().toISOString().split('T')[0];
+        const targetDateTime = new Date(`${targetDate}T12:00:00`).toISOString();
+        
+        const notes = dayResult.meals.map(meal => ({
+          user_id: user.id,
+          text: `${meal.name}: ${meal.calories} kcal`,
+          category: "calories",
+          created_at: targetDateTime
+        }));
+        
+        const { error } = await supabase.from("notes").insert(notes);
+        if (error) throw error;
+        
+        savedCount++;
+      }
+      
+      if (skippedCount > 0) {
+        toast.success(`Uloženo ${savedCount} dní, přeskočeno ${skippedCount} dní s existujícími záznamy`);
+      } else {
+        toast.success(`Uloženo ${savedCount} dní`);
+      }
+      
+      setResults([]);
+      loadCalorieHistory();
+    } catch (error) {
+      console.error("Chyba při ukládání:", error);
+      toast.error("Nepodařilo se uložit");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const removeDay = (dayResult: DayResult) => {
+    setResults(prev => prev.filter(r => r !== dayResult));
+  };
+
   const formatDate = (dateStr: string | null, sheetName: string) => {
     if (dateStr) {
       return new Date(dateStr).toLocaleDateString('cs-CZ', { 
-        weekday: 'long', 
+        weekday: 'short', 
         day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
+        month: 'numeric'
       });
     }
     return sheetName;
+  };
+
+  const totalStats = {
+    days: results.length,
+    meals: results.reduce((sum, d) => sum + d.meals.length, 0),
+    calories: results.reduce((sum, d) => sum + d.totalCalories, 0),
+    duplicateDays: results.filter(d => d.existingRecords > 0).length
   };
 
   return (
@@ -261,7 +385,7 @@ export const CalorieImport = () => {
           Import z Kalorických Tabulek
         </CardTitle>
         <CardDescription>
-          Nahrajte XLS export z kaloricketabulky.cz
+          Nahrajte XLS export z kaloricketabulky.cz (podporuje více dnů najednou)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -285,67 +409,107 @@ export const CalorieImport = () => {
           </Button>
         </div>
 
-        {result && (
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-            {/* Date info from sheet */}
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span className="font-medium">
-                {formatDate(result.date, result.sheetName)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">Nalezeno {result.meals.length} jídel</div>
-                <div className="text-sm text-muted-foreground">
-                  Celkem: {result.totalCalories} kcal
+        {results.length > 0 && (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">Celkem: {totalStats.days} dní, {totalStats.meals} položek</span>
+                <span className="text-lg font-bold text-primary">{totalStats.calories.toLocaleString()} kcal</span>
+              </div>
+              {totalStats.duplicateDays > 0 && (
+                <div className="text-sm text-amber-600 dark:text-amber-400">
+                  ⚠️ {totalStats.duplicateDays} dní již má existující záznamy
                 </div>
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                {result.totalCalories} kcal
+              )}
+              <div className="flex gap-2 mt-3">
+                <Button onClick={handleSaveAll} disabled={importing} className="flex-1">
+                  <Check className="h-4 w-4 mr-2" />
+                  Uložit nové dny ({totalStats.days - totalStats.duplicateDays})
+                </Button>
+                <Button variant="outline" onClick={() => setResults([])} disabled={importing}>
+                  Zrušit
+                </Button>
               </div>
             </div>
 
-            {result.meals.length > 0 && (
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {result.meals.slice(0, 10).map((meal, i) => (
-                  <div key={i} className="flex justify-between text-sm py-1 border-b border-border/50">
-                    <span className="truncate flex-1 mr-2">{meal.name}</span>
-                    <span className="font-medium">{meal.calories} kcal</span>
+            {/* Individual days */}
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {results.map((day, index) => (
+                <div 
+                  key={index} 
+                  className={`p-3 border rounded-lg ${day.existingRecords > 0 ? 'border-amber-500/50 bg-amber-500/10' : 'bg-card'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{formatDate(day.date, day.sheetName)}</span>
+                      {day.existingRecords > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded">
+                          {day.existingRecords} existujících
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{day.meals.length} jídel</span>
+                      <span className="font-bold">{day.totalCalories} kcal</span>
+                    </div>
                   </div>
-                ))}
-                {result.meals.length > 10 && (
-                  <div className="text-xs text-muted-foreground text-center py-1">
-                    ...a dalších {result.meals.length - 10} položek
+                  
+                  <div className="flex gap-2 mt-2">
+                    {day.existingRecords > 0 ? (
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleSaveDay(day, true)}
+                          disabled={importing}
+                          className="text-xs"
+                        >
+                          Nahradit existující
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => handleSaveDay(day, false)}
+                          disabled={importing}
+                          className="text-xs"
+                        >
+                          Přidat (duplikovat)
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleSaveDay(day, false)}
+                        disabled={importing}
+                        className="text-xs"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Uložit
+                      </Button>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => removeDay(day)}
+                      disabled={importing}
+                      className="text-xs text-muted-foreground"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
-              </div>
-            )}
-
-            {result.activities.length > 0 && (
-              <div className="text-sm">
-                <div className="font-medium mb-1">Aktivity:</div>
-                {result.activities.map((act, i) => (
-                  <div key={i} className="flex justify-between text-muted-foreground">
-                    <span>{act.name}</span>
-                    <span>-{act.calories} kcal</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Button onClick={handleSave} disabled={importing || result.meals.length === 0} className="w-full">
-              <Check className="h-4 w-4 mr-2" />
-              Uložit pro {result.date ? new Date(result.date).toLocaleDateString('cs-CZ') : 'dnes'}
-            </Button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu.
+            Exportujte data z kaloricketabulky.cz → Deník → Export do Excelu (můžete vybrat rozsah dnů).
           </span>
         </div>
 
