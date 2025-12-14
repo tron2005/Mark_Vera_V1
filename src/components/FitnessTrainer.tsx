@@ -27,6 +27,7 @@ import { ActivityCharts } from "./ActivityCharts";
 import { MuscleVisualization } from "./MuscleVisualization";
 import { WeightLossPlan } from "./WeightLossPlan";
 import { TrainingLibrary } from "./TrainingLibrary";
+import { MotivationalQuote } from "./MotivationalQuote";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -263,9 +264,10 @@ export const FitnessTrainer = () => {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Fitness Trenér</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mb-4">
           Váš osobní trenér s přístupem k datům ze Stravy a Garminu
         </p>
+        <MotivationalQuote />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
