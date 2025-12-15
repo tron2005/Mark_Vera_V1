@@ -137,44 +137,116 @@ const supplements = [
     dosage: "20-30g po tréninku",
     timing: "Do 30 min po cvičení",
     purpose: "Regenerace a růst svalů",
-    notes: "Lze nahradit jídlem bohatým na bílkoviny"
+    notes: "Lze nahradit jídlem bohatým na bílkoviny",
+    category: "Základní"
   },
   {
     name: "Kreatin",
     dosage: "3-5g denně",
     timing: "Kdykoliv, ideálně po tréninku",
     purpose: "Síla a výkon při vysoké intenzitě",
-    notes: "Jeden z nejvíce prozkoumaných suplementů"
+    notes: "Jeden z nejvíce prozkoumaných suplementů",
+    category: "Základní"
   },
   {
     name: "Omega-3",
     dosage: "1-3g EPA+DHA denně",
     timing: "S jídlem",
     purpose: "Protizánětlivé účinky, zdraví srdce",
-    notes: "Preferujte rybí olej nebo řasy"
+    notes: "Preferujte rybí olej nebo řasy",
+    category: "Zdraví"
   },
   {
     name: "Vitamin D",
     dosage: "1000-4000 IU denně",
     timing: "S tučným jídlem",
     purpose: "Imunita, kosti, svalová funkce",
-    notes: "Důležitý zejména v zimě"
+    notes: "Důležitý zejména v zimě",
+    category: "Zdraví"
   },
   {
     name: "Magnesium",
     dosage: "200-400mg před spaním",
     timing: "Večer",
     purpose: "Svalová relaxace, kvalita spánku",
-    notes: "Citrate nebo glycinate formy"
+    notes: "Citrate nebo glycinate formy",
+    category: "Regenerace"
   },
   {
     name: "Kofein",
     dosage: "3-6mg/kg váhy",
     timing: "30-60 min před tréninkem",
     purpose: "Energie, výkon, soustředění",
-    notes: "Netlačte po 14:00 kvůli spánku"
+    notes: "Netlačte po 14:00 kvůli spánku",
+    category: "Výkon"
+  },
+  {
+    name: "BCAA",
+    dosage: "5-10g",
+    timing: "Před/během tréninku",
+    purpose: "Ochrana svalů při tréninku nalačno",
+    notes: "Nepotřebné pokud jíte dostatek bílkovin",
+    category: "Výkon"
+  },
+  {
+    name: "Beta-Alanin",
+    dosage: "2-5g denně",
+    timing: "Kdykoliv (budování zásob)",
+    purpose: "Vytrvalost při vysoké intenzitě",
+    notes: "Může způsobit brnění kůže - normální",
+    category: "Výkon"
+  },
+  {
+    name: "Citrullin",
+    dosage: "6-8g před tréninkem",
+    timing: "30-60 min před",
+    purpose: "Lepší prokrvení, výkon, pump",
+    notes: "L-citruline malate preferovaná forma",
+    category: "Výkon"
+  },
+  {
+    name: "Vitamin C",
+    dosage: "500-1000mg denně",
+    timing: "Kdykoliv",
+    purpose: "Imunita, antioxidant, vstřebávání železa",
+    notes: "Zvýšit při nemoci nebo stresu",
+    category: "Zdraví"
+  },
+  {
+    name: "Zinek",
+    dosage: "15-30mg denně",
+    timing: "S jídlem",
+    purpose: "Testosteron, imunita, regenerace",
+    notes: "Důležitý pro sportovce - ztráty potem",
+    category: "Zdraví"
+  },
+  {
+    name: "Ashwagandha",
+    dosage: "300-600mg denně",
+    timing: "Ráno nebo večer",
+    purpose: "Snížení kortizolu, adaptace na stres",
+    notes: "KSM-66 nebo Sensoril extrakty",
+    category: "Regenerace"
+  },
+  {
+    name: "Kolagen",
+    dosage: "10-15g denně",
+    timing: "Kdykoliv, ideálně s vitaminem C",
+    purpose: "Klouby, šlachy, kůže",
+    notes: "Hydrolyzovaná forma pro lepší vstřebávání",
+    category: "Regenerace"
+  },
+  {
+    name: "Elektrolyty",
+    dosage: "Dle potřeby při pocení",
+    timing: "Během/po tréninku",
+    purpose: "Hydratace, prevence křečí",
+    notes: "Sodík, draslík, hořčík - důležité v létě",
+    category: "Výkon"
   }
 ];
+
+const supplementCategories = ["Základní", "Výkon", "Zdraví", "Regenerace"];
 
 export const TrainingLibrary = () => {
   const [activeTab, setActiveTab] = useState("running");
@@ -345,31 +417,46 @@ export const TrainingLibrary = () => {
             ))}
           </TabsContent>
 
-          <TabsContent value="supplements" className="mt-4 space-y-3">
-            {supplements.map((supp) => (
-              <Card key={supp.name} className="bg-muted/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{supp.name}</CardTitle>
-                    <Badge>{supp.dosage}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Kdy:</span>{" "}
-                      {supp.timing}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Proč:</span>{" "}
-                      {supp.purpose}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic">
-                    💡 {supp.notes}
-                  </p>
-                </CardContent>
-              </Card>
+          <TabsContent value="supplements" className="mt-4 space-y-4">
+            {supplementCategories.map((category) => (
+              <div key={category}>
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${
+                    category === "Základní" ? "bg-blue-500" :
+                    category === "Výkon" ? "bg-orange-500" :
+                    category === "Zdraví" ? "bg-green-500" :
+                    "bg-purple-500"
+                  }`} />
+                  {category}
+                </h3>
+                <div className="space-y-2">
+                  {supplements.filter(s => s.category === category).map((supp) => (
+                    <Card key={supp.name} className="bg-muted/30">
+                      <CardHeader className="pb-2 pt-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base">{supp.name}</CardTitle>
+                          <Badge variant="secondary">{supp.dosage}</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 pt-0">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Kdy:</span>{" "}
+                            {supp.timing}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Proč:</span>{" "}
+                            {supp.purpose}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground italic">
+                          💡 {supp.notes}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             ))}
           </TabsContent>
         </Tabs>

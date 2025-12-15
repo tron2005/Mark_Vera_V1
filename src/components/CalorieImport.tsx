@@ -14,11 +14,19 @@ interface ImportedMeal {
   protein?: number;
   carbs?: number;
   fat?: number;
+  sugar?: number;
+  fiber?: number;
+  salt?: number;
 }
 
 interface DayResult {
   meals: ImportedMeal[];
   totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalSugar: number;
+  totalFiber: number;
   activities: { name: string; calories: number }[];
   date: string | null;
   sheetName: string;
@@ -150,10 +158,13 @@ export const CalorieImport = () => {
         const calories = parseInt(String(row[3] || "0"));
         const protein = parseFloat(String(row[4] || "0"));
         const carbs = parseFloat(String(row[5] || "0"));
+        const sugar = parseFloat(String(row[6] || "0"));
         const fat = parseFloat(String(row[7] || "0"));
+        const fiber = parseFloat(String(row[8] || "0"));
+        const salt = parseFloat(String(row[9] || "0"));
         
         if (name && calories > 0 && !name.includes("Název")) {
-          meals.push({ name, calories, protein, carbs, fat });
+          meals.push({ name, calories, protein, carbs, fat, sugar, fiber, salt });
         }
       }
       
@@ -168,8 +179,13 @@ export const CalorieImport = () => {
     }
     
     const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
+    const totalProtein = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
+    const totalCarbs = meals.reduce((sum, m) => sum + (m.carbs || 0), 0);
+    const totalFat = meals.reduce((sum, m) => sum + (m.fat || 0), 0);
+    const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
+    const totalFiber = meals.reduce((sum, m) => sum + (m.fiber || 0), 0);
     
-    return { meals, totalCalories, activities, date, sheetName };
+    return { meals, totalCalories, totalProtein, totalCarbs, totalFat, totalSugar, totalFiber, activities, date, sheetName };
   };
 
   const checkExistingRecords = async (dates: (string | null)[]): Promise<Map<string, number>> => {
@@ -374,6 +390,11 @@ export const CalorieImport = () => {
     days: results.length,
     meals: results.reduce((sum, d) => sum + d.meals.length, 0),
     calories: results.reduce((sum, d) => sum + d.totalCalories, 0),
+    protein: results.reduce((sum, d) => sum + d.totalProtein, 0),
+    carbs: results.reduce((sum, d) => sum + d.totalCarbs, 0),
+    fat: results.reduce((sum, d) => sum + d.totalFat, 0),
+    sugar: results.reduce((sum, d) => sum + d.totalSugar, 0),
+    fiber: results.reduce((sum, d) => sum + d.totalFiber, 0),
     duplicateDays: results.filter(d => d.existingRecords > 0).length
   };
 
@@ -417,12 +438,37 @@ export const CalorieImport = () => {
                 <span className="font-medium">Celkem: {totalStats.days} dní, {totalStats.meals} položek</span>
                 <span className="text-lg font-bold text-primary">{totalStats.calories.toLocaleString()} kcal</span>
               </div>
+              
+              {/* Macros summary */}
+              <div className="grid grid-cols-5 gap-2 mb-3 text-xs">
+                <div className="text-center p-2 rounded bg-blue-500/10">
+                  <div className="font-bold text-blue-600">{totalStats.protein.toFixed(0)}g</div>
+                  <div className="text-muted-foreground">Bílkoviny</div>
+                </div>
+                <div className="text-center p-2 rounded bg-amber-500/10">
+                  <div className="font-bold text-amber-600">{totalStats.carbs.toFixed(0)}g</div>
+                  <div className="text-muted-foreground">Sacharidy</div>
+                </div>
+                <div className="text-center p-2 rounded bg-orange-500/10">
+                  <div className="font-bold text-orange-600">{totalStats.fat.toFixed(0)}g</div>
+                  <div className="text-muted-foreground">Tuky</div>
+                </div>
+                <div className="text-center p-2 rounded bg-pink-500/10">
+                  <div className="font-bold text-pink-600">{totalStats.sugar.toFixed(0)}g</div>
+                  <div className="text-muted-foreground">Cukry</div>
+                </div>
+                <div className="text-center p-2 rounded bg-green-500/10">
+                  <div className="font-bold text-green-600">{totalStats.fiber.toFixed(0)}g</div>
+                  <div className="text-muted-foreground">Vláknina</div>
+                </div>
+              </div>
+              
               {totalStats.duplicateDays > 0 && (
-                <div className="text-sm text-amber-600 dark:text-amber-400">
+                <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
                   ⚠️ {totalStats.duplicateDays} dní již má existující záznamy
                 </div>
               )}
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2">
                 <Button onClick={handleSaveAll} disabled={importing} className="flex-1">
                   <Check className="h-4 w-4 mr-2" />
                   Uložit nové dny ({totalStats.days - totalStats.duplicateDays})
