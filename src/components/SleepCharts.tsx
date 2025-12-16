@@ -250,7 +250,7 @@ export const SleepCharts = () => {
       <Card>
         <CardHeader>
           <CardTitle>Kvalita spánku</CardTitle>
-          <CardDescription>Hodnocení kvality spánku (0-100)</CardDescription>
+          <CardDescription>Hodnocení kvality spánku (0-9)</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -285,7 +285,7 @@ export const SleepCharts = () => {
                   type="monotone" 
                   dataKey="kvalita" 
                   stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))"}
-                  name="Kvalita (0-100)"
+                  name="Kvalita (0-9)"
                   strokeWidth={3}
                   dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))", r: 4 }}
                   activeDot={{ r: 6 }}
