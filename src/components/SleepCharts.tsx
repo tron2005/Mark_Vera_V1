@@ -257,7 +257,7 @@ export const SleepCharts = () => {
             <LineChart data={showMultiSource ? mergedChartData : chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-xs" />
-              <YAxis className="text-xs" domain={[0, 100]} />
+              <YAxis className="text-xs" domain={[0, 'auto']} />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--background))',
