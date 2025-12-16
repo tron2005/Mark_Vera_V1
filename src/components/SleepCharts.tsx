@@ -91,7 +91,11 @@ export const SleepCharts = () => {
     : sleepData.filter(d => d.source === selectedSource);
 
   // Prepare data for charts (reverse to show oldest first)
+  // Filter out 0/null values for quality and tep - they shouldn't be displayed
   const chartData: ChartDataPoint[] = [...filteredData].reverse().map(sleep => {
+    const kvalitaValue = sleep.quality && sleep.quality > 0 ? sleep.quality : undefined;
+    const tepValue = sleep.hr_lowest && sleep.hr_lowest > 0 ? sleep.hr_lowest : undefined;
+    
     const base: ChartDataPoint = {
       date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
       source: sleep.source || undefined,
@@ -100,14 +104,14 @@ export const SleepCharts = () => {
       lehky: sleep.light_sleep_minutes ? Math.round(sleep.light_sleep_minutes / 60 * 10) / 10 : 0,
       rem: sleep.rem_duration_minutes ? Math.round(sleep.rem_duration_minutes / 60 * 10) / 10 : 0,
       bdely: sleep.awake_duration_minutes ? Math.round(sleep.awake_duration_minutes / 60 * 10) / 10 : 0,
-      kvalita: sleep.quality || 0,
-      tep: sleep.hr_lowest || 0,
+      kvalita: kvalitaValue as number,
+      tep: tepValue as number,
     };
     // Add source-specific keys for multi-source display
     if (sleep.source) {
       base[`celkem_${sleep.source}`] = base.celkem;
-      base[`kvalita_${sleep.source}`] = base.kvalita;
-      base[`tep_${sleep.source}`] = base.tep;
+      if (kvalitaValue) base[`kvalita_${sleep.source}`] = kvalitaValue;
+      if (tepValue) base[`tep_${sleep.source}`] = tepValue;
     }
     return base;
   });
@@ -132,8 +136,13 @@ export const SleepCharts = () => {
         }
         if (sleep.source) {
           existing[`celkem_${sleep.source}`] = sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0;
-          existing[`kvalita_${sleep.source}`] = sleep.quality || 0;
-          existing[`tep_${sleep.source}`] = sleep.hr_lowest || 0;
+          // Only add kvalita and tep if they have valid (non-zero) values
+          if (sleep.quality && sleep.quality > 0) {
+            existing[`kvalita_${sleep.source}`] = sleep.quality;
+          }
+          if (sleep.hr_lowest && sleep.hr_lowest > 0) {
+            existing[`tep_${sleep.source}`] = sleep.hr_lowest;
+          }
         }
         return acc;
       }, [])
