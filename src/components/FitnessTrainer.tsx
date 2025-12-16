@@ -59,16 +59,35 @@ export const FitnessTrainer = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("strava_refresh_token, strava_access_token, garmin_refresh_token, weight_kg, age, height_cm, bmi, bmr")
-      .eq("user_id", user.id)
-      .single();
+    // Fetch profile and latest body composition in parallel
+    const [profileResult, bodyCompResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("strava_refresh_token, strava_access_token, garmin_refresh_token, weight_kg, age, height_cm, bmi, bmr")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("body_composition")
+        .select("weight_kg")
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ]);
+
+    const profile = profileResult.data;
+    const latestWeight = bodyCompResult.data?.weight_kg;
 
     if (profile) {
       setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
       setGarminConnected(!!profile.garmin_refresh_token);
-      setUserProfile(profile);
+      
+      // Use latest body_composition weight if available, otherwise fallback to profile
+      const updatedProfile = {
+        ...profile,
+        weight_kg: latestWeight ?? profile.weight_kg
+      };
+      setUserProfile(updatedProfile);
       
       if (profile.strava_refresh_token || profile.strava_access_token) {
         // Load from database
