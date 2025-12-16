@@ -74,7 +74,8 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
             hr_lowest: row.hrLowest ? parseInt(row.hrLowest) : null,
             hr_average: row.hrAverage ? parseInt(row.hrAverage) : null,
             respiration_rate: row.respirationRate ? parseFloat(row.respirationRate) : null,
-            quality: row.quality ? parseInt(row.quality) : null
+            quality: row.quality ? parseInt(row.quality) : null,
+            source: 'Runalyze'
           }, {
             onConflict: 'user_id,sleep_date'
           });
@@ -100,7 +101,8 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
             user_id: user.id,
             date: row.date,
             time: row.time,
-            heart_rate: parseInt(row.heartRate)
+            heart_rate: parseInt(row.heartRate),
+            source: 'Runalyze'
           }, {
             ignoreDuplicates: false
           });
