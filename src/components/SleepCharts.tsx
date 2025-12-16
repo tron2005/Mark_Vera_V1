@@ -9,7 +9,7 @@ import { SelectWithLabel } from "@/components/ui/select-with-label";
 const SOURCE_COLORS: Record<string, string> = {
   'RingConn': 'hsl(280, 70%, 50%)', // Purple for RingConn
   'Garmin': 'hsl(var(--chart-1))',
-  'Neznámý': 'hsl(var(--chart-2))', // Orange/yellow for unknown source
+  'Runalyze (Garmin)': 'hsl(var(--chart-2))', // Orange/yellow for Runalyze imports
   'default': 'hsl(var(--primary))'
 };
 
@@ -64,8 +64,8 @@ export const SleepCharts = () => {
       if (error) throw error;
       setSleepData(data || []);
       
-      // Get unique sources, including "Neznámý" for null sources
-      const rawSources = (data || []).map(d => d.source || 'Neznámý');
+      // Get unique sources, including "Runalyze (Garmin)" for null sources
+      const rawSources = (data || []).map(d => d.source || 'Runalyze (Garmin)');
       const sources = [...new Set(rawSources)];
       setAvailableSources(sources as string[]);
     } catch (error) {
@@ -87,10 +87,10 @@ export const SleepCharts = () => {
     return null;
   }
 
-  // Filter data by selected source (handle "Neznámý" for null sources)
+  // Filter data by selected source (handle "Runalyze (Garmin)" for null sources)
   const filteredData = selectedSource === 'all' 
     ? sleepData 
-    : selectedSource === 'Neznámý'
+    : selectedSource === 'Runalyze (Garmin)'
       ? sleepData.filter(d => !d.source)
       : sleepData.filter(d => d.source === selectedSource);
 
@@ -99,7 +99,7 @@ export const SleepCharts = () => {
   const chartData: ChartDataPoint[] = [...filteredData].reverse().map(sleep => {
     const kvalitaValue = sleep.quality && sleep.quality > 0 ? sleep.quality : undefined;
     const tepValue = sleep.hr_lowest && sleep.hr_lowest > 0 ? sleep.hr_lowest : undefined;
-    const sourceLabel = sleep.source || 'Neznámý';
+    const sourceLabel = sleep.source || 'Runalyze (Garmin)';
     
     const base: ChartDataPoint = {
       date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
@@ -122,7 +122,7 @@ export const SleepCharts = () => {
   const mergedChartData = selectedSource === 'all' && availableSources.length > 1
     ? [...sleepData].reverse().reduce((acc: ChartDataPoint[], sleep) => {
         const dateStr = new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
-        const sourceLabel = sleep.source || 'Neznámý';
+        const sourceLabel = sleep.source || 'Runalyze (Garmin)';
         let existing = acc.find(d => d.date === dateStr);
         if (!existing) {
           existing = {
