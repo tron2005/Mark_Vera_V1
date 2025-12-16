@@ -9,6 +9,7 @@ import { SelectWithLabel } from "@/components/ui/select-with-label";
 const SOURCE_COLORS: Record<string, string> = {
   'RingConn': 'hsl(280, 70%, 50%)', // Purple for RingConn
   'Garmin': 'hsl(var(--chart-1))',
+  'Neznámý': 'hsl(var(--chart-2))', // Orange/yellow for unknown source
   'default': 'hsl(var(--primary))'
 };
 
@@ -63,8 +64,9 @@ export const SleepCharts = () => {
       if (error) throw error;
       setSleepData(data || []);
       
-      // Get unique sources
-      const sources = [...new Set((data || []).map(d => d.source).filter(Boolean))];
+      // Get unique sources, including "Neznámý" for null sources
+      const rawSources = (data || []).map(d => d.source || 'Neznámý');
+      const sources = [...new Set(rawSources)];
       setAvailableSources(sources as string[]);
     } catch (error) {
       console.error("Chyba při načítání spánkových dat:", error);
@@ -85,20 +87,23 @@ export const SleepCharts = () => {
     return null;
   }
 
-  // Filter data by selected source
+  // Filter data by selected source (handle "Neznámý" for null sources)
   const filteredData = selectedSource === 'all' 
     ? sleepData 
-    : sleepData.filter(d => d.source === selectedSource);
+    : selectedSource === 'Neznámý'
+      ? sleepData.filter(d => !d.source)
+      : sleepData.filter(d => d.source === selectedSource);
 
   // Prepare data for charts (reverse to show oldest first)
-  // Filter out 0/null values for quality and tep - they shouldn't be displayed
+  // Filter out 0/null values for quality - they shouldn't be displayed
   const chartData: ChartDataPoint[] = [...filteredData].reverse().map(sleep => {
     const kvalitaValue = sleep.quality && sleep.quality > 0 ? sleep.quality : undefined;
     const tepValue = sleep.hr_lowest && sleep.hr_lowest > 0 ? sleep.hr_lowest : undefined;
+    const sourceLabel = sleep.source || 'Neznámý';
     
     const base: ChartDataPoint = {
       date: new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
-      source: sleep.source || undefined,
+      source: sourceLabel,
       celkem: sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0,
       hluboky: sleep.deep_sleep_minutes ? Math.round(sleep.deep_sleep_minutes / 60 * 10) / 10 : 0,
       lehky: sleep.light_sleep_minutes ? Math.round(sleep.light_sleep_minutes / 60 * 10) / 10 : 0,
@@ -108,18 +113,16 @@ export const SleepCharts = () => {
       tep: tepValue as number,
     };
     // Add source-specific keys for multi-source display
-    if (sleep.source) {
-      base[`celkem_${sleep.source}`] = base.celkem;
-      if (kvalitaValue) base[`kvalita_${sleep.source}`] = kvalitaValue;
-      if (tepValue) base[`tep_${sleep.source}`] = tepValue;
-    }
+    base[`celkem_${sourceLabel}`] = base.celkem;
+    if (kvalitaValue) base[`kvalita_${sourceLabel}`] = kvalitaValue;
+    if (tepValue) base[`tep_${sourceLabel}`] = tepValue;
     return base;
   });
 
-  // Create merged data for multi-source charts
   const mergedChartData = selectedSource === 'all' && availableSources.length > 1
     ? [...sleepData].reverse().reduce((acc: ChartDataPoint[], sleep) => {
         const dateStr = new Date(sleep.sleep_date).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
+        const sourceLabel = sleep.source || 'Neznámý';
         let existing = acc.find(d => d.date === dateStr);
         if (!existing) {
           existing = {
@@ -134,15 +137,13 @@ export const SleepCharts = () => {
           };
           acc.push(existing);
         }
-        if (sleep.source) {
-          existing[`celkem_${sleep.source}`] = sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0;
-          // Only add kvalita and tep if they have valid (non-zero) values
-          if (sleep.quality && sleep.quality > 0) {
-            existing[`kvalita_${sleep.source}`] = sleep.quality;
-          }
-          if (sleep.hr_lowest && sleep.hr_lowest > 0) {
-            existing[`tep_${sleep.source}`] = sleep.hr_lowest;
-          }
+        existing[`celkem_${sourceLabel}`] = sleep.duration_minutes ? Math.round(sleep.duration_minutes / 60 * 10) / 10 : 0;
+        // Only add kvalita if it has valid (non-zero) value
+        if (sleep.quality && sleep.quality > 0) {
+          existing[`kvalita_${sourceLabel}`] = sleep.quality;
+        }
+        if (sleep.hr_lowest && sleep.hr_lowest > 0) {
+          existing[`tep_${sourceLabel}`] = sleep.hr_lowest;
         }
         return acc;
       }, [])
@@ -250,11 +251,11 @@ export const SleepCharts = () => {
       <Card>
         <CardHeader>
           <CardTitle>Kvalita spánku</CardTitle>
-          <CardDescription>Hodnocení kvality spánku (0-9)</CardDescription>
+          <CardDescription>Hodnocení kvality spánku dle zdroje</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={showMultiSource ? mergedChartData : chartData}>
+            <LineChart data={mergedChartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-xs" />
               <YAxis className="text-xs" domain={[0, 'auto']} />
@@ -264,33 +265,25 @@ export const SleepCharts = () => {
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px'
                 }}
+                formatter={(value: number, name: string) => {
+                  const sourceName = name.replace('Kvalita ', '');
+                  return [value, `${sourceName}`];
+                }}
               />
               <Legend />
-              {showMultiSource ? (
-                availableSources.map(source => (
-                  <Line 
-                    key={`kvalita_${source}`}
-                    type="monotone" 
-                    dataKey={`kvalita_${source}`}
-                    stroke={getSourceColor(source)}
-                    name={`Kvalita ${source}`}
-                    strokeWidth={3}
-                    dot={{ fill: getSourceColor(source), r: 4 }}
-                    activeDot={{ r: 6 }}
-                    connectNulls
-                  />
-                ))
-              ) : (
+              {availableSources.map(source => (
                 <Line 
+                  key={`kvalita_${source}`}
                   type="monotone" 
-                  dataKey="kvalita" 
-                  stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))"}
-                  name="Kvalita (0-9)"
+                  dataKey={`kvalita_${source}`}
+                  stroke={getSourceColor(source)}
+                  name={`Kvalita ${source}`}
                   strokeWidth={3}
-                  dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))", r: 4 }}
+                  dot={{ fill: getSourceColor(source), r: 4 }}
                   activeDot={{ r: 6 }}
+                  connectNulls
                 />
-              )}
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
