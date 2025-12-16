@@ -249,16 +249,15 @@ export const SleepCharts = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Kvalita spánku a klidový tep</CardTitle>
-          <CardDescription>Hodnocení kvality a nejnižší tepová frekvence</CardDescription>
+          <CardTitle>Kvalita spánku</CardTitle>
+          <CardDescription>Hodnocení kvality spánku (0-100)</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={showMultiSource ? mergedChartData : chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-xs" />
-              <YAxis yAxisId="left" className="text-xs" />
-              <YAxis yAxisId="right" orientation="right" className="text-xs" />
+              <YAxis className="text-xs" domain={[0, 100]} />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--background))',
@@ -268,10 +267,9 @@ export const SleepCharts = () => {
               />
               <Legend />
               {showMultiSource ? (
-                availableSources.flatMap(source => [
+                availableSources.map(source => (
                   <Line 
                     key={`kvalita_${source}`}
-                    yAxisId="left"
                     type="monotone" 
                     dataKey={`kvalita_${source}`}
                     stroke={getSourceColor(source)}
@@ -280,44 +278,18 @@ export const SleepCharts = () => {
                     dot={{ fill: getSourceColor(source), r: 4 }}
                     activeDot={{ r: 6 }}
                     connectNulls
-                  />,
-                  <Line 
-                    key={`tep_${source}`}
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey={`tep_${source}`}
-                    stroke={getSourceColor(source)}
-                    strokeDasharray="5 5"
-                    name={`Tep ${source}`}
-                    strokeWidth={2}
-                    dot={{ fill: getSourceColor(source), r: 3 }}
-                    activeDot={{ r: 5 }}
-                    connectNulls
                   />
-                ])
+                ))
               ) : (
-                <>
-                  <Line 
-                    yAxisId="left"
-                    type="monotone" 
-                    dataKey="kvalita" 
-                    stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))"}
-                    name="Kvalita (0-100)"
-                    strokeWidth={3}
-                    dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                  <Line 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="tep" 
-                    stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-2))"}
-                    name="Nejnižší tep (bpm)"
-                    strokeWidth={3}
-                    dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-2))", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </>
+                <Line 
+                  type="monotone" 
+                  dataKey="kvalita" 
+                  stroke={selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))"}
+                  name="Kvalita (0-100)"
+                  strokeWidth={3}
+                  dot={{ fill: selectedSource !== 'all' ? getSourceColor(selectedSource) : "hsl(var(--chart-1))", r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
               )}
             </LineChart>
           </ResponsiveContainer>
