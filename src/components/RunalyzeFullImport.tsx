@@ -153,19 +153,20 @@ export const RunalyzeFullImport = ({ onComplete }: { onComplete?: () => void }) 
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-          await supabase.from('body_composition').upsert({
+          const timeValue = row.time || '00:00';
+          const { error } = await supabase.from('body_composition').upsert({
             user_id: user.id,
             date: row.date,
-            time: row.time,
+            time: timeValue,
             weight_kg: parseFloat(row.weight),
             fat_percentage: row.fatPercentage ? parseFloat(row.fatPercentage) : null,
             water_percentage: row.waterPercentage ? parseFloat(row.waterPercentage) : null,
             muscle_percentage: row.musclePercentage ? parseFloat(row.musclePercentage) : null,
             bone_percentage: row.bonePercentage ? parseFloat(row.bonePercentage) : null
           }, {
-            ignoreDuplicates: false
+            onConflict: 'user_id,date,time'
           });
-          importedStats.weight++;
+          if (!error) importedStats.weight++;
         }
       }
       filesProcessed++;

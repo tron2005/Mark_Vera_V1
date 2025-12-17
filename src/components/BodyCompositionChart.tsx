@@ -77,10 +77,13 @@ export const BodyCompositionChart = () => {
       if (!user) throw new Error("Nepřihlášen");
 
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const timeValue = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       
       const record: any = {
         user_id: user.id,
         date: today,
+        time: timeValue,
         weight_kg: weight
       };
 
@@ -94,7 +97,7 @@ export const BodyCompositionChart = () => {
 
       const { error } = await supabase
         .from("body_composition")
-        .upsert(record, { onConflict: 'user_id,date' });
+        .upsert(record, { onConflict: 'user_id,date,time' });
 
       if (error) throw error;
 
