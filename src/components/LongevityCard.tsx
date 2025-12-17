@@ -51,11 +51,20 @@ export const LongevityCard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Načíst profil s věkem, váhou, výškou, pohlavím
+      // Načíst profil s věkem, výškou, pohlavím
       const { data: profile } = await supabase
         .from("profiles")
         .select("age, weight_kg, height_cm, gender, bmr")
         .eq("user_id", user.id)
+        .maybeSingle();
+
+      // Načíst aktuální váhu z body_composition (nejnovější záznam)
+      const { data: latestWeight } = await supabase
+        .from("body_composition")
+        .select("weight_kg")
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       // Načíst poslední klidovou tepovou frekvenci
@@ -128,7 +137,8 @@ export const LongevityCard = () => {
       const chronologicalAge = profile?.age || null;
       const rhr = restingHR?.heart_rate || null;
       const hrv = hrvData?.hrv || null;
-      const weight = profile?.weight_kg || null;
+      // Použít váhu z body_composition, fallback na profil
+      const weight = latestWeight?.weight_kg ? Number(latestWeight.weight_kg) : (profile?.weight_kg || null);
       const height = profile?.height_cm || null;
       const gender = profile?.gender || null;
 
