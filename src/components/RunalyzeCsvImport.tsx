@@ -76,22 +76,27 @@ export const RunalyzeCsvImport = ({ onComplete }: { onComplete?: () => void }) =
       }
 
       try {
-        await supabase.from('body_composition').upsert({
+        const timeValue = row.time || '00:00';
+        const { error } = await supabase.from('body_composition').upsert({
           user_id: userId,
           date: row.date,
-          time: row.time || null,
+          time: timeValue,
           weight_kg: parseFloat(row.weight),
           fat_percentage: row.fatPercentage ? parseFloat(row.fatPercentage) : null,
           water_percentage: row.waterPercentage ? parseFloat(row.waterPercentage) : null,
           muscle_percentage: row.musclePercentage ? parseFloat(row.musclePercentage) : null,
           bone_percentage: row.bonePercentage ? parseFloat(row.bonePercentage) : null
         }, {
-          onConflict: 'user_id,date'
+          onConflict: 'user_id,date,time'
         });
-        imported++;
+        if (error) {
+          console.error('Error upserting weight:', error);
+          skipped++;
+        } else {
+          imported++;
+        }
       } catch (error) {
         console.error('Error importing weight row:', error);
-        skipped++;
       }
     }
 
