@@ -69,23 +69,40 @@ export const WeightChart = () => {
         return dataPoint;
       });
 
-      // If we have a plan, ensure planned line shows for today even if no weight data today
+      // If we have a plan, generate complete planned line from start to target date
       let chartData = weightDataPoints;
-      if (activePlan && weightDataPoints.length > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const lastDataDate = weightDataPoints[weightDataPoints.length - 1]?.fullDate;
+      if (activePlan) {
+        const startDate = new Date(activePlan.start_date);
+        const targetDate = new Date(activePlan.target_date);
+        const today = new Date();
+        const endDate = today < targetDate ? today : targetDate;
         
-        // Add today's planned point if not already in data
-        if (lastDataDate && lastDataDate < today) {
-          const plannedToday = calculatePlannedWeight(today, activePlan);
-          if (plannedToday !== null) {
-            chartData = [...weightDataPoints, {
-              date: new Date(today).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
-              fullDate: today,
-              planned: plannedToday.toFixed(1)
-            }];
+        // Create a map of existing dates
+        const existingDates = new Set(weightDataPoints.map((p: any) => p.fullDate));
+        
+        // Generate planned points for dates not in weight data
+        const plannedPoints: any[] = [];
+        const currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          if (!existingDates.has(dateStr)) {
+            const plannedWeight = calculatePlannedWeight(dateStr, activePlan);
+            if (plannedWeight !== null) {
+              plannedPoints.push({
+                date: currentDate.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
+                fullDate: dateStr,
+                planned: plannedWeight.toFixed(1)
+              });
+            }
           }
+          currentDate.setDate(currentDate.getDate() + 1);
         }
+        
+        // Merge and sort by date
+        chartData = [...weightDataPoints, ...plannedPoints].sort((a, b) => 
+          new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()
+        );
       }
 
       setData(chartData);

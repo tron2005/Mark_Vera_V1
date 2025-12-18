@@ -92,6 +92,54 @@ export type Database = {
         }
         Relationships: []
       }
+      calorie_entries: {
+        Row: {
+          calories: number
+          carbs: number | null
+          created_at: string
+          entry_date: string
+          fat: number | null
+          fiber: number | null
+          id: string
+          meal_name: string
+          protein: number | null
+          salt: number | null
+          source: string | null
+          sugar: number | null
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          carbs?: number | null
+          created_at?: string
+          entry_date: string
+          fat?: number | null
+          fiber?: number | null
+          id?: string
+          meal_name: string
+          protein?: number | null
+          salt?: number | null
+          source?: string | null
+          sugar?: number | null
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          carbs?: number | null
+          created_at?: string
+          entry_date?: string
+          fat?: number | null
+          fiber?: number | null
+          id?: string
+          meal_name?: string
+          protein?: number | null
+          salt?: number | null
+          source?: string | null
+          sugar?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string | null
