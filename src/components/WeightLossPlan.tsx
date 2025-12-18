@@ -70,7 +70,7 @@ export const WeightLossPlan = () => {
         setPauses(pauseData || []);
       }
 
-      // Load current weight from body_composition
+      // Load current weight from body_composition, fallback to profiles
       const { data: weightData } = await supabase
         .from('body_composition')
         .select('weight_kg, date')
@@ -81,6 +81,17 @@ export const WeightLossPlan = () => {
 
       if (weightData) {
         setCurrentWeight(Number(weightData.weight_kg));
+      } else {
+        // Fallback to profiles.weight_kg
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('weight_kg')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (profileData?.weight_kg) {
+          setCurrentWeight(Number(profileData.weight_kg));
+        }
       }
     } catch (error) {
       console.error('Error loading weight loss plan:', error);
