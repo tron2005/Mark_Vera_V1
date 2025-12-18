@@ -299,14 +299,23 @@ export const CalorieImport = () => {
           .lte("created_at", endOfDay);
       }
       
-      const notes = dayResult.meals.map(meal => ({
+      const entries = dayResult.meals.map(meal => ({
         user_id: user.id,
-        text: `${meal.name}: ${meal.calories} kcal`,
-        category: "calories",
-        created_at: targetDateTime
+        entry_date: targetDate,
+        meal_name: meal.name,
+        calories: meal.calories,
+        protein: meal.protein || 0,
+        carbs: meal.carbs || 0,
+        fat: meal.fat || 0,
+        sugar: meal.sugar || 0,
+        fiber: meal.fiber || 0,
+        salt: meal.salt || 0,
+        source: 'kaloricke_tabulky'
       }));
       
-      const { error } = await supabase.from("notes").insert(notes);
+      const { error } = await supabase.from("calorie_entries").upsert(entries, {
+        onConflict: 'user_id,entry_date,meal_name'
+      });
       if (error) throw error;
       
       const dateStr = new Date(targetDate).toLocaleDateString('cs-CZ');
@@ -342,14 +351,23 @@ export const CalorieImport = () => {
         const targetDate = dayResult.date || new Date().toISOString().split('T')[0];
         const targetDateTime = new Date(`${targetDate}T12:00:00`).toISOString();
         
-        const notes = dayResult.meals.map(meal => ({
+        const entries = dayResult.meals.map(meal => ({
           user_id: user.id,
-          text: `${meal.name}: ${meal.calories} kcal`,
-          category: "calories",
-          created_at: targetDateTime
+          entry_date: targetDate,
+          meal_name: meal.name,
+          calories: meal.calories,
+          protein: meal.protein || 0,
+          carbs: meal.carbs || 0,
+          fat: meal.fat || 0,
+          sugar: meal.sugar || 0,
+          fiber: meal.fiber || 0,
+          salt: meal.salt || 0,
+          source: 'kaloricke_tabulky'
         }));
         
-        const { error } = await supabase.from("notes").insert(notes);
+        const { error } = await supabase.from("calorie_entries").upsert(entries, {
+          onConflict: 'user_id,entry_date,meal_name'
+        });
         if (error) throw error;
         
         savedCount++;
