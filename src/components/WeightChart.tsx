@@ -51,7 +51,8 @@ export const WeightChart = () => {
       const activePlan = planResult.data;
       setPlan(activePlan);
 
-      const chartData = (weightResult.data || []).map((item: any) => {
+      // Build chart data with actual weights
+      const weightDataPoints = (weightResult.data || []).map((item: any) => {
         const dataPoint: any = {
           date: new Date(item.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
           fullDate: item.date,
@@ -67,6 +68,25 @@ export const WeightChart = () => {
 
         return dataPoint;
       });
+
+      // If we have a plan, ensure planned line shows for today even if no weight data today
+      let chartData = weightDataPoints;
+      if (activePlan && weightDataPoints.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const lastDataDate = weightDataPoints[weightDataPoints.length - 1]?.fullDate;
+        
+        // Add today's planned point if not already in data
+        if (lastDataDate && lastDataDate < today) {
+          const plannedToday = calculatePlannedWeight(today, activePlan);
+          if (plannedToday !== null) {
+            chartData = [...weightDataPoints, {
+              date: new Date(today).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
+              fullDate: today,
+              planned: plannedToday.toFixed(1)
+            }];
+          }
+        }
+      }
 
       setData(chartData);
     } catch (error) {
