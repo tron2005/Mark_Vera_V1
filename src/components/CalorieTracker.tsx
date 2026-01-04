@@ -7,13 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Utensils, Plus, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface CalorieEntry {
   id: string;
   user_id: string;
-  date: string;
+  entry_date: string;
   meal_name: string;
   calories: number;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  sugar: number | null;
+  fiber: number | null;
+  salt: number | null;
   created_at: string;
 }
 
@@ -47,33 +54,18 @@ export const CalorieTracker = () => {
         setDailyGoal(Math.round(profile.bmr * 1.3)); // Light activity multiplier
       }
 
-      // Load today's calorie entries
+      // Load today's calorie entries from calorie_entries table
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from("notes")
+        .from("calorie_entries")
         .select("*")
         .eq("user_id", user.id)
-        .eq("category", "calories")
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`)
+        .eq("entry_date", today)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Parse notes to extract calorie entries
-      const parsedEntries: CalorieEntry[] = (data || []).map((note: any) => {
-        const match = note.text.match(/^(.+?):\s*(\d+)\s*kcal$/);
-        return {
-          id: note.id,
-          user_id: note.user_id,
-          date: note.created_at,
-          meal_name: match ? match[1] : note.text,
-          calories: match ? parseInt(match[2]) : 0,
-          created_at: note.created_at
-        };
-      });
-
-      setEntries(parsedEntries);
+      setEntries(data || []);
     } catch (error) {
       console.error("Chyba při načítání kalorií:", error);
     } finally {
@@ -93,12 +85,16 @@ export const CalorieTracker = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const today = new Date().toISOString().split('T')[0];
+
       const { error } = await supabase
-        .from("notes")
+        .from("calorie_entries")
         .insert({
           user_id: user.id,
-          text: `${mealName}: ${calories} kcal`,
-          category: "calories"
+          entry_date: today,
+          meal_name: mealName,
+          calories: parseInt(calories),
+          source: 'manual'
         });
 
       if (error) throw error;
@@ -117,7 +113,7 @@ export const CalorieTracker = () => {
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
-        .from("notes")
+        .from("calorie_entries")
         .delete()
         .eq("id", id);
 
@@ -133,6 +129,19 @@ export const CalorieTracker = () => {
 
   const totalCalories = entries.reduce((sum, entry) => sum + entry.calories, 0);
   const progressPercent = Math.min((totalCalories / dailyGoal) * 100, 100);
+
+  // Calculate macros totals
+  const totalProtein = entries.reduce((sum, entry) => sum + (entry.protein || 0), 0);
+  const totalCarbs = entries.reduce((sum, entry) => sum + (entry.carbs || 0), 0);
+  const totalFat = entries.reduce((sum, entry) => sum + (entry.fat || 0), 0);
+  const hasMacros = totalProtein > 0 || totalCarbs > 0 || totalFat > 0;
+
+  // Pie chart data
+  const macroData = [
+    { name: 'Bílkoviny', value: totalProtein, color: 'hsl(var(--chart-1))' },
+    { name: 'Sacharidy', value: totalCarbs, color: 'hsl(var(--chart-2))' },
+    { name: 'Tuky', value: totalFat, color: 'hsl(var(--chart-3))' },
+  ].filter(item => item.value > 0);
 
   if (loading) {
     return (
@@ -207,6 +216,51 @@ export const CalorieTracker = () => {
           )}
         </div>
 
+        {/* Macros Pie Chart */}
+        {hasMacros && (
+          <div className="space-y-2 pt-2 border-t">
+            <h4 className="text-sm font-medium">Makroživiny</h4>
+            <div className="flex items-center gap-4">
+              <div className="w-32 h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={macroData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={25}
+                      outerRadius={45}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {macroData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [`${value.toFixed(1)} g`, '']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-1))' }} />
+                  <span>Bílkoviny: <strong>{totalProtein.toFixed(1)} g</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-2))' }} />
+                  <span>Sacharidy: <strong>{totalCarbs.toFixed(1)} g</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-3))' }} />
+                  <span>Tuky: <strong>{totalFat.toFixed(1)} g</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {entries.length > 0 ? (
           <div className="space-y-2">
             {entries.map((entry) => (
@@ -215,6 +269,11 @@ export const CalorieTracker = () => {
                   <div className="font-medium">{entry.meal_name}</div>
                   <div className="text-sm text-muted-foreground">
                     {new Date(entry.created_at).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
+                    {(entry.protein || entry.carbs || entry.fat) && (
+                      <span className="ml-2">
+                        B: {entry.protein || 0}g | S: {entry.carbs || 0}g | T: {entry.fat || 0}g
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
