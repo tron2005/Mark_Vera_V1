@@ -420,10 +420,12 @@ export type Database = {
           age: number | null
           bmi: number | null
           bmr: number | null
+          carbs_goal_g: number | null
           created_at: string | null
           custom_instructions: string | null
           display_name: string | null
           email: string | null
+          fat_goal_g: number | null
           garmin_access_token: string | null
           garmin_refresh_token: string | null
           garmin_token_expiry: string | null
@@ -434,6 +436,7 @@ export type Database = {
           height_cm: number | null
           id: string
           preferred_mode: string | null
+          protein_goal_g: number | null
           strava_access_token: string | null
           strava_refresh_token: string | null
           strava_token_expiry: string | null
@@ -448,10 +451,12 @@ export type Database = {
           age?: number | null
           bmi?: number | null
           bmr?: number | null
+          carbs_goal_g?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          fat_goal_g?: number | null
           garmin_access_token?: string | null
           garmin_refresh_token?: string | null
           garmin_token_expiry?: string | null
@@ -462,6 +467,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          protein_goal_g?: number | null
           strava_access_token?: string | null
           strava_refresh_token?: string | null
           strava_token_expiry?: string | null
@@ -476,10 +482,12 @@ export type Database = {
           age?: number | null
           bmi?: number | null
           bmr?: number | null
+          carbs_goal_g?: number | null
           created_at?: string | null
           custom_instructions?: string | null
           display_name?: string | null
           email?: string | null
+          fat_goal_g?: number | null
           garmin_access_token?: string | null
           garmin_refresh_token?: string | null
           garmin_token_expiry?: string | null
@@ -490,6 +498,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          protein_goal_g?: number | null
           strava_access_token?: string | null
           strava_refresh_token?: string | null
           strava_token_expiry?: string | null
