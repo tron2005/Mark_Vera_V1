@@ -13,10 +13,10 @@ serve(async (req) => {
 
   try {
     const { messages, mode, conversationId } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY není nakonfigurován");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY není nakonfigurován");
     }
 
     // Inicializace Supabase klienta
@@ -133,6 +133,30 @@ serve(async (req) => {
               date: { type: "string", description: "Datum ve formátu YYYY-MM-DD (např. 2025-11-13)" },
               days_ahead: { type: "number", description: "Kolik dní dopředu zahrnout (např. 1 pro zítřek, 7 pro tento týden)" }
             },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "log_food_item",
+          description: "Zaznamená snědené jídlo do deníku. Použij VŽDY, když uživatel zmiňuje jídlo, kalorie nebo importuje jídelníček. NIKDY nepoužívej add_note pro jídlo.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Název jídla" },
+              calories: { type: "number", description: "Kalorie (kcal)" },
+              protein: { type: "number", description: "Bílkoviny (g)" },
+              carbs: { type: "number", description: "Sacharidy (g)" },
+              fat: { type: "number", description: "Tuky (g)" },
+              meal_type: {
+                type: "string",
+                enum: ["breakfast", "lunch", "dinner", "snack"],
+                description: "Typ jídla (snídaně, oběd, večeře, svačina) - odhadni podle času nebo kontextu"
+              }
+            },
+            required: ["name"],
             additionalProperties: false
           }
         }
@@ -521,7 +545,7 @@ serve(async (req) => {
     let fitnessContext = "";
     if (trainerEnabled) {
       const currentYear = new Date().getFullYear();
-      
+
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
       let profileInfo = "";
       if (userWeight || userAge || userHeight || userBmi || userBmr) {
@@ -533,15 +557,15 @@ serve(async (req) => {
         if (userBmi) profileInfo += `\n- BMI: ${Number(userBmi).toFixed(1)}`;
         if (userBmr) profileInfo += `\n- BMR (bazální metabolismus): ${Math.round(userBmr)} kcal/den`;
       }
-      
-      const stravaInfo = hasStravaConnected 
+
+      const stravaInfo = hasStravaConnected
         ? `- Analyzovat tréninky a výkony ze Stravy\n- Doporučit trénink podle počasí a zdravotního stavu\n\n⚠️ KRITICKY DŮLEŽITÉ: Při volání get_strava_activities s Unix timestampy VŽDY používej rok ${currentYear}!\nPříklad: Pro "poslední týden" v roce ${currentYear} převeď data jako ${currentYear}-XX-XX, ne ${currentYear - 1}-XX-XX!\n`
         : '';
-      
-      const availableTools = hasStravaConnected 
+
+      const availableTools = hasStravaConnected
         ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email'
         : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email';
-      
+
       fitnessContext = `
       
 🏃‍♂️ FITNESS TRENÉR: Jsi aktivní fitness trenér s přístupem ke zdravotním datům. Můžeš:
@@ -571,10 +595,10 @@ DŮLEŽITÉ:
 
     // Aktuální datum a čas
     const now = new Date();
-    const currentDateTime = now.toLocaleString('cs-CZ', { 
+    const currentDateTime = now.toLocaleString('cs-CZ', {
       timeZone: 'Europe/Prague',
       year: 'numeric',
-      month: 'long', 
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -605,7 +629,9 @@ Příklady příkazů, které MUSÍ vyvolat create_calendar_event:
 - "upomeň mě v pondělí ráno" → create_calendar_event(summary="Upomínka", start="2025-11-18T09:00:00")
 
 Umíš spravovat poznámky uživatele pomocí nástrojů:
+
 - add_note: Pro uložení nové poznámky (s možností nastavit termín dokončení, místo, upomínku a opakování)
+- log_food_item: Pro záznam jídla a kalorií do deníku (použij VŽDY pro jídlo místo add_note)
 - get_notes: Pro zobrazení poznámek
 - delete_note: Pro smazání poznámky
 - get_notes_by_date: Pro zobrazení poznámek s termínem na konkrétní den (např. "co mám zítra", "co mám tento týden")
@@ -618,7 +644,7 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - search_gmail: Pro vyhledávání a čtení emailů v Gmail účtu uživatele
 - web_search: Pro vyhledání aktuálních informací, článků, zpráv, doporučení filmů, seriálů, knih a dalšího
 
-Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání statistik emailem (např. "pošli mi jak jsem spal poslední týden") použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledávání v emailech (např. "najdi emaily od banky", "co mi přišlo od Petra") použij search_gmail. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search.`
+Když se uživatel ptá na plány (např. "co mám zítra", "co mám naplánováno"), použij get_notes_by_date nebo list_calendar_events. Pro sumár použij create_summary. Pro přeplánování použij reschedule_note. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání statistik emailem (např. "pošli mi jak jsem spal poslední týden") použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledávání v emailech (např. "najdi emaily od banky", "co mi přišlo od Petra") použij search_gmail. Když se ptá na doporučení filmů/seriálů/článků nebo chce aktuální informace, použij web_search. Pro záznam jídla (např. "snědl jsem jablko") použij log_food_item.`
       : `⏰ AKTUÁLNÍ DATUM A ČAS: ${currentDateTime} (${currentDateISO})
 📅 ROK: ${currentYear} - DŮLEŽITÉ: Při práci s daty VŽDY používej rok ${currentYear}!
 
@@ -626,22 +652,23 @@ Jsi M.A.R.K. (My Assistant Raspberry Kit) - základní hlasový asistent. Mluví
 
 DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživatel ptá "o čem jsme si říkali", "co jsme dnes řešili" nebo podobně, odkaž se na předchozí zprávy v této konverzaci. Pamatuješ si vše, o čem jste spolu mluvili.
 
-ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note.
+ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note. Pokud je na fotce jídlo, použij log_food_item.
 
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search.`;
-    
+Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search. Pro jídlo použij log_food_item.`;
+
+
     // Přidat kontext o uživateli
     if (userDescription) {
       systemPrompt += `\n\n👤 O UŽIVATELI:\n${userDescription}`;
     }
-    
+
     // Přidat fitness kontext
     if (fitnessContext) {
       systemPrompt += fitnessContext;
     }
-    
+
     if (customInstructions) {
       systemPrompt += `\n\nVlastní instrukce od uživatele: ${customInstructions}`;
     }
@@ -658,7 +685,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         .eq("conversation_id", conversationId)
         .gte("created_at", fiveDaysAgoIso)
         .order("created_at", { ascending: true });
-      
+
       conversationHistory = dbMessages || [];
       console.log(`Loaded ${conversationHistory.length} messages from conversation history (since ${fiveDaysAgoIso})`);
     }
@@ -826,14 +853,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
       shouldForceRaceGoal,
     });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           ...formattedMessages,
@@ -842,14 +869,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
         tool_choice: shouldForceCalendar
           ? { type: "function", function: { name: "create_calendar_event" } }
           : shouldForceRaceGoal
-          ? { type: "function", function: { name: "add_race_goal" } }
-          : shouldForceStrava
-          ? { type: "function", function: { name: "get_strava_activities" } }
-          : shouldForceSleep
-          ? { type: "function", function: { name: "get_sleep_data" } }
-          : shouldForceGmail
-          ? { type: "function", function: { name: "search_gmail" } }
-          : "auto",
+            ? { type: "function", function: { name: "add_race_goal" } }
+            : shouldForceStrava
+              ? { type: "function", function: { name: "get_strava_activities" } }
+              : shouldForceSleep
+                ? { type: "function", function: { name: "get_sleep_data" } }
+                : shouldForceGmail
+                  ? { type: "function", function: { name: "search_gmail" } }
+                  : "auto",
         stream: true,
       }),
     });
@@ -905,7 +932,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               } else {
                 const eventLink = (calResp.data as any)?.eventLink;
                 const created = new Date(startIso).toLocaleString("cs-CZ");
-                text = eventLink 
+                text = eventLink
                   ? `Událost "${summary}" vytvořena v Google Kalendáři (${created}). Odkaz: ${eventLink}`
                   : `Událost "${summary}" vytvořena v Google Kalendáři (${created}).`;
               }
@@ -952,7 +979,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       throw new Error("Chyba AI Gateway");
@@ -1031,7 +1058,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 hour = parseInt(timeMatch[1], 10);
                 if (timeMatch[3]) minute = parseInt(timeMatch[3], 10) || 0;
               }
-              
+
               // Create Prague local time string without timezone
               const year = base.getFullYear();
               const month = String(base.getMonth() + 1).padStart(2, '0');
@@ -1072,7 +1099,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
               } else {
                 const eventLink = (calResp.data as any)?.eventLink;
-                const note = eventLink 
+                const note = eventLink
                   ? `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}). [Zobrazit v kalendáři](${eventLink})`
                   : `Událost \"${summary}\" vytvořena v Google Kalendáři (${new Date(startIso).toLocaleString("cs-CZ")}).`;
                 fullResponse += `\n\n${note}`;
@@ -1124,11 +1151,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
           if (toolCalls.length === 0 && shouldForceStrava && hasStravaConnected) {
             try {
               console.log("Strava fallback triggered for last 7 days");
-              
+
               // Čtení dat z databáze místo volání Strava API
               const beforeDate = new Date(Number(stravaBeforeTs) * 1000).toISOString();
               const afterDate = new Date(Number(stravaAfterTs) * 1000).toISOString();
-              
+
               const { data: activities, error: dbError } = await supabase
                 .from("strava_activities")
                 .select("*")
@@ -1196,7 +1223,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   return `${i + 1}. ${date}: ${hours}h ${mins}min (kvalita: ${qual}/10)`;
                 }).join("\n");
 
-                const msg = `😴 Spánek (posledních 7 nocí):\n\nPrůměr: ${Math.floor(avgDuration/60)}h ${avgDuration%60}min\n\n${formatted}`;
+                const msg = `😴 Spánek (posledních 7 nocí):\n\nPrůměr: ${Math.floor(avgDuration / 60)}h ${avgDuration % 60}min\n\n${formatted}`;
                 const delta = {
                   id: crypto.randomUUID(),
                   model: "internal",
@@ -1214,7 +1241,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
 
           if (toolCalls.length > 0) {
             console.log("Processing tool calls:", toolCalls);
-            
+
             const toolMessages = [];
             for (const tc of toolCalls) {
               if (!tc.name) continue;
@@ -1240,7 +1267,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   if (args.category) query = query.eq("category", args.category);
                   if (args.important_only) query = query.eq("is_important", true);
                   const { data, error } = await query.order("created_at", { ascending: false });
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1254,8 +1281,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       if (note.recurrence) details += `\n   🔄 Opakování: ${note.recurrence}`;
                       return details;
                     }).join("\n\n");
-                    result = { 
-                      message: `Máš celkem ${data.length} poznámek:\n\n${notesList}` 
+                    result = {
+                      message: `Máš celkem ${data.length} poznámek:\n\n${notesList}`
                     };
                   }
                 } else if (tc.name === "delete_note") {
@@ -1264,7 +1291,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .select("*")
                     .eq("user_id", userId)
                     .ilike("text", `%${args.text_contains}%`);
-                  
+
                   if (notes && notes.length > 0) {
                     const { error } = await supabase.from("notes").delete().eq("id", notes[0].id);
                     result = error ? { error: error.message } : { success: true, message: "Poznámka byla smazána" };
@@ -1274,14 +1301,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_notes_by_date") {
                   const targetDate = args.date ? new Date(args.date) : new Date();
                   const daysAhead = args.days_ahead || 0;
-                  
+
                   const startDate = new Date(targetDate);
                   startDate.setHours(0, 0, 0, 0);
-                  
+
                   const endDate = new Date(targetDate);
                   endDate.setDate(endDate.getDate() + daysAhead);
                   endDate.setHours(23, 59, 59, 999);
-                  
+
                   const { data, error } = await supabase
                     .from("notes")
                     .select("*")
@@ -1289,11 +1316,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .gte("due_date", startDate.toISOString())
                     .lte("due_date", endDate.toISOString())
                     .order("due_date", { ascending: true });
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
-                    const dateStr = daysAhead === 0 
+                    const dateStr = daysAhead === 0
                       ? new Date(targetDate).toLocaleDateString("cs-CZ")
                       : `od ${new Date(startDate).toLocaleDateString("cs-CZ")} do ${new Date(endDate).toLocaleDateString("cs-CZ")}`;
                     result = { message: `Pro období ${dateStr} nemáš žádné naplánované poznámky.` };
@@ -1305,19 +1332,19 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       if (note.category) details += ` [${note.category}]`;
                       return details;
                     }).join("\n");
-                    result = { 
-                      message: `Máš naplánováno ${data.length} úkolů:\n\n${notesList}` 
+                    result = {
+                      message: `Máš naplánováno ${data.length} úkolů:\n\n${notesList}`
                     };
                   }
                 } else if (tc.name === "create_summary") {
                   let query = supabase.from("notes").select("*").eq("user_id", userId);
-                  
+
                   if (!args.include_all) {
                     query = query.not("due_date", "is", null);
                   }
-                  
+
                   const { data, error } = await query.order("due_date", { ascending: true, nullsFirst: false });
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1329,9 +1356,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       if (!byCategory[cat]) byCategory[cat] = [];
                       byCategory[cat].push(note);
                     });
-                    
+
                     let summary = `📊 SUMÁR POZNÁMEK (celkem ${data.length}):\n\n`;
-                    
+
                     Object.keys(byCategory).forEach(cat => {
                       summary += `\n${cat.toUpperCase()} (${byCategory[cat].length}):\n`;
                       byCategory[cat].forEach((note: any, idx: number) => {
@@ -1341,7 +1368,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         summary += "\n";
                       });
                     });
-                    
+
                     result = { message: summary };
                   }
                 } else if (tc.name === "reschedule_note") {
@@ -1350,20 +1377,20 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .select("*")
                     .eq("user_id", userId)
                     .ilike("text", `%${args.text_contains}%`);
-                  
+
                   if (notes && notes.length > 0) {
                     const { error } = await supabase
                       .from("notes")
                       .update({ due_date: args.new_due_date })
                       .eq("id", notes[0].id);
-                    
+
                     if (error) {
                       result = { error: error.message };
                     } else {
                       const newDate = new Date(args.new_due_date).toLocaleString("cs-CZ");
-                      result = { 
-                        success: true, 
-                        message: `Poznámka "${notes[0].text}" byla přeplánována na ${newDate}` 
+                      result = {
+                        success: true,
+                        message: `Poznámka "${notes[0].text}" byla přeplánována na ${newDate}`
                       };
                     }
                   } else {
@@ -1371,16 +1398,16 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   }
                 } else if (tc.name === "send_notes_email") {
                   const args = JSON.parse(tc.arguments);
-                  
+
                   // Get user's email from profile
                   const { data: profile } = await supabase
                     .from("profiles")
                     .select("email")
                     .eq("user_id", userId)
                     .single();
-                  
+
                   const recipientEmail = args.recipientEmail || profile?.email;
-                  
+
                   if (!recipientEmail) {
                     result = { error: "Email adresa není nastavena v profilu" };
                   } else {
@@ -1401,9 +1428,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       if (emailResponse.error) {
                         result = { error: emailResponse.error.message };
                       } else {
-                        result = { 
-                          success: true, 
-                          message: `Email odeslán na ${recipientEmail}` 
+                        result = {
+                          success: true,
+                          message: `Email odeslán na ${recipientEmail}`
                         };
                       }
                     } catch (error: any) {
@@ -1413,17 +1440,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "send_stats_email") {
                   const args = JSON.parse(tc.arguments);
                   console.log("send_stats_email called with args:", args);
-                  
+
                   // Get user's email from profile
                   const { data: profile } = await supabase
                     .from("profiles")
                     .select("email")
                     .eq("user_id", userId)
                     .single();
-                  
+
                   const recipientEmail = args.recipientEmail || profile?.email;
                   console.log("Recipient email:", recipientEmail);
-                  
+
                   if (!recipientEmail) {
                     console.log("No recipient email found");
                     result = { error: "Email adresa není nastavena v profilu" };
@@ -1457,9 +1484,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                           heart_rate: "klidové srdeční frekvence",
                           body_composition: "tělesného složení"
                         };
-                        result = { 
-                          success: true, 
-                          message: `Statistiky ${typeLabels[args.statsType] || "wellness dat"} odeslány na ${recipientEmail}` 
+                        result = {
+                          success: true,
+                          message: `Statistiky ${typeLabels[args.statsType] || "wellness dat"} odeslány na ${recipientEmail}`
                         };
                       }
                     } catch (error: any) {
@@ -1467,9 +1494,38 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       result = { error: `Chyba: ${error.message}` };
                     }
                   }
+                } else if (tc.name === "log_food_item") {
+                  const args = JSON.parse(tc.arguments);
+
+                  const { error } = await supabase.from("food_logs").insert({
+                    user_id: userId,
+                    name: args.name,
+                    calories: args.calories || null,
+                    protein: args.protein || null,
+                    carbs: args.carbs || null,
+                    fat: args.fat || null,
+                    meal_type: args.meal_type || null,
+                    date: new Date().toISOString().split('T')[0]
+                  });
+
+                  if (error) {
+                    result = { error: `Chyba při ukládání jídla: ${error.message}` };
+                  } else {
+                    const parts = [];
+                    if (args.calories) parts.push(`${args.calories} kcal`);
+                    if (args.protein) parts.push(`${args.protein}g B`);
+                    if (args.carbs) parts.push(`${args.carbs}g S`);
+                    if (args.fat) parts.push(`${args.fat}g T`);
+
+                    const details = parts.length > 0 ? ` (${parts.join(", ")})` : "";
+                    result = {
+                      success: true,
+                      message: `Zapsáno do jídelníčku: ${args.name}${details}.`
+                    };
+                  }
                 } else if (tc.name === "create_calendar_event") {
                   const args = JSON.parse(tc.arguments);
-                  
+
                   try {
                     // Helper: Parse Prague local time from user text
                     const text = (lastUserText || "").toLowerCase();
@@ -1516,14 +1572,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     if (calendarResponse.error || !(calendarResponse.data as any)?.success) {
                       const errorMsg = calendarResponse.error?.message || (calendarResponse.data as any)?.error || "Nepodařilo se vytvořit událost";
                       console.error("Calendar create error:", errorMsg);
-                      result = { 
+                      result = {
                         error: `${errorMsg}. Zkontroluj prosím připojení ke Google Kalendáři v Nastavení a ujisti se, že máš správná oprávnění.`
                       };
                     } else {
                       const eventLink = (calendarResponse.data as any)?.eventLink;
                       const eventId = (calendarResponse.data as any)?.eventId;
                       console.log("Calendar event created:", { eventId, eventLink });
-                      
+
                       // Ověř vytvoření načtením událostí z daného dne
                       const dateForVerification = startIso.split('T')[0];
                       try {
@@ -1532,8 +1588,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                           body: { date: dateForVerification }
                         });
                         const events = (verifyResp.data as any)?.items || [];
-                        const foundEvent = events.find((e: any) => 
-                          e.summary === (args.summary || "Událost") || 
+                        const foundEvent = events.find((e: any) =>
+                          e.summary === (args.summary || "Událost") ||
                           (e.id && eventId && e.id.includes(eventId))
                         );
                         if (foundEvent) {
@@ -1544,10 +1600,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       } catch (verifyErr) {
                         console.warn("Could not verify event creation:", verifyErr);
                       }
-                      
-                      result = { 
-                        success: true, 
-                        message: eventLink 
+
+                      result = {
+                        success: true,
+                        message: eventLink
                           ? `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři. [Zobrazit](${eventLink})`
                           : `Událost "${args.summary || "Událost"}" vytvořena v Google Kalendáři.`,
                         link: eventLink
@@ -1592,7 +1648,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       .select("*")
                       .eq("user_id", userId)
                       .order("start_date", { ascending: false });
-                    
+
                     // Filtrování podle časového rozsahu
                     if (args.before) {
                       const beforeDate = new Date(Number(args.before) * 1000).toISOString();
@@ -1602,11 +1658,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                       const afterDate = new Date(Number(args.after) * 1000).toISOString();
                       query = query.gte("start_date", afterDate);
                     }
-                    
+
                     // Limit počtu aktivit
                     const limit = args.limit || 10;
                     query = query.limit(limit);
-                    
+
                     const { data: activities, error: dbError } = await query;
 
                     if (dbError) {
@@ -1619,7 +1675,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         const distance = act.distance_meters ? (act.distance_meters / 1000).toFixed(2) : "0";
                         const time = act.moving_time_seconds ? Math.floor(act.moving_time_seconds / 60) : 0;
                         let details = `${i + 1}. ${act.name} (${act.activity_type})\n   📅 ${date} | 📏 ${distance} km | ⏱️ ${time} min`;
-                        
+
                         // Přidáme tepovou frekvenci, pokud je dostupná
                         if (act.average_heartrate) {
                           details += `\n   ❤️ Průměrný tep: ${Math.round(act.average_heartrate)} bpm`;
@@ -1627,17 +1683,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                         if (act.max_heartrate) {
                           details += ` | Max tep: ${Math.round(act.max_heartrate)} bpm`;
                         }
-                        
+
                         // Přidáme převýšení, pokud je dostupné
                         if (act.total_elevation_gain) {
                           details += `\n   ⛰️ Převýšení: ${Math.round(act.total_elevation_gain)} m`;
                         }
-                        
+
                         // Přidáme kalorie, pokud jsou dostupné
                         if (act.calories) {
                           details += `\n   🔥 Kalorie: ${Math.round(act.calories)} kcal`;
                         }
-                        
+
                         return details;
                       }).join("\n\n");
                       result = { message: `🏃 Našel jsem ${activities.length} aktivit:\n\n${formatted}` };
@@ -1650,20 +1706,20 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                   const days = args.days || 30;
                   const sinceDate = new Date();
                   sinceDate.setDate(sinceDate.getDate() - days);
-                  
+
                   let query = supabase
                     .from("health_logs")
                     .select("*")
                     .eq("user_id", userId)
                     .gte("log_date", sinceDate.toISOString())
                     .order("log_date", { ascending: false });
-                  
+
                   if (args.condition_type) {
                     query = query.eq("condition_type", args.condition_type);
                   }
-                  
+
                   const { data, error } = await query;
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1688,14 +1744,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "get_sleep_data") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 7;
-                  
+
                   const { data, error } = await supabase
                     .from("sleep_logs")
                     .select("*")
                     .eq("user_id", userId)
                     .order("sleep_date", { ascending: false })
                     .limit(days);
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1704,29 +1760,29 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     const avgDuration = Math.round(data.reduce((acc: number, log: any) => acc + (log.duration_minutes || 0), 0) / data.length);
                     const avgQuality = Math.round(data.reduce((acc: number, log: any) => acc + (log.quality || 0), 0) / data.length);
                     const avgDeep = Math.round(data.reduce((acc: number, log: any) => acc + (log.deep_sleep_minutes || 0), 0) / data.length);
-                    
+
                     const formatted = data.slice(0, 5).map((log: any, i: number) => {
                       const date = new Date(log.sleep_date).toLocaleDateString("cs-CZ");
                       const hours = Math.floor((log.duration_minutes || 0) / 60);
                       const mins = (log.duration_minutes || 0) % 60;
                       return `${i + 1}. ${date}: ${hours}h ${mins}min (kvalita: ${log.quality || 'N/A'}/10)\n   Hluboký spánek: ${log.deep_sleep_minutes || 0}min, REM: ${log.rem_duration_minutes || 0}min`;
                     }).join("\n\n");
-                    
-                    result = { 
-                      message: `😴 Spánková analýza (${days} dní):\n\n📊 Průměry:\n- Délka: ${Math.floor(avgDuration/60)}h ${avgDuration%60}min\n- Kvalita: ${avgQuality}/10\n- Hluboký spánek: ${avgDeep}min\n\n📅 Poslední noci:\n\n${formatted}` 
+
+                    result = {
+                      message: `😴 Spánková analýza (${days} dní):\n\n📊 Průměry:\n- Délka: ${Math.floor(avgDuration / 60)}h ${avgDuration % 60}min\n- Kvalita: ${avgQuality}/10\n- Hluboký spánek: ${avgDeep}min\n\n📅 Poslední noci:\n\n${formatted}`
                     };
                   }
                 } else if (tc.name === "get_resting_heart_rate") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 30;
-                  
+
                   const { data, error } = await supabase
                     .from("heart_rate_rest")
                     .select("*")
                     .eq("user_id", userId)
                     .order("date", { ascending: false })
                     .limit(days);
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1735,27 +1791,27 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     const avgHR = Math.round(data.reduce((acc: number, log: any) => acc + log.heart_rate, 0) / data.length);
                     const minHR = Math.min(...data.map((log: any) => log.heart_rate));
                     const maxHR = Math.max(...data.map((log: any) => log.heart_rate));
-                    
+
                     const recent = data.slice(0, 7).map((log: any, i: number) => {
                       const date = new Date(log.date).toLocaleDateString("cs-CZ");
                       return `${i + 1}. ${date}: ${log.heart_rate} bpm`;
                     }).join("\n");
-                    
-                    result = { 
-                      message: `❤️ Klidový tep (${days} dní):\n\n📊 Statistiky:\n- Průměr: ${avgHR} bpm\n- Min: ${minHR} bpm\n- Max: ${maxHR} bpm\n\n📅 Poslední týden:\n\n${recent}` 
+
+                    result = {
+                      message: `❤️ Klidový tep (${days} dní):\n\n📊 Statistiky:\n- Průměr: ${avgHR} bpm\n- Min: ${minHR} bpm\n- Max: ${maxHR} bpm\n\n📅 Poslední týden:\n\n${recent}`
                     };
                   }
                 } else if (tc.name === "get_hrv_data") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 30;
-                  
+
                   const { data, error } = await supabase
                     .from("hrv_logs")
                     .select("*")
                     .eq("user_id", userId)
                     .order("date", { ascending: false })
                     .limit(days);
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1764,29 +1820,29 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     const avgHRV = Math.round(data.reduce((acc: number, log: any) => acc + parseFloat(log.hrv), 0) / data.length);
                     const recent7 = data.slice(0, 7);
                     const avg7 = Math.round(recent7.reduce((acc: number, log: any) => acc + parseFloat(log.hrv), 0) / recent7.length);
-                    
+
                     const trend = avg7 > avgHRV ? "📈 Rostoucí" : avg7 < avgHRV ? "📉 Klesající" : "➡️ Stabilní";
-                    
+
                     const recent = data.slice(0, 7).map((log: any, i: number) => {
                       const date = new Date(log.date).toLocaleDateString("cs-CZ");
                       return `${i + 1}. ${date}: ${Math.round(parseFloat(log.hrv))} ms`;
                     }).join("\n");
-                    
-                    result = { 
-                      message: `💓 HRV analýza (${days} dní):\n\n📊 Statistiky:\n- Průměr za období: ${avgHRV} ms\n- Průměr 7 dní: ${avg7} ms\n- Trend: ${trend}\n\n📅 Poslední týden:\n\n${recent}\n\n💡 Vyšší HRV = lepší zotavení a nižší stres` 
+
+                    result = {
+                      message: `💓 HRV analýza (${days} dní):\n\n📊 Statistiky:\n- Průměr za období: ${avgHRV} ms\n- Průměr 7 dní: ${avg7} ms\n- Trend: ${trend}\n\n📅 Poslední týden:\n\n${recent}\n\n💡 Vyšší HRV = lepší zotavení a nižší stres`
                     };
                   }
                 } else if (tc.name === "get_body_composition") {
                   const args = JSON.parse(tc.arguments);
                   const days = args.days || 90;
-                  
+
                   const { data, error } = await supabase
                     .from("body_composition")
                     .select("*")
                     .eq("user_id", userId)
                     .order("date", { ascending: false })
                     .limit(days);
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1796,22 +1852,22 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     const oldest = data[data.length - 1];
                     const weightChange = parseFloat(latest.weight_kg) - parseFloat(oldest.weight_kg);
                     const weightTrend = weightChange > 0 ? "↗️" : weightChange < 0 ? "↘️" : "➡️";
-                    
+
                     let message = `⚖️ Váha a složení těla (${days} dní):\n\n📊 Aktuálně:\n- Váha: ${parseFloat(latest.weight_kg).toFixed(1)} kg ${weightTrend}\n`;
-                    
+
                     if (latest.fat_percentage) message += `- Tuk: ${parseFloat(latest.fat_percentage).toFixed(1)}%\n`;
                     if (latest.muscle_percentage) message += `- Svaly: ${parseFloat(latest.muscle_percentage).toFixed(1)}%\n`;
                     if (latest.water_percentage) message += `- Voda: ${parseFloat(latest.water_percentage).toFixed(1)}%\n`;
-                    
+
                     if (Math.abs(weightChange) > 0.1) {
                       message += `\n📈 Změna: ${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg\n`;
                     }
-                    
+
                     const recent = data.slice(0, 5).map((log: any, i: number) => {
                       const date = new Date(log.date).toLocaleDateString("cs-CZ");
                       return `${i + 1}. ${date}: ${parseFloat(log.weight_kg).toFixed(1)} kg`;
                     }).join("\n");
-                    
+
                     message += `\n📅 Poslední měření:\n\n${recent}`;
                     result = { message };
                   }
@@ -1822,13 +1878,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .select("*")
                     .eq("user_id", userId)
                     .order("race_date", { ascending: true });
-                  
+
                   if (!args.include_completed) {
                     query = query.eq("completed", false);
                   }
-                  
+
                   const { data, error } = await query;
-                  
+
                   if (error) {
                     result = { error: error.message };
                   } else if (!data || data.length === 0) {
@@ -1863,21 +1919,21 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     .delete()
                     .eq("user_id", userId)
                     .ilike("race_name", `%${args.race_name}%`);
-                  
+
                   if (args.race_date) {
                     query = query.eq("race_date", args.race_date);
                   }
-                  
+
                   const { error, count } = await query;
-                  result = error 
-                    ? { error: error.message } 
-                    : count && count > 0 
+                  result = error
+                    ? { error: error.message }
+                    : count && count > 0
                       ? { success: true, message: `Závod "${args.race_name}" byl odstraněn z plánu` }
                       : { error: `Závod "${args.race_name}" nebyl nalezen` };
                 } else if (tc.name === "search_gmail") {
                   const args = JSON.parse(tc.arguments);
                   console.log("search_gmail called with args:", args);
-                  
+
                   try {
                     const gmailResponse = await supabase.functions.invoke("search-gmail", {
                       headers: {
@@ -1901,8 +1957,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                     } else {
                       const data = gmailResponse.data as any;
                       if (data.messages && data.messages.length > 0) {
-                        result = { 
-                          success: true, 
+                        result = {
+                          success: true,
                           messages: data.messages,
                           count: data.count,
                           summary: `Nalezeno ${data.count} emailů`
@@ -1918,7 +1974,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                 } else if (tc.name === "web_search") {
                   const args = JSON.parse(tc.arguments);
                   const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
-                  
+
                   if (!TAVILY_API_KEY) {
                     result = { error: "Vyhledávání není nakonfigurováno" };
                   } else {
@@ -1936,9 +1992,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
                           include_answer: true,
                         }),
                       });
-                      
+
                       const searchData = await searchResponse.json();
-                      
+
                       if (searchData.results && searchData.results.length > 0) {
                         let summary = searchData.answer ? `${searchData.answer}\n\n` : "";
                         summary += "📰 Nalezené zdroje:\n\n";
@@ -1993,14 +2049,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, get_notes, delete_note, 
               ...toolMessages
             ];
 
-            const followUpResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            const followUpResponse = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-2.5-flash",
+                model: "gpt-4o",
                 messages: followUpMessages,
                 tool_choice: shouldForceCalendar ? { type: "function", function: { name: "create_calendar_event" } } : "auto",
                 stream: true,

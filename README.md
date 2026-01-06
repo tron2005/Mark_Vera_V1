@@ -1,73 +1,48 @@
-# Welcome to your Lovable project
+# 🤖 MarkVera - AI Fitness & Wellness Assistant
 
-## Project info
+MarkVera je pokročilý osobní asistent navržený pro běh na Raspberry Pi 5, který kombinuje fitness trénink ("M.A.R.K.") s empatickým wellness coachingem ("V.E.R.A.").
 
-**URL**: https://lovable.dev/projects/210ff499-6389-4085-916d-ce02fcd7b413
+## 🚀 O Projektu
 
-## How can I edit this code?
+Tento projekt vznikl oddělením od platformy Lovable a nyní je vyvíjen nezávisle s cílem plné lokální funkčnosti.
 
-There are several ways of editing your application.
+**Hlavní funkce:**
+- **M.A.R.K.** (My Assistant Raspberry Kit): Technický, datově orientovaný trenér.
+- **V.E.R.A.** (Voice Enhanced Raspberry Assistant): Empatická, pečující wellness asistentka.
+- **AI Chat**: Inteligentní konverzace poháněná OpenAI (GPT-4o).
+- **Fitness Tracking**: Integrace se Stravou, sledování váhy, kalorií (včetně jídla).
+- **Lokální Běh**: Optimalizováno pro nasazení na RPi 5.
 
-**Use Lovable**
+## 🛠 Technologie
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/210ff499-6389-4085-916d-ce02fcd7b413) and start prompting.
+- **Frontend**: React, Vite, TypeScript
+- **UI**: Shadcn/ui, Tailwind CSS
+- **Backend & DB**: Supabase
+- **AI**: OpenAI API
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📦 Instalace a Spuštění
 
-**Use your preferred IDE**
+1.  **Klonování repozitáře:**
+    ```bash
+    git clone https://github.com/tron2005/Mark_Vera_V1.git
+    cd Mark_Vera_V1
+    ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2.  **Instalace závislostí:**
+    ```bash
+    npm install
+    ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+3.  **Konfigurace:**
+    - Vytvořte soubor `.env` podle `.env.example`.
+    - Doplňte `OPENAI_API_KEY` a klíče pro Supabase.
 
-Follow these steps:
+4.  **Spuštění:**
+    ```bash
+    npm run dev
+    ```
+    Aplikace poběží na `http://localhost:3000`.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🤝 Vývoj
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/210ff499-6389-4085-916d-ce02fcd7b413) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Projekt je nyní spravován v tomto GitHub repozitáři. Veškeré změny commiujeme přímo sem.

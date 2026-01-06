@@ -1,34 +1,32 @@
-# Roadmap - Fitness Tracking App
+# MarkVera Roadmap v1.0.1 🚀
 
-## Plánované funkce
+Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R.K. & V.E.R.A. s cílem běžet lokálně na Raspberry Pi 5.
 
-### 🍎 Kalorické tabulky - Rozšíření o makroživiny
-**Priorita:** Střední  
-**Popis:** Rozšíření sledování kalorií o kompletní makroživiny importované z Kalorických tabulek.
+## 🏆 Fáze 1: Stabilizace a Základy (Hotovo / Probíhá)
+- [x] Převzetí projektu a inicializace repozitáře.
+- [x] **Oprava Logování Jídla**: Oddělení jídla od poznámek (nová tabulka `food_logs` + tool `log_food_item`).
+- [ ] **Odstranění Lovable závislostí**: Přechod na vlastní API klíče a čistý kód.
+- [ ] **Verzování**: Zavedení striktního verzování (package.json).
 
-**Makroživiny k sledování:**
-- Bílkoviny (g)
-- Sacharidy (g)
-- Tuky (g)
-- Cukry (g)
-- Vláknina (g)
-- Sůl (g)
-- Cholesterol (mg)
+## 🎨 Fáze 2: UI/UX Refaktoring
+- [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
+- [ ] **Nová Struktura**:
+    - Rozdělení karty "Trenér" na "Výkon" (grafy) a "Konektory" (nastavení, importy).
+    - Zpřehlednění navigace.
 
-**Požadované změny:**
-1. **Databáze:** Přidat sloupce pro makroživiny do tabulky calorie_entries
-2. **Import:** Rozšířit parser Excel souborů o extrakci makroživin z Kalorických tabulek
-3. **UI:** Přidat vizualizaci makroživin (koláčový graf, progress bary)
-4. **Denní cíle:** Možnost nastavit denní cíle pro jednotlivé makroživiny
+## 🧠 Fáze 3: Pokročilá Inteligence (Cloud Bridge)
+- [ ] **Context Awareness**: Asistent si před odpovědí přečte souhrn dat z karty Trenér.
+- [ ] **Dlouhodobá Paměť**: Vylepšení `create_summary` pro denní přehledy.
+- [ ] **Kalendář & Mail**: Plná integrace nástrojů Google Calendar a Gmail.
 
----
+## 🏠 Fáze 4: Lokální Mozek (MarkVera Offline)
+*Cílový stav: Běh na RPi 5 bez závislosti na cloudu.*
+- [ ] **Hardware**: RPi 5 + NVMe SSD + Coral TPU (volitelně).
+- [ ] **Lokální LLM**: Ollama (Llama 3 / Mistral) běžící přímo na RPi.
+- [ ] **Hlasový Server**: Python backend na RPi nahrazující Supabase Edge Functions.
+- [ ] **Voice Client**: Mikrofon + Reproduktor ovládaný lokálně.
 
-### Další plánované funkce (z předchozí roadmapy)
-
-- Import functionality (text files, RunAlyze/Intervals.icu exports, FIT files)
-- Training planning (weather-based recommendations, AI summaries)
-- Weight loss plan with auto-adjustment for illness/events
-- Training library (running advice, Les Mills BodyCombat, exercises)
-- 3D body visualization with muscle groups
-- Vehicle management (maintenance, insurance, tires)
-- Education tracking (Duolingo/Udemy reminders)
+## 📦 Backlog vylepšení
+- [ ] Vizualizace makroživin (navazuje na opravu jídla).
+- [ ] 3D vizualizace svalových skupin.
+- [ ] Správa vozového parku (servis, STK).
