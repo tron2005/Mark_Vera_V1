@@ -63,18 +63,42 @@ export const MuscleVisualization = () => {
 
   const getMuscleStyle = (muscleId: string) => {
     const data = muscleStatus[muscleId];
-    if (!data?.lastTrained) return { fill: "hsl(var(--muted))", opacity: 0.3, stroke: "hsl(var(--border))", strokeWidth: 1 };
+    // Untrained / No Data
+    if (!data?.lastTrained) return { 
+      fill: "hsl(var(--muted-foreground))", 
+      opacity: 0.1, 
+      stroke: "hsl(var(--foreground))", 
+      strokeWidth: 1,
+      strokeOpacity: 0.2
+    };
 
     const daysSince = Math.floor((Date.now() - data.lastTrained.getTime()) / (1000 * 60 * 60 * 24));
 
     // Fresh (0-2 days): Neon Green/Cyan
-    if (daysSince <= 2) return { fill: "hsl(142, 76%, 36%)", opacity: 0.9, filter: "drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))", stroke: "hsl(142, 76%, 20%)", strokeWidth: 1 };
+    if (daysSince <= 2) return { 
+      fill: "hsl(142, 76%, 36%)", 
+      opacity: 0.9, 
+      filter: "drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))", 
+      stroke: "hsl(142, 76%, 20%)", 
+      strokeWidth: 1 
+    };
     
     // Recovery (3-5 days): Yellow/Orange
-    if (daysSince <= 5) return { fill: "hsl(48, 96%, 53%)", opacity: 0.7, stroke: "hsl(48, 96%, 30%)", strokeWidth: 1 };
+    if (daysSince <= 5) return { 
+      fill: "hsl(48, 96%, 53%)", 
+      opacity: 0.7, 
+      stroke: "hsl(48, 96%, 30%)", 
+      strokeWidth: 1 
+    };
     
-    // Rested: Muted
-    return { fill: "hsl(var(--muted))", opacity: 0.3, stroke: "hsl(var(--border))", strokeWidth: 1 };
+    // Rested: Muted but visible
+    return { 
+      fill: "hsl(var(--muted-foreground))", 
+      opacity: 0.15, 
+      stroke: "hsl(var(--foreground))", 
+      strokeWidth: 1,
+      strokeOpacity: 0.3
+    };
   };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Analýza biometrie...</div>;
