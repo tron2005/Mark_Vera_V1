@@ -3,46 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Activity } from "lucide-react";
+import { MUSCLE_PATHS, MUSCLE_ACTIVITY_MAP } from "./trainer/muscleData";
 
-interface MuscleGroup {
-  name: string;
+interface MuscleStatus {
   lastTrained: Date | null;
   activities: string[];
 }
 
-const MUSCLE_ACTIVITY_MAP: Record<string, string[]> = {
-  chest: ["WeightTraining", "Workout", "BodyCombat"],
-  back: ["WeightTraining", "Workout", "Rowing", "Swim"],
-  shoulders: ["WeightTraining", "Workout", "BodyCombat", "Swim"],
-  biceps: ["WeightTraining", "Workout", "BodyCombat"],
-  triceps: ["WeightTraining", "Workout", "BodyCombat"],
-  core: ["WeightTraining", "Workout", "BodyCombat", "Run", "Ride", "Yoga"],
-  quads: ["Run", "Ride", "Walk", "Hike", "WeightTraining", "BodyCombat"],
-  hamstrings: ["Run", "Ride", "Walk", "Hike", "WeightTraining"],
-  glutes: ["Run", "Ride", "Walk", "Hike", "WeightTraining", "BodyCombat"],
-  calves: ["Run", "Walk", "Hike", "Ride"],
-  lats: ["WeightTraining", "Workout", "Rowing", "Swim"],
-  traps: ["WeightTraining", "Workout"],
-};
-
-const MUSCLE_LABELS: Record<string, string> = {
-  chest: "Hrudník",
-  back: "Záda",
-  shoulders: "Ramena",
-  biceps: "Bicepsy",
-  triceps: "Tricepsy",
-  core: "Core",
-  quads: "Quadricepsy",
-  hamstrings: "Hamstringy",
-  glutes: "Hýždě",
-  calves: "Lýtka",
-  lats: "Latissimus",
-  traps: "Trapézy",
-};
-
 export const MuscleVisualization = () => {
-  const [muscleData, setMuscleData] = useState<Record<string, MuscleGroup>>({});
+  const [muscleStatus, setMuscleStatus] = useState<Record<string, MuscleStatus>>({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"front" | "back">("front");
 
@@ -57,330 +27,142 @@ export const MuscleVisualization = () => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+    // Načtení aktivit (Strava, Garmin, BodyCombat)
     const [stravaRes, garminRes, bodycombatRes] = await Promise.all([
-      supabase
-        .from("strava_activities")
-        .select("activity_type, start_date")
-        .eq("user_id", user.id)
-        .gte("start_date", sevenDaysAgo.toISOString()),
-      supabase
-        .from("garmin_activities")
-        .select("activity_type, start_date")
-        .eq("user_id", user.id)
-        .gte("start_date", sevenDaysAgo.toISOString()),
-      supabase
-        .from("bodycombat_workouts")
-        .select("workout_date")
-        .eq("user_id", user.id)
-        .gte("workout_date", sevenDaysAgo.toISOString()),
+      supabase.from("strava_activities").select("activity_type, start_date").eq("user_id", user.id).gte("start_date", sevenDaysAgo.toISOString()),
+      supabase.from("garmin_activities").select("activity_type, start_date").eq("user_id", user.id).gte("start_date", sevenDaysAgo.toISOString()),
+      supabase.from("bodycombat_workouts").select("workout_date").eq("user_id", user.id).gte("workout_date", sevenDaysAgo.toISOString()),
     ]);
 
     const activities: { type: string; date: Date }[] = [];
+    stravaRes.data?.forEach(a => activities.push({ type: a.activity_type, date: new Date(a.start_date) }));
+    garminRes.data?.forEach(a => activities.push({ type: a.activity_type, date: new Date(a.start_date) }));
+    bodycombatRes.data?.forEach(a => activities.push({ type: "BodyCombat", date: new Date(a.workout_date) }));
 
-    stravaRes.data?.forEach((a) => {
-      activities.push({ type: a.activity_type, date: new Date(a.start_date) });
-    });
+    const status: Record<string, MuscleStatus> = {};
 
-    garminRes.data?.forEach((a) => {
-      activities.push({ type: a.activity_type, date: new Date(a.start_date) });
-    });
-
-    bodycombatRes.data?.forEach((a) => {
-      activities.push({ type: "BodyCombat", date: new Date(a.workout_date) });
-    });
-
-    const muscleGroups: Record<string, MuscleGroup> = {};
-
-    Object.entries(MUSCLE_ACTIVITY_MAP).forEach(([muscle, activityTypes]) => {
-      const relevantActivities = activities.filter((a) =>
-        activityTypes.some((type) => a.type.toLowerCase().includes(type.toLowerCase()))
+    Object.keys(MUSCLE_ACTIVITY_MAP).forEach(muscleId => {
+      const targetTypes = MUSCLE_ACTIVITY_MAP[muscleId];
+      const relevantActivities = activities.filter(a => 
+        targetTypes.some(t => a.type.toLowerCase().includes(t.toLowerCase()))
       );
 
       const lastTrained = relevantActivities.length > 0
-        ? relevantActivities.reduce((latest, curr) =>
-            curr.date > latest ? curr.date : latest, relevantActivities[0].date)
+        ? relevantActivities.reduce((latest, curr) => curr.date > latest ? curr.date : latest, relevantActivities[0].date)
         : null;
 
-      muscleGroups[muscle] = {
-        name: MUSCLE_LABELS[muscle],
+      status[muscleId] = {
         lastTrained,
-        activities: [...new Set(relevantActivities.map((a) => a.type))],
+        activities: [...new Set(relevantActivities.map(a => a.type))]
       };
     });
 
-    setMuscleData(muscleGroups);
+    setMuscleStatus(status);
     setLoading(false);
   };
 
-  const getMuscleColor = (muscle: string): string => {
-    const data = muscleData[muscle];
-    if (!data?.lastTrained) return "hsl(var(--muted))";
+  const getMuscleStyle = (muscleId: string) => {
+    const data = muscleStatus[muscleId];
+    if (!data?.lastTrained) return { fill: "hsl(var(--muted))", opacity: 0.3, stroke: "hsl(var(--border))", strokeWidth: 1 };
 
-    const daysSince = Math.floor(
-      (Date.now() - data.lastTrained.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysSince = Math.floor((Date.now() - data.lastTrained.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (daysSince <= 2) return "hsl(142, 76%, 36%)";
-    if (daysSince <= 5) return "hsl(48, 96%, 53%)";
-    return "hsl(var(--muted))";
+    // Fresh (0-2 days): Neon Green/Cyan
+    if (daysSince <= 2) return { fill: "hsl(142, 76%, 36%)", opacity: 0.9, filter: "drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))", stroke: "hsl(142, 76%, 20%)", strokeWidth: 1 };
+    
+    // Recovery (3-5 days): Yellow/Orange
+    if (daysSince <= 5) return { fill: "hsl(48, 96%, 53%)", opacity: 0.7, stroke: "hsl(48, 96%, 30%)", strokeWidth: 1 };
+    
+    // Rested: Muted
+    return { fill: "hsl(var(--muted))", opacity: 0.3, stroke: "hsl(var(--border))", strokeWidth: 1 };
   };
 
-  const getStatusText = (muscle: string): string => {
-    const data = muscleData[muscle];
-    if (!data?.lastTrained) return "Netrénováno";
-
-    const daysSince = Math.floor(
-      (Date.now() - data.lastTrained.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (daysSince === 0) return "Dnes";
-    if (daysSince === 1) return "Včera";
-    return `Před ${daysSince} dny`;
-  };
-
-  const MuscleTooltip = ({ muscle, children }: { muscle: string; children: React.ReactNode }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent>
-        <div className="text-sm">
-          <p className="font-semibold">{MUSCLE_LABELS[muscle]}</p>
-          <p className="text-muted-foreground">{getStatusText(muscle)}</p>
-          {muscleData[muscle]?.activities.length > 0 && (
-            <p className="text-xs mt-1">
-              {muscleData[muscle].activities.slice(0, 2).join(", ")}
-            </p>
-          )}
-        </div>
-      </TooltipContent>
-    </Tooltip>
-  );
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Svalové skupiny</CardTitle>
-        </CardHeader>
-        <CardContent className="flex justify-center">
-          <div className="animate-pulse text-muted-foreground">Načítám...</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const FrontView = () => (
-    <svg viewBox="0 0 200 320" className="w-full max-w-[280px] mx-auto">
-      {/* Head */}
-      <circle cx="100" cy="25" r="20" fill="hsl(var(--muted))" opacity="0.5" />
-      
-      {/* Neck */}
-      <rect x="92" y="45" width="16" height="15" fill="hsl(var(--muted))" opacity="0.5" />
-
-      {/* Shoulders */}
-      <MuscleTooltip muscle="shoulders">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="60" cy="70" rx="18" ry="12" fill={getMuscleColor("shoulders")} />
-          <ellipse cx="140" cy="70" rx="18" ry="12" fill={getMuscleColor("shoulders")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Chest */}
-      <MuscleTooltip muscle="chest">
-        <path
-          d="M 70 65 Q 100 60 130 65 L 125 100 Q 100 105 75 100 Z"
-          fill={getMuscleColor("chest")}
-          className="cursor-pointer transition-opacity hover:opacity-80"
-        />
-      </MuscleTooltip>
-
-      {/* Core */}
-      <MuscleTooltip muscle="core">
-        <rect
-          x="78"
-          y="100"
-          width="44"
-          height="55"
-          rx="8"
-          fill={getMuscleColor("core")}
-          className="cursor-pointer transition-opacity hover:opacity-80"
-        />
-      </MuscleTooltip>
-
-      {/* Biceps */}
-      <MuscleTooltip muscle="biceps">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="48" cy="95" rx="10" ry="22" fill={getMuscleColor("biceps")} />
-          <ellipse cx="152" cy="95" rx="10" ry="22" fill={getMuscleColor("biceps")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Triceps */}
-      <MuscleTooltip muscle="triceps">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="38" cy="95" rx="8" ry="20" fill={getMuscleColor("triceps")} />
-          <ellipse cx="162" cy="95" rx="8" ry="20" fill={getMuscleColor("triceps")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Forearms */}
-      <rect x="32" y="120" width="12" height="35" rx="4" fill="hsl(var(--muted))" opacity="0.5" />
-      <rect x="156" y="120" width="12" height="35" rx="4" fill="hsl(var(--muted))" opacity="0.5" />
-
-      {/* Glutes (visible from front) */}
-      <MuscleTooltip muscle="glutes">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="85" cy="165" rx="15" ry="12" fill={getMuscleColor("glutes")} />
-          <ellipse cx="115" cy="165" rx="15" ry="12" fill={getMuscleColor("glutes")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Quads */}
-      <MuscleTooltip muscle="quads">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <path d="M 72 180 L 68 240 L 88 240 L 92 180 Z" fill={getMuscleColor("quads")} rx="4" />
-          <path d="M 108 180 L 112 240 L 132 240 L 128 180 Z" fill={getMuscleColor("quads")} rx="4" />
-        </g>
-      </MuscleTooltip>
-
-      {/* Calves */}
-      <MuscleTooltip muscle="calves">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="78" cy="270" rx="10" ry="25" fill={getMuscleColor("calves")} />
-          <ellipse cx="122" cy="270" rx="10" ry="25" fill={getMuscleColor("calves")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Feet */}
-      <ellipse cx="78" cy="305" rx="12" ry="6" fill="hsl(var(--muted))" opacity="0.5" />
-      <ellipse cx="122" cy="305" rx="12" ry="6" fill="hsl(var(--muted))" opacity="0.5" />
-    </svg>
-  );
-
-  const BackView = () => (
-    <svg viewBox="0 0 200 320" className="w-full max-w-[280px] mx-auto">
-      {/* Head */}
-      <circle cx="100" cy="25" r="20" fill="hsl(var(--muted))" opacity="0.5" />
-      
-      {/* Neck */}
-      <rect x="92" y="45" width="16" height="15" fill="hsl(var(--muted))" opacity="0.5" />
-
-      {/* Traps */}
-      <MuscleTooltip muscle="traps">
-        <path
-          d="M 75 50 Q 100 45 125 50 L 120 75 Q 100 70 80 75 Z"
-          fill={getMuscleColor("traps")}
-          className="cursor-pointer transition-opacity hover:opacity-80"
-        />
-      </MuscleTooltip>
-
-      {/* Shoulders (back) */}
-      <MuscleTooltip muscle="shoulders">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="60" cy="70" rx="18" ry="12" fill={getMuscleColor("shoulders")} />
-          <ellipse cx="140" cy="70" rx="18" ry="12" fill={getMuscleColor("shoulders")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Lats */}
-      <MuscleTooltip muscle="lats">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <path d="M 70 75 L 60 120 L 78 130 L 78 75 Z" fill={getMuscleColor("lats")} />
-          <path d="M 130 75 L 140 120 L 122 130 L 122 75 Z" fill={getMuscleColor("lats")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Back (mid) */}
-      <MuscleTooltip muscle="back">
-        <rect
-          x="78"
-          y="75"
-          width="44"
-          height="55"
-          rx="6"
-          fill={getMuscleColor("back")}
-          className="cursor-pointer transition-opacity hover:opacity-80"
-        />
-      </MuscleTooltip>
-
-      {/* Triceps (back) */}
-      <MuscleTooltip muscle="triceps">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="45" cy="95" rx="12" ry="22" fill={getMuscleColor("triceps")} />
-          <ellipse cx="155" cy="95" rx="12" ry="22" fill={getMuscleColor("triceps")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Forearms */}
-      <rect x="32" y="120" width="12" height="35" rx="4" fill="hsl(var(--muted))" opacity="0.5" />
-      <rect x="156" y="120" width="12" height="35" rx="4" fill="hsl(var(--muted))" opacity="0.5" />
-
-      {/* Lower back */}
-      <rect x="82" y="130" width="36" height="30" rx="4" fill="hsl(var(--muted))" opacity="0.5" />
-
-      {/* Glutes */}
-      <MuscleTooltip muscle="glutes">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="82" cy="175" rx="18" ry="16" fill={getMuscleColor("glutes")} />
-          <ellipse cx="118" cy="175" rx="18" ry="16" fill={getMuscleColor("glutes")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Hamstrings */}
-      <MuscleTooltip muscle="hamstrings">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <path d="M 68 195 L 65 250 L 90 250 L 93 195 Z" fill={getMuscleColor("hamstrings")} rx="4" />
-          <path d="M 107 195 L 110 250 L 135 250 L 132 195 Z" fill={getMuscleColor("hamstrings")} rx="4" />
-        </g>
-      </MuscleTooltip>
-
-      {/* Calves */}
-      <MuscleTooltip muscle="calves">
-        <g className="cursor-pointer transition-opacity hover:opacity-80">
-          <ellipse cx="78" cy="275" rx="12" ry="28" fill={getMuscleColor("calves")} />
-          <ellipse cx="122" cy="275" rx="12" ry="28" fill={getMuscleColor("calves")} />
-        </g>
-      </MuscleTooltip>
-
-      {/* Feet */}
-      <ellipse cx="78" cy="305" rx="12" ry="6" fill="hsl(var(--muted))" opacity="0.5" />
-      <ellipse cx="122" cy="305" rx="12" ry="6" fill="hsl(var(--muted))" opacity="0.5" />
-    </svg>
-  );
+  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Analýza biometrie...</div>;
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-background to-muted/20">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Svalové skupiny</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Svalová Mapa 2.0
+          </CardTitle>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setView(view === "front" ? "back" : "front")}
-            className="gap-2"
+            className="gap-2 hover:bg-primary/10"
           >
             <RotateCcw className="h-4 w-4" />
-            {view === "front" ? "Záda" : "Přední"}
+            {view === "front" ? "Zadní pohled" : "Přední pohled"}
           </Button>
         </div>
-        <div className="flex gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full" style={{ background: "hsl(142, 76%, 36%)" }} />
-            Čerstvé (0-2 dny)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full" style={{ background: "hsl(48, 96%, 53%)" }} />
-            Střední (3-5 dnů)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-muted" />
-            Odpočaté
-          </span>
-        </div>
       </CardHeader>
-      <CardContent>
-        <TooltipProvider>
-          {view === "front" ? <FrontView /> : <BackView />}
-        </TooltipProvider>
+      
+      <CardContent className="relative flex justify-center py-6 min-h-[350px]">
+         <TooltipProvider>
+            <svg viewBox="0 0 200 320" className="w-full max-w-[280px] drop-shadow-2xl">
+                {/* Silhouette / Skeleton Base */}
+                <path d="M 100 20 L 100 300" stroke="hsl(var(--border))" strokeWidth="2" strokeDasharray="4 4" opacity="0.3" />
+                
+                {/* Head (Generic Poly) */}
+                <path d="M 85 20 L 115 20 L 110 50 L 90 50 Z" fill="hsl(var(--muted))" opacity="0.2" />
+
+                {/* Muscles Render */}
+                {MUSCLE_PATHS.filter(m => m.view === view).map((muscle) => {
+                    const style = getMuscleStyle(muscle.id);
+                    const status = muscleStatus[muscle.id];
+                    
+                    return (
+                        <Tooltip key={`${muscle.view}-${muscle.id}`}>
+                            <TooltipTrigger asChild>
+                                <path
+                                    d={muscle.path}
+                                    style={{
+                                        transition: "all 0.4s ease-out",
+                                        cursor: "pointer",
+                                        ...style
+                                    }}
+                                    className="hover:opacity-100 hover:scale-105 origin-center"
+                                />
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                                <div className="text-sm">
+                                    <p className="font-bold">{muscle.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {status?.lastTrained 
+                                            ? `Naposledy: ${status.lastTrained.toLocaleDateString()}` 
+                                            : "Netrénováno (7 dní)"
+                                        }
+                                    </p>
+                                    {status?.activities?.length > 0 && (
+                                        <p className="text-[10px] mt-1 text-primary">
+                                            {status.activities.slice(0, 2).join(", ")}
+                                        </p>
+                                    )}
+                                </div>
+                            </TooltipContent>
+                        </Tooltip>
+                    );
+                })}
+            </svg>
+         </TooltipProvider>
+
+         {/* Legend */}
+         <div className="absolute bottom-2 left-4 flex flex-col gap-2 text-[10px] text-muted-foreground bg-background/80 p-2 rounded backdrop-blur-sm border">
+            <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-sm bg-green-600 shadow-[0_0_4px_rgba(34,197,94,0.8)]"></span>
+                <span>Aktivní (0-2 dny)</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-sm bg-yellow-500"></span>
+                <span>Regenerace (3-5)</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-sm bg-muted border border-border"></span>
+                <span>Odpočaté</span>
+            </div>
+         </div>
       </CardContent>
     </Card>
   );
