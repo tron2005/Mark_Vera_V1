@@ -15,7 +15,7 @@ import { BodyCombatStats } from "../BodyCombatStats";
 import { CalorieTracker } from "../CalorieTracker";
 import { RaceGoalsWidget } from "../RaceGoalsWidget";
 import { WeeklyOverview } from "../WeeklyOverview";
-import { LongevityCard } from "../LongevityCard";
+
 import { MuscleVisualization } from "../MuscleVisualization";
 import { WeightLossPlan } from "../WeightLossPlan";
 import { TrainingLibrary } from "../TrainingLibrary";
@@ -305,7 +305,7 @@ export const TrainerPerformance = ({
       <TrainingLibrary />
 
       {/* Longevity Card */}
-      <LongevityCard />
+
 
       {/* Weekly Overview */}
       <WeeklyOverview />
