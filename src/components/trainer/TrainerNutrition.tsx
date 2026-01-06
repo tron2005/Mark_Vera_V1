@@ -1,5 +1,6 @@
 import { CalorieTracker } from "../CalorieTracker";
 import { CalorieImport } from "../CalorieImport";
+import { CalorieMigration } from "../CalorieMigration";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Apple, AlertCircle } from "lucide-react";
 
@@ -21,8 +22,9 @@ export const TrainerNutrition = () => {
         </div>
 
         {/* Import Tools */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 space-y-6">
             <CalorieImport />
+            <CalorieMigration />
         </div>
         
         {/* Info Card */}

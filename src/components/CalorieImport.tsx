@@ -200,7 +200,6 @@ export const CalorieImport = () => {
       const endOfDay = `${date}T23:59:59`;
       
       const { count } = await supabase
-      const { count } = await supabase
         .from("calorie_entries")
         .select("*", { count: 'exact', head: true })
         .eq("user_id", user.id)
