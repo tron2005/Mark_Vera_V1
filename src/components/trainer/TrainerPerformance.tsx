@@ -6,6 +6,7 @@ import { Activity, Heart, TrendingUp, Sparkles, Moon, Cloud, Loader2 } from "luc
 
 import { FitnessStats } from "../FitnessStats";
 import { SleepCharts } from "../SleepCharts";
+import { AdvancedMetricsWidget } from "./AdvancedMetricsWidget";
 import { HealthDataCharts } from "../HealthDataCharts";
 import { ActivityCharts } from "../ActivityCharts";
 import { WeightChart } from "../WeightChart";
@@ -263,6 +264,11 @@ export const TrainerPerformance = ({
 
           {showStats && <FitnessStats activities={activities} />}
         </>
+      )}
+
+      {/* Advanced Metrics (Runalyze Style) */}
+      {stravaConnected && activities.length > 0 && (
+        <AdvancedMetricsWidget activities={activities} userProfile={userProfile} />
       )}
 
       {/* Sleep Charts */}
