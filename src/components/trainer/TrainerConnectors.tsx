@@ -10,6 +10,7 @@ import { RunalyzeCsvImport } from "../RunalyzeCsvImport";
 import { RingConnImport } from "../RingConnImport";
 import { BodyCombatTracker } from "../BodyCombatTracker";
 import { CalorieImport } from "../CalorieImport";
+import { AboutCard } from "./AboutCard";
 
 interface TrainerConnectorsProps {
   stravaConnected: boolean;
@@ -97,6 +98,11 @@ export const TrainerConnectors = ({
         
         {/* Calorie Import */}
         <CalorieImport />
+
+        {/* About & Roadmap */}
+        <div className="md:col-span-2">
+            <AboutCard />
+        </div>
       </div>
     </div>
   );
