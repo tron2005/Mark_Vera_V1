@@ -18,7 +18,7 @@ import { WeeklyOverview } from "../WeeklyOverview";
 
 import { MuscleVisualization } from "../MuscleVisualization";
 import { WeightLossPlan } from "../WeightLossPlan";
-import { TrainingLibrary } from "../TrainingLibrary";
+
 import { MotivationalQuote } from "../MotivationalQuote";
 
 interface TrainerPerformanceProps {
@@ -301,8 +301,7 @@ export const TrainerPerformance = ({
       {/* Weight Loss Plan */}
       <WeightLossPlan />
 
-      {/* Training Library */}
-      <TrainingLibrary />
+
 
       {/* Longevity Card */}
 
