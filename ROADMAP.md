@@ -1,21 +1,26 @@
-# MarkVera Roadmap v1.0.1 🚀
+# MarkVera Roadmap v1.0.2 🚀
 
 Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R.K. & V.E.R.A. s cílem běžet lokálně na Raspberry Pi 5.
 
 ## 🏆 Fáze 1: Stabilizace a Základy (Hotovo / Probíhá)
-- [x] Převzetí projektu a inicializace repozitáře.
-- [x] **Oprava Logování Jídla**: Oddělení jídla od poznámek (nová tabulka `food_logs` + tool `log_food_item`).
-- [ ] **Odstranění Lovable závislostí**: Přechod na vlastní API klíče a čistý kód.
+- [x] **Separace od Lovable**: Vlastní GitHub repozitář `mark-vera`.
+- [x] **UI Refaktoring**: Rozdělení karty Trenér na "Výkon" a "Konektory".
+- [x] **Oprava Logování Jídla**: Oddělení jídla od poznámek.
 - [ ] **Verzování**: Zavedení striktního verzování (package.json).
 
-## 🎨 Fáze 2: UI/UX Refaktoring
-- [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
-- [ ] **Nová Struktura**:
-    - Rozdělení karty "Trenér" na "Výkon" (grafy) a "Konektory" (nastavení, importy).
-    - Zpřehlednění navigace.
+## 📊 Fáze 2: Pokročilá Analytika (Runalyze-style) - **CURRENT FOCUS**
+- [ ] **Advanced Metrics Widget**:
+    - Výpočet TRIMP (Training Impulse).
+    - ATL (Únava - 7 dní).
+    - CTL (Kondice - 42 dní).
+    - TSB (Stress Balance).
+    - VO2max odhad.
+    - Monotónnost tréninku.
+- [ ] **UI Polishing**: Uhlazení vzhledu rozdělené karty Trenér.
 
 ## 🧠 Fáze 3: Pokročilá Inteligence (Cloud Bridge)
 - [ ] **Context Awareness**: Asistent si před odpovědí přečte souhrn dat z karty Trenér.
+- [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
 - [ ] **Dlouhodobá Paměť**: Vylepšení `create_summary` pro denní přehledy.
 - [ ] **Kalendář & Mail**: Plná integrace nástrojů Google Calendar a Gmail.
 
