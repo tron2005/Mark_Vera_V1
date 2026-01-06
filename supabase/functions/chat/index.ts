@@ -58,6 +58,13 @@ serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
+    // Načíst aktuální fitness stav (Advanced Metrics)
+    const { data: fitnessState } = await supabase
+      .from("user_fitness_state")
+      .select("ctl, atl, tsb, vo2max, marathon_shape")
+      .eq("user_id", userId)
+      .maybeSingle();
+
     const customInstructions = profile?.custom_instructions || "";
     const trainerEnabled = profile?.trainer_enabled ?? true;
     const userDescription = profile?.user_description || "";
@@ -580,6 +587,20 @@ ${stravaInfo}- Sledovat zdravotní stav a únavu
 📌 KARTA "TRENÉR" V APLIKACI:
 - Cíle závodů a plánované závody se ukládají do tabulky race_goals
 - To, co přidáš pomocí add_race_goal, se zobrazí uživateli na kartě "Trenér" v části "Závody a cíle"
+
+${fitnessState ? `📊 AKTUÁLNÍ KONDICE (Runalyze Metrics):
+- CTL (Kondice): ${fitnessState.ctl} (Dlouhodobá zátěž - Fitness)
+- ATL (Únava): ${fitnessState.atl} (Krátkodobá zátěž - Fatigue)
+- TSB (Forma): ${fitnessState.tsb} (${fitnessState.tsb > 5 ? 'Čerstvý / Ve formě' : fitnessState.tsb < -20 ? 'Velmi unavený / Přetrénovaný' : 'V tréninku / Neutrální'})
+- VO2max (Odhad): ${fitnessState.vo2max}
+- Maratónská forma: ${fitnessState.marathon_shape}%
+
+INTERPRETACE TSB (Forma = Fitness - Únava):
+- TSB > +5: Uživatel je čerstvý (Fresh). Ideální pro závod nebo lámání rekordů.
+- TSB -10 až +5: Optimální tréninková zóna (Gray Zone).
+- TSB -30 až -10: Produktivní trénink (Optimal Training). Uživatel může cítit únavu, ale buduje kondici.
+- TSB < -30: Vysoké riziko přetrénování (Overreach)! DŮRAZNĚ doporuč odpočinek nebo lehký výklus. Nepouštěj ho do intenzity!
+` : ''}
 
 ${profileInfo}
 
@@ -1497,15 +1518,15 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                 } else if (tc.name === "log_food_item") {
                   const args = JSON.parse(tc.arguments);
 
-                  const { error } = await supabase.from("food_logs").insert({
+                  const { error } = await supabase.from("calorie_entries").insert({
                     user_id: userId,
-                    name: args.name,
-                    calories: args.calories || null,
+                    meal_name: args.name + (args.meal_type ? ` (${args.meal_type})` : ""),
+                    calories: args.calories || 0,
                     protein: args.protein || null,
                     carbs: args.carbs || null,
                     fat: args.fat || null,
-                    meal_type: args.meal_type || null,
-                    date: new Date().toISOString().split('T')[0]
+                    entry_date: new Date().toISOString().split('T')[0],
+                    source: 'ai'
                   });
 
                   if (error) {

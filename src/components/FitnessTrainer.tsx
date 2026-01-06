@@ -7,6 +7,7 @@ import { Activity, PlugZap } from "lucide-react";
 import { MotivationalQuote } from "./MotivationalQuote";
 import { TrainerPerformance } from "./trainer/TrainerPerformance";
 import { TrainerConnectors } from "./trainer/TrainerConnectors";
+import { TrainerNutrition } from "./trainer/TrainerNutrition";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -251,14 +252,18 @@ export const FitnessTrainer = () => {
       </div>
 
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Výkon
           </TabsTrigger>
+          <TabsTrigger value="nutrition" className="flex items-center gap-2">
+            <PlugZap className="h-4 w-4" /> {/* Reuse icon or import proper one if needed, but for now reuse or generic */}
+            Výživa
+          </TabsTrigger>
           <TabsTrigger value="connectors" className="flex items-center gap-2">
             <PlugZap className="h-4 w-4" />
-            Konektory a data
+            Konektory
           </TabsTrigger>
         </TabsList>
 
@@ -276,6 +281,10 @@ export const FitnessTrainer = () => {
             setWeatherDialog={setWeatherDialog}
             getWeatherRecommendation={getWeatherRecommendation}
           />
+        </TabsContent>
+
+        <TabsContent value="nutrition" className="space-y-6">
+          <TrainerNutrition />
         </TabsContent>
 
         <TabsContent value="connectors" className="space-y-6">

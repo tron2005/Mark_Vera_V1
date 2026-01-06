@@ -58,23 +58,20 @@ export const CalorieImport = () => {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const { data, error } = await supabase
-        .from("notes")
-        .select("text, created_at")
+        .from("calorie_entries")
+        .select("calories, entry_date")
         .eq("user_id", user.id)
-        .eq("category", "calories")
-        .gte("created_at", thirtyDaysAgo.toISOString())
-        .order("created_at", { ascending: true });
+        .gte("entry_date", thirtyDaysAgo.toISOString().split('T')[0])
+        .order("entry_date", { ascending: true });
 
       if (error) throw error;
 
       // Group by day and sum calories
       const dailyMap = new Map<string, number>();
-      data?.forEach(note => {
-        const day = note.created_at?.split('T')[0];
+      data?.forEach(entry => {
+        const day = entry.entry_date;
         if (!day) return;
-        const match = note.text.match(/(\d+)\s*kcal/i);
-        const kcal = match ? parseInt(match[1]) : 0;
-        dailyMap.set(day, (dailyMap.get(day) || 0) + kcal);
+        dailyMap.set(day, (dailyMap.get(day) || 0) + entry.calories);
       });
 
       const history: DailyCalories[] = Array.from(dailyMap.entries()).map(([date, calories]) => ({
@@ -203,12 +200,11 @@ export const CalorieImport = () => {
       const endOfDay = `${date}T23:59:59`;
       
       const { count } = await supabase
-        .from("notes")
+      const { count } = await supabase
+        .from("calorie_entries")
         .select("*", { count: 'exact', head: true })
         .eq("user_id", user.id)
-        .eq("category", "calories")
-        .gte("created_at", startOfDay)
-        .lte("created_at", endOfDay);
+        .eq("entry_date", date);
       
       existingMap.set(date, count || 0);
     }
@@ -291,12 +287,14 @@ export const CalorieImport = () => {
         const endOfDay = `${targetDate}T23:59:59`;
         
         await supabase
-          .from("notes")
+        if (replaceExisting && dayResult.existingRecords > 0) {
+        
+        await supabase
+          .from("calorie_entries")
           .delete()
           .eq("user_id", user.id)
-          .eq("category", "calories")
-          .gte("created_at", startOfDay)
-          .lte("created_at", endOfDay);
+          .eq("entry_date", targetDate);
+      }
       }
       
       const entries = dayResult.meals.map(meal => ({

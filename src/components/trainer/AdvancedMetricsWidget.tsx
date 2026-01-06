@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"; // Assumes standard shadcn Progress
 import { Badge } from "@/components/ui/badge";
 import { Activity, Battery, Gauge, TrendingUp, Info } from "lucide-react";
 import { calculateFitnessMetrics } from "@/utils/fitnessMetrics";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdvancedMetricsProps {
   activities: any[];
@@ -14,12 +15,42 @@ interface AdvancedMetricsProps {
 export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetricsProps) => {
   const metrics = useMemo(() => {
     // Determine max HR (default 190) and Resting HR (default 60)
-    // TODO: Ideally fetch these from profile
-    const maxHR = 190; 
-    const restingHR = 60;
+    const maxHR = userProfile?.max_heart_rate || 190; 
+    const restingHR = userProfile?.resting_heart_rate || 60;
     
     return calculateFitnessMetrics(activities, maxHR, restingHR, 'male');
   }, [activities, userProfile]);
+
+  // Sync metrics to DB for AI Context Awareness
+  useEffect(() => {
+    const syncMetricsToDB = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Only update if we have meaningful data
+      if (metrics.currentCTL === 0 && metrics.currentATL === 0) return;
+
+      const { error } = await supabase
+        .from('user_fitness_state')
+        .upsert({
+          user_id: user.id,
+          ctl: metrics.currentCTL,
+          atl: metrics.currentATL,
+          tsb: metrics.currentTSB,
+          vo2max: metrics.currentVO2max,
+          marathon_shape: metrics.marathonShape,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error("Error syncing fitness state:", error);
+      }
+    };
+
+    // Debounce or just run once per metrics change
+    const timer = setTimeout(syncMetricsToDB, 2000);
+    return () => clearTimeout(timer);
+  }, [metrics]);
 
   // Helper for TSB color
   const getTSBColor = (tsb: number) => {
