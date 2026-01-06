@@ -147,17 +147,54 @@ serve(async (req) => {
       {
         type: "function",
         function: {
-          name: "log_food_item",
-          description: "Zaznamená snědené jídlo do deníku. Použij VŽDY, když uživatel zmiňuje jídlo, kalorie nebo importuje jídelníček. NIKDY nepoužívej add_note pro jídlo.",
-          parameters: {
-            type: "object",
-            properties: {
-              name: { type: "string", description: "Název jídla" },
-              calories: { type: "number", description: "Kalorie (kcal)" },
-              protein: { type: "number", description: "Bílkoviny (g)" },
-              carbs: { type: "number", description: "Sacharidy (g)" },
-              fat: { type: "number", description: "Tuky (g)" },
-              meal_type: {
+              name: "log_food_item",
+              description: "Zaznamená snědené jídlo do deníku. Použij VŽDY, když uživatel zmiňuje jídlo, kalorie nebo importuje jídelníček. NIKDY nepoužívej add_note pro jídlo.",
+              parameters: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "Název jídla" },
+                  calories: { type: "number", description: "Kalorie (kcal)" },
+                  protein: { type: "number", description: "Bílkoviny (g)" },
+                  carbs: { type: "number", description: "Sacharidy (g)" },
+                  fat: { type: "number", description: "Tuky (g)" },
+                  meal_type: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"], description: "Typ jídla" }
+                },
+                required: ["name"],
+                additionalProperties: false
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_nutrition_summary",
+              description: "Získá souhrn nutričních dat (kalorie, makra) pro konkrétní den nebo období. Použij, když se uživatel ptá na svůj jídelníček, příjem živin nebo chce bilanci.",
+              parameters: {
+                type: "object",
+                properties: {
+                  date: { type: "string", description: "Konkrétní datum (YYYY-MM-DD)" },
+                  start_date: { type: "string", description: "Počáteční datum období (YYYY-MM-DD)" },
+                  end_date: { type: "string", description: "Koncové datum období (YYYY-MM-DD)" }
+                },
+                additionalProperties: false
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "search_training_library",
+              description: "Vyhledá informace v tréninkové knihovně. Použij pro dotazy na cviky, běžecké plány, suplementaci nebo BodyCombat.",
+              parameters: {
+                type: "object",
+                properties: {
+                  query: { type: "string", description: "Hledaný termín (např. 'kreatin', 'běh 10k', 'plank')" }
+                },
+                required: ["query"],
+                additionalProperties: false
+              }
+            }
+          },
                 type: "string",
                 enum: ["breakfast", "lunch", "dinner", "snack"],
                 description: "Typ jídla (snídaně, oběd, večeře, svačina) - odhadni podle času nebo kontextu"
@@ -570,8 +607,8 @@ serve(async (req) => {
         : '';
 
       const availableTools = hasStravaConnected
-        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email'
-        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email';
+        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email, get_nutrition_summary, search_training_library'
+        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email, get_nutrition_summary, search_training_library';
 
       fitnessContext = `
       
@@ -677,7 +714,13 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje
 
 VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search. Pro jídlo použij log_food_item.`;
+Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. 
+      
+      NOVÉ SCHOPNOSTI:
+      1. NUTRIČNÍ SPECIALISTA: Když se uživatel ptá na svůj jídelníček ("kolik jsem snědl", "mám dost bílkovin"), použij 'get_nutrition_summary'. Pro záznam jídla použij 'log_food_item'.
+      2. TRENÉR & KNIHOVNA: Když uživatel hledá cviky, plány nebo rady o suplementech ("jak běhat maraton", "co je kreatin"), použij 'search_training_library'.
+      
+      Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search. Pro jídlo použij log_food_item.`;
 
 
     // Přidat kontext o uživateli
