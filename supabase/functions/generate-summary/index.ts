@@ -177,18 +177,18 @@ Převýšení: ${latestActivity.elevation_gain || 0} m`;
       systemPrompt = 'Jsi osobní fitness trenér a zdravotní poradce. Analyzuj týdenní data a poskytni komplexní přehled s trendy, pozitivy, oblastmi ke zlepšení a konkrétními doporučeními v češtině. Zaměř se na celkový obraz kondice, spánku a tréninku. Odpověz v 8-12 větách, strukturovaně.';
     }
 
-    // Zavolat Lovable AI pro generování sumáře
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    // Zavolat OpenAI API pro generování sumáře
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: summaryData }
@@ -198,7 +198,7 @@ Převýšení: ${latestActivity.elevation_gain || 0} m`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', aiResponse.status, errorText);
+      console.error('OpenAI API error:', aiResponse.status, errorText);
       throw new Error(`AI error: ${aiResponse.status}`);
     }
 

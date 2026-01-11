@@ -436,6 +436,7 @@ export type Database = {
           height_cm: number | null
           id: string
           preferred_mode: string | null
+          preferences: Json | null
           protein_goal_g: number | null
           strava_access_token: string | null
           strava_refresh_token: string | null
@@ -467,6 +468,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          preferences?: Json | null
           protein_goal_g?: number | null
           strava_access_token?: string | null
           strava_refresh_token?: string | null
@@ -498,6 +500,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           preferred_mode?: string | null
+          preferences?: Json | null
           protein_goal_g?: number | null
           strava_access_token?: string | null
           strava_refresh_token?: string | null
