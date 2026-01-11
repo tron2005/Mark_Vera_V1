@@ -1,9 +1,9 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable UUID extension (if needed, but use gen_random_uuid() instead)
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create profiles table for user data
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE,
   display_name TEXT,
   preferred_mode TEXT DEFAULT 'mark' CHECK (preferred_mode IN ('mark', 'vera')),
@@ -13,7 +13,7 @@ CREATE TABLE public.profiles (
 
 -- Create notes table
 CREATE TABLE public.notes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   text TEXT NOT NULL,
   category TEXT DEFAULT 'general',
@@ -23,7 +23,7 @@ CREATE TABLE public.notes (
 
 -- Create conversations table
 CREATE TABLE public.conversations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   mode TEXT DEFAULT 'mark' CHECK (mode IN ('mark', 'vera')),
   title TEXT,
@@ -33,7 +33,7 @@ CREATE TABLE public.conversations (
 
 -- Create messages table
 CREATE TABLE public.messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content TEXT NOT NULL,
