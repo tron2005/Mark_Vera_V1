@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { Volume2 } from "lucide-react";
 import StravaTesterManager from "./StravaTesterManager";
+import { SystemLogs } from "./SystemLogs";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -1065,6 +1066,9 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Systémové logy */}
+      <SystemLogs />
     </div>
   );
 }

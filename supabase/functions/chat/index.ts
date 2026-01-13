@@ -35,6 +35,22 @@ serve(async (req) => {
     // Service role klient pro databázové operace
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Helper pro logování do databáze
+    const logToDb = async (level: 'info' | 'warning' | 'error', message: string, details?: any, userId?: string) => {
+      try {
+        await supabase.from('logs').insert({
+          user_id: userId || null,
+          level,
+          source: 'chat',
+          message,
+          details: details || null,
+          metadata: { timestamp: new Date().toISOString() }
+        });
+      } catch (e) {
+        console.error('Failed to log to database:', e);
+      }
+    };
+
     // Získat user_id z Authorization hlavičky
     const authHeader = req.headers.get("authorization");
     console.log("🔑 Auth header present:", !!authHeader);
@@ -82,6 +98,7 @@ serve(async (req) => {
 
     if (!userId) {
       console.error("❌ AUTH ERROR: No userId found. Token:", token ? "provided" : "missing", "User:", user);
+      await logToDb('error', 'Authentication failed', { authError, hasToken: !!token });
       return new Response(
         JSON.stringify({ error: "Nepřihlášený uživatel - session vypršela. Odhlaste se a přihlaste znovu." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -89,6 +106,7 @@ serve(async (req) => {
     }
     
     console.log("✅ User authenticated:", userId);
+    await logToDb('info', 'User authenticated successfully', { userId }, userId);
 
     // Načíst profil uživatele včetně fitness nastavení a Google tokeny
     const { data: profile } = await supabase
@@ -947,6 +965,12 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       shouldForceRaceGoal,
     });
 
+    await logToDb('info', 'Starting OpenAI API call', { 
+      model: 'gpt-4o',
+      messageCount: formattedMessages.length,
+      hasTools: tools.length > 0 
+    }, userId);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -1064,12 +1088,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       }
 
       if (response.status === 429) {
+        await logToDb('error', 'OpenAI API rate limit exceeded', { status: 429 }, userId);
         return new Response(
           JSON.stringify({ error: "Překročen limit požadavků. Zkuste to prosím později." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
+        await logToDb('error', 'OpenAI API credits exhausted', { status: 402 }, userId);
         return new Response(
           JSON.stringify({ error: "Nedostatek kreditů. Přidejte kredit do workspace." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1345,6 +1371,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
               let result: any;
               try {
                 const args = JSON.parse(tc.arguments);
+                
+                await logToDb('info', `Executing tool: ${tc.name}`, { 
+                  toolName: tc.name,
+                  arguments: args 
+                }, userId);
 
                 if (tc.name === "add_note") {
                   const { error } = await supabase.from("notes").insert({
@@ -2117,6 +2148,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
 
               } catch (e) {
                 console.error("Tool execution error:", e);
+                await logToDb('error', `Tool execution failed: ${tc.name}`, { 
+                  toolName: tc.name,
+                  error: e instanceof Error ? e.message : String(e) 
+                }, userId);
                 toolMessages.push({
                   role: "tool",
                   tool_call_id: tc.id,
@@ -2245,6 +2280,28 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     });
   } catch (error) {
     console.error("Chat error:", error);
+    
+    // Try to log to database (best effort, userId might not be available)
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await supabase.from('logs').insert({
+        user_id: null,
+        level: 'error',
+        source: 'chat',
+        message: 'Critical chat error',
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        },
+        metadata: { timestamp: new Date().toISOString() }
+      });
+    } catch (logError) {
+      console.error('Failed to log critical error:', logError);
+    }
+    
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Neznámá chyba" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
