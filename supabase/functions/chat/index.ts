@@ -6,13 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+console.log("🚀 CHAT FUNCTION STARTING - VERSION 2.0");
+console.log("⏰ Current time:", new Date().toISOString());
+
 serve(async (req) => {
+  console.log("🔵 REQUEST RECEIVED - Method:", req.method, "URL:", req.url);
+  
   if (req.method === "OPTIONS") {
+    console.log("✅ OPTIONS request - returning CORS");
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("📥 Chat request received");
+
   try {
     const { messages, mode, conversationId } = await req.json();
+    console.log("📋 Request params:", { messageCount: messages?.length, mode, conversationId });
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
     if (!OPENAI_API_KEY) {
@@ -21,15 +30,42 @@ serve(async (req) => {
 
     // Inicializace Supabase klienta
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Service role klient pro databázové operace
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Získat user_id z Authorization hlavičky nebo z konverzace jako fallback
+    // Získat user_id z Authorization hlavičky
     const authHeader = req.headers.get("authorization");
+    console.log("🔑 Auth header present:", !!authHeader);
     const token = authHeader?.replace("Bearer ", "");
+    console.log("🔑 Token extracted:", token ? `${token.substring(0, 20)}...` : "NO TOKEN");
+    
+    // Vytvoříme klienta s Authorization headerem pro ověření uživatele
+    const supabaseAuth = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader || "",
+          },
+        },
+        auth: {
+          persistSession: false,
+        },
+      }
+    );
+    
     const {
       data: { user },
-    } = await supabase.auth.getUser(token || "");
+      error: authError,
+    } = await supabaseAuth.auth.getUser();
+    
+    if (authError) {
+      console.error("❌ Auth error from getUser:", authError);
+    }
+    console.log("👤 User from token:", user ? user.id : "NO USER");
 
     let userId: string | null = user?.id ?? null;
 
@@ -45,18 +81,25 @@ serve(async (req) => {
     }
 
     if (!userId) {
+      console.error("❌ AUTH ERROR: No userId found. Token:", token ? "provided" : "missing", "User:", user);
       return new Response(
-        JSON.stringify({ error: "Nepřihlášený uživatel" }),
+        JSON.stringify({ error: "Nepřihlášený uživatel - session vypršela. Odhlaste se a přihlaste znovu." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("✅ User authenticated:", userId);
 
-    // Načíst profil uživatele včetně fitness nastavení
+    // Načíst profil uživatele včetně fitness nastavení a Google tokeny
     const { data: profile } = await supabase
       .from("profiles")
-      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token, weight_kg, age, height_cm, bmi, bmr, gender")
+      .select("custom_instructions, trainer_enabled, user_description, strava_refresh_token, google_refresh_token, google_access_token, weight_kg, age, height_cm, bmi, bmr, gender")
       .eq("user_id", userId)
       .maybeSingle();
+
+    // Zkontrolovat, jestli je Google Calendar připojený (potřebujeme to PŘED vytvořením tools)
+    const hasGoogleCalendar = !!(profile?.google_refresh_token || profile?.google_access_token);
+    console.log("Google Calendar connection status:", hasGoogleCalendar);
 
     // Načíst aktuální fitness stav (Advanced Metrics)
     const { data: fitnessState } = await supabase
@@ -195,16 +238,6 @@ serve(async (req) => {
               }
             }
           },
-                type: "string",
-                enum: ["breakfast", "lunch", "dinner", "snack"],
-                description: "Typ jídla (snídaně, oběd, večeře, svačina) - odhadni podle času nebo kontextu"
-              }
-            },
-            required: ["name"],
-            additionalProperties: false
-          }
-        }
-      },
       {
         type: "function",
         function: {
@@ -378,7 +411,8 @@ serve(async (req) => {
           }
         }
       },
-      {
+      // Kalendářový tool - pouze pokud je Google Calendar připojený
+      ...(hasGoogleCalendar ? [{
         type: "function",
         function: {
           name: "create_calendar_event",
@@ -396,8 +430,9 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
-      },
-      {
+      }] : []),
+      // List calendar events tool - pouze pokud je Google Calendar připojený
+      ...(hasGoogleCalendar ? [{
         type: "function",
         function: {
           name: "list_calendar_events",
@@ -410,7 +445,7 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
-      },
+      }] : []),
       {
         type: "function",
         function: {
@@ -679,12 +714,7 @@ ANALÝZA FOTEK: Když uživatel pošle fotku, VŽDY ji důkladně analyzuj a:
 2. Automaticky extrahuj důležité informace (texty na cedulích, datumy, jména, úkoly...)
 3. Pokud foto obsahuje něco, co by se dalo uložit jako poznámka (úkol, termín, kontakt...), AUTOMATICKY to ulož pomocí add_note
 
-VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě", "vytvoř událost", "přidej schůzku" nebo cokoliv podobného, VŽDY použij create_calendar_event tool.
-Příklady příkazů, které MUSÍ vyvolat create_calendar_event:
-- "vytvoř v kalendáři na dnes 21 hodin upomínku: připomeň" → create_calendar_event(summary="připomeň", start="2025-11-12T21:00:00")
-- "přidej schůzku zítra v 10" → create_calendar_event(summary="Schůzka", start="2025-11-13T10:00:00")
-- "naplánuj oběd ve čtvrtek ve 12" → create_calendar_event(summary="Oběd", start="2025-11-14T12:00:00")
-- "upomeň mě v pondělí ráno" → create_calendar_event(summary="Upomínka", start="2025-11-18T09:00:00")
+POZNÁMKA: Kalendářové funkce jsou dočasně nedostupné (Google Calendar není připojený). Použij add_note pro vytváření upomínek a poznámek s termínem.
 
 Umíš spravovat poznámky uživatele pomocí nástrojů:
 
@@ -697,8 +727,6 @@ Umíš spravovat poznámky uživatele pomocí nástrojů:
 - reschedule_note: Pro přeplánování poznámky na jiný termín
 - send_notes_email: Pro odeslání poznámek emailem (jednotlivé poznámky nebo sumář)
 - send_stats_email: Pro odeslání fitness a wellness statistik emailem (spánek, HRV, fitness aktivity, tělesné složení)
-- create_calendar_event: Pro vytvoření události v Google Calendar - použij VŽDY když uživatel chce vytvořit událost/upomínku/schůzku
-- list_calendar_events: Pro přečtení událostí z kalendáře na dnes/zítra/konkrétní datum
 - search_gmail: Pro vyhledávání a čtení emailů v Gmail účtu uživatele
 - web_search: Pro vyhledání aktuálních informací, článků, zpráv, doporučení filmů, seriálů, knih a dalšího
 
@@ -712,9 +740,9 @@ DŮLEŽITÉ: Máš přístup k celé historii této konverzace. Když se uživat
 
 ANALÝZA FOTEK: Když uživatel pošle fotku, popiš co vidíš a pokud obsahuje něco důležitého (úkol, termín...), ulož to pomocí add_note. Pokud je na fotce jídlo, použij log_food_item.
 
-VYTVÁŘENÍ KALENDÁŘNÍCH UDÁLOSTÍ: Když uživatel říká "vytvoř v kalendáři", "přidej do kalendáře", "naplánuj", "upomeň mě" nebo podobně, použij create_calendar_event.
+POZNÁMKA: Kalendářové funkce jsou dočasně nedostupné. Použij add_note pro upomínky.
 
-Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, create_calendar_event, list_calendar_events, search_gmail, web_search. 
+Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes, delete_note, get_notes_by_date, create_summary, reschedule_note, send_notes_email, send_stats_email, search_gmail, web_search. 
       
       NOVÉ SCHOPNOSTI:
       1. NUTRIČNÍ SPECIALISTA: Když se uživatel ptá na svůj jídelníček ("kolik jsem snědl", "mám dost bílkovin"), použij 'get_nutrition_summary'. Pro záznam jídla použij 'log_food_item'.
@@ -879,7 +907,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       return words.some((w) => t.includes(normalizeText(w)));
     };
 
-    const shouldForceCalendar = !!lastUserText && normIncludes(lastUserText, calendarKeywords);
+    // hasGoogleCalendar už je definované výše (na začátku funkce)
+    
+    const shouldForceCalendar = !!lastUserText && hasGoogleCalendar && normIncludes(lastUserText, calendarKeywords);
     const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
     const shouldForceStrava =
       !!lastUserText &&
@@ -946,8 +976,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     });
 
     if (!response.ok) {
-      if ((response.status === 402 || response.status === 429) && shouldForceCalendar && lastUserText) {
+      // KALENDÁŘOVÝ FALLBACK DOČASNĚ ZAKÁZÁN
+      if (false && (response.status === 402 || response.status === 429) && shouldForceCalendar && hasGoogleCalendar && lastUserText) {
         // No AI credits/rate limit but user asked for calendar → create event deterministically and stream a single message
+        // POZOR: Pouze pokud je Google Calendar připojený!
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           async start(controller) {
@@ -1104,8 +1136,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
           }
 
           // Zpracovat tool calls a poslat výsledky zpět do AI
-          // Fallback: pokud AI nevygenerovala tool call a přitom jde o kalendářní příkaz, vytvoř událost přímo
-          if (toolCalls.length === 0 && shouldForceCalendar && lastUserText) {
+          // KALENDÁŘOVÝ FALLBACK DOČASNĚ ZAKÁZÁN - календář nefunguje správně
+          if (false && toolCalls.length === 0 && shouldForceCalendar && hasGoogleCalendar && lastUserText) {
             try {
               console.log("Calendar fallback triggered for:", lastUserText);
               // velmi jednoduchý parser: dnes/zítra + čas (HH nebo HH:MM) + název za dvojtečkou
@@ -2122,13 +2154,35 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
               body: JSON.stringify({
                 model: "gpt-4o",
                 messages: followUpMessages,
-                tool_choice: shouldForceCalendar ? { type: "function", function: { name: "create_calendar_event" } } : "auto",
                 stream: true,
               }),
             });
 
             if (!followUpResponse.ok) {
-              throw new Error(`AI follow-up error: ${followUpResponse.status}`);
+              console.error("AI follow-up error:", followUpResponse.status);
+              const errorText = await followUpResponse.text();
+              console.error("AI follow-up error details:", errorText);
+              
+              // Namísto vyhození chyby, pošleme uživateli informativní zprávu
+              const errorMsg = `Omlouvám se, došlo k chybě při zpracování odpovědi. Zkuste to prosím znovu.`;
+              const errorDelta = {
+                id: `error-${Date.now()}`,
+                model: "internal",
+                object: "chat.completion.chunk",
+                created: Date.now(),
+                choices: [{ index: 0, delta: { role: "assistant", content: errorMsg }, finish_reason: "stop" }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorDelta)}\n\n`));
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+              
+              // Uložit chybovou zprávu do databáze
+              await supabase.from("messages").insert({
+                conversation_id: conversationId,
+                role: "assistant",
+                content: errorMsg
+              });
+              return;
             }
 
             const followUpReader = followUpResponse.body!.getReader();

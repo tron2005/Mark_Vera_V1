@@ -65,7 +65,7 @@ vector_port = 54328
 backend = "postgres"
 
 [functions.chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-notes-email]
 verify_jwt = true
