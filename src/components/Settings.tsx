@@ -326,7 +326,12 @@ export default function Settings() {
     }
     
     const redirectUri = `${window.location.origin}/auth/callback`;
-    const scope = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks";
+    const scope = [
+      "https://www.googleapis.com/auth/calendar.events",      // Vytváření/editace událostí
+      "https://www.googleapis.com/auth/calendar.readonly",    // Čtení kalendáře
+      "https://www.googleapis.com/auth/gmail.readonly",       // Čtení Gmail
+      "https://www.googleapis.com/auth/tasks",                // Google Tasks
+    ].join(" ");
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: clientId,
