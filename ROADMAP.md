@@ -23,6 +23,13 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
 - [ ] **Dlouhodobá Paměť**: Vylepšení `create_summary` pro denní přehledy.
 - [ ] **Kalendář & Mail**: Plná integrace nástrojů Google Calendar a Gmail.
+  - [x] Čtení událostí (dotaz "co mám zítra")
+  - [x] Vytváření událostí z chatu
+  - [x] Čtení Gmailu (dnes / poslední hodina)
+  - [ ] Mazání událostí (podle názvu a data)
+  - [ ] Přesun událostí (změna času/dne)
+  - [ ] Stabilní souhrny Gmailu (kratší výstupy, bez rate-limit)
+  - [ ] Vyhledání událostí podle názvu/časového okna
 
 ## 🏠 Fáze 4: Lokální Mozek (MarkVera Offline)
 *Cílový stav: Běh na RPi 5 bez závislosti na cloudu.*
@@ -35,3 +42,4 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [ ] Vizualizace makroživin (navazuje na opravu jídla).
 - [ ] 3D vizualizace svalových skupin.
 - [ ] Správa vozového parku (servis, STK).
+- [ ] Zálohování: stabilní tag + lokální archiv po každé funkční verzi.

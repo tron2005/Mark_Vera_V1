@@ -917,6 +917,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       "e-mail",
       "e-maily",
       "emails",
+      "mail",
+      "maily",
+      "mailů",
+      "mailu",
       "gmail",
       "pošta",
       "schránka",
@@ -1274,15 +1278,28 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
           if (toolCalls.length === 0 && shouldForceGmail && lastUserText) {
             try {
               console.log("Gmail fallback triggered for:", lastUserText);
-              const { data: gmailData, error: gmailError } = await supabase.functions.invoke("search-gmail", {
-                headers: { Authorization: authHeader || "" },
-                body: { query: lastUserText, maxResults: 10 }
+              let fallbackQuery = lastUserText;
+              const lowerText = lastUserText.toLowerCase();
+              if (lowerText.includes("poslední hodinu") || lowerText.includes("posledni hodinu") || lowerText.includes("last hour")) {
+                fallbackQuery = "newer_than:1h";
+              } else if (lowerText.includes("dnes") || lowerText.includes("today")) {
+                fallbackQuery = "newer_than:1d";
+              }
+
+              const { data: gmailData, error: gmailError } = await callEdgeFunction("search-gmail", {
+                query: fallbackQuery,
+                maxResults: 10
               });
               if (gmailError) {
                 console.error("Gmail fallback error:", gmailError);
               } else if ((gmailData as any)?.messages?.length) {
                 const cnt = (gmailData as any).count || (gmailData as any).messages.length;
-                const note = `Nalezeno ${cnt} e-mailů.`;
+                const items = (gmailData as any).messages.slice(0, 5).map((m: any, idx: number) => {
+                  const from = m.from ? m.from.replace(/<[^>]+>/g, "").trim() : "Neznámý odesílatel";
+                  const subject = m.subject || "Bez předmětu";
+                  return `${idx + 1}. ${from} — ${subject}`;
+                }).join("\n");
+                const note = `Nalezeno ${cnt} e-mailů.\n${items}`;
                 fullResponse += `\n\n${note}`;
                 const delta = {
                   id: `gen-${Date.now()}`,
@@ -1769,9 +1786,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   const args = JSON.parse(tc.arguments);
                   const date = args.date;
                   try {
-                    const listResp = await supabase.functions.invoke("list-calendar-events", {
-                      headers: { Authorization: authHeader || "" },
-                      body: { date }
+                    const listResp = await callEdgeFunction("list-calendar-events", {
+                      date
                     });
 
                     if (listResp.error) {
@@ -2088,18 +2104,23 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   console.log("search_gmail called with args:", args);
 
                   try {
-                    const gmailResponse = await supabase.functions.invoke("search-gmail", {
-                      headers: {
-                        Authorization: authHeader || ""
-                      },
-                      body: {
-                        query: args.query,
-                        from: args.from,
-                        subject: args.subject,
-                        after: args.after,
-                        before: args.before,
-                        maxResults: args.maxResults || 10
+                    const text = (lastUserText || "").toLowerCase();
+                    let gmailQuery = args.query;
+                    if (!gmailQuery) {
+                      if (text.includes("poslední hodinu") || text.includes("posledni hodinu") || text.includes("last hour")) {
+                        gmailQuery = "newer_than:1h";
+                      } else if (text.includes("dnes") || text.includes("today")) {
+                        gmailQuery = "newer_than:1d";
                       }
+                    }
+
+                    const gmailResponse = await callEdgeFunction("search-gmail", {
+                      query: gmailQuery,
+                      from: args.from,
+                      subject: args.subject,
+                      after: args.after,
+                      before: args.before,
+                      maxResults: args.maxResults || 10
                     });
 
                     console.log("Gmail search response:", JSON.stringify(gmailResponse));
@@ -2110,11 +2131,24 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                     } else {
                       const data = gmailResponse.data as any;
                       if (data.messages && data.messages.length > 0) {
+                        const items = data.messages.slice(0, 8).map((m: any, idx: number) => {
+                          const from = m.from ? m.from.replace(/<[^>]+>/g, "").trim() : "Neznámý odesílatel";
+                          const subject = m.subject || "Bez předmětu";
+                          const date = m.date ? new Date(m.date).toLocaleString("cs-CZ") : "";
+                          const when = date ? ` (${date})` : "";
+                          return `${idx + 1}. ${from} — ${subject}${when}`;
+                        }).join("\n");
                         result = {
                           success: true,
-                          messages: data.messages,
+                          messages: data.messages.map((m: any) => ({
+                            id: m.id,
+                            from: m.from,
+                            subject: m.subject,
+                            date: m.date,
+                            snippet: m.snippet,
+                          })),
                           count: data.count,
-                          summary: `Nalezeno ${data.count} emailů`
+                          summary: `Nalezeno ${data.count} emailů.\n${items}`
                         };
                       } else {
                         result = { success: true, messages: [], count: 0, summary: "Nenalezeny žádné emaily" };
@@ -2185,6 +2219,43 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   content: JSON.stringify({ error: "Chyba při volání nástroje" })
                 });
               }
+            }
+
+            // Shortcut: for Gmail tool calls, reply directly to avoid follow-up AI failures
+            if (toolCalls.length === 1 && toolCalls[0].name === "search_gmail") {
+              let responseText = "Nepodařilo se načíst emaily.";
+              try {
+                const toolContent = JSON.parse(toolMessages[0].content);
+                if (toolContent?.error) {
+                  responseText = toolContent.error;
+                } else if (toolContent?.summary) {
+                  responseText = toolContent.summary;
+                } else if (toolContent?.messages?.length === 0) {
+                  responseText = "Nenalezeny žádné emaily.";
+                }
+              } catch {
+                // keep default responseText
+              }
+
+              const delta = {
+                id: `gen-${Date.now()}`,
+                provider: "internal",
+                model: "internal",
+                object: "chat.completion.chunk",
+                created: Date.now(),
+                choices: [{ index: 0, delta: { role: "assistant", content: responseText }, finish_reason: null }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+
+              await supabase.from("messages").insert({
+                conversation_id: conversationId,
+                role: "assistant",
+                content: `${responseText} [Provedeno 1 akcí]`
+              });
+
+              return;
             }
 
             // Poslat výsledky tool calls zpátky do AI pro finální odpověď
