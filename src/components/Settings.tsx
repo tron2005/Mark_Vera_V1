@@ -381,21 +381,47 @@ export default function Settings() {
       if (!testDate) throw new Error("Zadej datum");
       const start = allDay ? testDate : `${testDate}T${testTime}`;
 
-      const { data, error } = await supabase.functions.invoke('create-calendar-event', {
-        body: {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error("Nejste přihlášeni");
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Chybí Supabase konfigurace");
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-calendar-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session.access_token}`,
+          'apikey': supabaseKey
+        },
+        body: JSON.stringify({
           summary: testSummary || 'Test událost',
           start
-        }
+        })
       });
 
-      if (error) throw error;
-      if ((data as any)?.success) {
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        data = rawText;
+      }
+
+      if (response.ok && data?.success) {
         toast({
           title: 'Událost vytvořena',
-          description: (data as any)?.eventLink ? `Odkaz: ${(data as any).eventLink}` : 'Zkontroluj Google Kalendář.'
+          description: data?.eventLink ? `Odkaz: ${data.eventLink}` : 'Zkontroluj Google Kalendář.'
         });
+      } else if (data?.error) {
+        toast({ title: 'Chyba při vytváření události', description: data.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Odpověď', description: JSON.stringify(data) });
+        toast({ title: 'Odpověď', description: typeof data === 'string' ? data : JSON.stringify(data) });
       }
     } catch (err: any) {
       console.error('Calendar test error:', err);

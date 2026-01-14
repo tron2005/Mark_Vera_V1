@@ -77,10 +77,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.create-calendar-event]
-verify_jwt = true
+verify_jwt = false
 
 [functions.list-calendar-events]
-verify_jwt = true
+verify_jwt = false
 
 [functions.export-to-keep]
 verify_jwt = true

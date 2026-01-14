@@ -31,6 +31,7 @@ serve(async (req) => {
     // Inicializace Supabase klienta
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     
     // Service role klient pro databázové operace
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -56,6 +57,35 @@ serve(async (req) => {
     console.log("🔑 Auth header present:", !!authHeader);
     const token = authHeader?.replace("Bearer ", "");
     console.log("🔑 Token extracted:", token ? `${token.substring(0, 20)}...` : "NO TOKEN");
+    
+    const callEdgeFunction = async (functionName: string, body: Record<string, unknown>) => {
+      const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader || "",
+          "apikey": supabaseAnonKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        data = rawText;
+      }
+
+      if (!response.ok) {
+        const message = typeof data === "string"
+          ? data
+          : data?.error || `HTTP ${response.status}`;
+        return { error: { message }, data };
+      }
+
+      return { data, error: null };
+    };
     
     // Vytvoříme klienta s Authorization headerem pro ověření uživatele
     const supabaseAuth = createClient(
@@ -1040,9 +1070,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                 summary = "Schůzka";
               }
 
-              const calResp = await supabase.functions.invoke("create-calendar-event", {
-                headers: { Authorization: authHeader || "" },
-                body: { summary, start: startIso }
+              const calResp = await callEdgeFunction("create-calendar-event", {
+                summary,
+                start: startIso,
               });
 
               let text = "";
@@ -1200,9 +1230,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                 summary = "Schůzka";
               }
 
-              const calResp = await supabase.functions.invoke("create-calendar-event", {
-                headers: { Authorization: authHeader || "" },
-                body: { summary, start: startIso }
+              const calResp = await callEdgeFunction("create-calendar-event", {
+                summary,
+                start: startIso,
               });
 
               if (calResp.error || !(calResp.data as any)?.success) {
@@ -1685,15 +1715,12 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                       startIso = buildPragueDate(0, timeFromText(text));
                     }
 
-                    const calendarResponse = await supabase.functions.invoke("create-calendar-event", {
-                      headers: { Authorization: authHeader || "" },
-                      body: {
-                        summary: args.summary || "Událost",
-                        start: startIso,
-                        end: args.end,
-                        location: args.location,
-                        description: args.description
-                      }
+                    const calendarResponse = await callEdgeFunction("create-calendar-event", {
+                      summary: args.summary || "Událost",
+                      start: startIso,
+                      end: args.end,
+                      location: args.location,
+                      description: args.description,
                     });
 
                     if (calendarResponse.error || !(calendarResponse.data as any)?.success) {
@@ -1710,9 +1737,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                       // Ověř vytvoření načtením událostí z daného dne
                       const dateForVerification = startIso.split('T')[0];
                       try {
-                        const verifyResp = await supabase.functions.invoke("list-calendar-events", {
-                          headers: { Authorization: authHeader || "" },
-                          body: { date: dateForVerification }
+                        const verifyResp = await callEdgeFunction("list-calendar-events", {
+                          date: dateForVerification,
                         });
                         const events = (verifyResp.data as any)?.items || [];
                         const foundEvent = events.find((e: any) =>
