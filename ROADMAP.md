@@ -30,6 +30,8 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - [ ] Přesun událostí (změna času/dne)
   - [ ] Stabilní souhrny Gmailu (kratší výstupy, bez rate-limit)
   - [ ] Vyhledání událostí podle názvu/časového okna
+  - [x] **Web Search**: Vyhledávání aktuálních informací na internetu (Tavily).
+  - [ ] **File Workspace**: Pracovní prostor pro soubory (PDF, CSV, obrázky) a jejich analýza.
 
 ## 🏠 Fáze 4: Lokální Mozek (MarkVera Offline)
 *Cílový stav: Běh na RPi 5 bez závislosti na cloudu.*

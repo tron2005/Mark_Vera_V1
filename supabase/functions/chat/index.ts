@@ -484,7 +484,7 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "list_calendar_events",
-          description: "Načte a přečte události z Google Kalendáře pro daný den (výchozí dnes). Použij, když se uživatel ptá 'co mám dnes', 'přečti dnešní kalendář', 'co mám zítra' apod.",
+          description: "Načte a přečte události z Google Kalendáře pro daný den (výchozí dnes). Použij pro dotazy na MŮJ PROGRAM, SCHŮZKY, nebo CO MÁM DĚLAT. NEPOUŽÍVAT pro dotazy na počasí, svátky nebo obecné informace - na to použij web_search.",
           parameters: {
             type: "object",
             properties: {
@@ -493,7 +493,42 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "manage_calendar",
+          description: "Spravuje kalendář: maže nebo přesouvá (upravuje) existující události. PRO VYTVÁŘENÍ NOVÝCH POUŽIJ create_calendar_event.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["delete", "update", "move"], description: "Akce: delete (smazat), update/move (přesunout/upravit)" },
+              query: { type: "string", description: "Hledaný název udalosti (např. 'Zubař')" },
+              date_ref: { type: "string", description: "Datum kde hledat (např. '2024-01-20' nebo 'zítra'). Pokud není určeno, použij 'dnes'." },
+              new_start: { type: "string", description: "Nový čas začátku (jen pro update/move, ISO 8601 nebo 'zítra 15:00')" },
+              new_end: { type: "string", description: "Nový čas konce (jen pro update, volitelné)" },
+              new_summary: { type: "string", description: "Nový název (jen pro update, volitelné)" }
+            },
+            required: ["action", "query"],
+            additionalProperties: false
+          }
+        }
       }] : []),
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "Vyhledá informace na internetu. Použij VŽDY pro dotazy na POČASÍ, ZPRÁVY, aktuální události, fakta a cokoliv, co není v tvém osobním kalendáři.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Hledaný výraz" }
+            },
+            required: ["query"],
+            additionalProperties: false
+          }
+        }
+      },
       {
         type: "function",
         function: {
@@ -796,7 +831,11 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       1. NUTRIČNÍ SPECIALISTA: Když se uživatel ptá na svůj jídelníček ("kolik jsem snědl", "mám dost bílkovin"), použij 'get_nutrition_summary'. Pro záznam jídla použij 'log_food_item'.
       2. TRENÉR & KNIHOVNA: Když uživatel hledá cviky, plány nebo rady o suplementech ("jak běhat maraton", "co je kreatin"), použij 'search_training_library'.
       
-      Když se uživatel ptá na plánované úkoly, použij get_notes_by_date nebo list_calendar_events. Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro vyhledání aktuálních informací nebo doporučení filmů/seriálů/článků použij web_search. Pro jídlo použij log_food_item.`;
+      DŮLEŽITÉ PRAVIDLA PRO NÁSTROJE:
+      - POČASÍ A ZPRÁVY: Když se uživatel ptá na POČASÍ ("jak bude zítra", "prší dnes?", "předpověď") nebo ZPRÁVY/NOVINKY ("co se děje ve světě"), MUSÍŠ použít 'web_search'. NIKDY nepoužívej kalendář pro tyto dotazy!
+      - KALENDÁŘ: 'list_calendar_events' nebo 'get_notes_by_date' použij POUZE, když se uživatel ptá na SVŮJ OSOBNÍ PROGRAM, schůzky nebo plány ("co mám zítra v plánu", "kdy mám zubaře").
+      
+      Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro jídlo použij log_food_item.`;
 
 
     // Přidat kontext o uživateli
@@ -985,7 +1024,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
         (lastUserTextNorm.includes("zitr") || lastUserTextNorm.includes("dnes") || lastUserTextNorm.includes("plan") || lastUserTextNorm.includes("tyden") || lastUserTextNorm.includes("vikend")) &&
         (lastUserTextNorm.includes("udalost") || lastUserTextNorm.includes("kalendar") || lastUserTextNorm.includes("schuzk") || lastUserTextNorm.includes("program") || lastUserTextNorm.includes("rozvrh"))
       )
-    );
+    ) && !lastUserTextNorm.includes("pocasi") && !lastUserTextNorm.includes("zpravy");
     const shouldForceCalendarList = !!lastUserText && hasGoogleCalendar && scheduleQuestion && !shouldForceCalendar;
     const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
     const shouldForceStrava =
@@ -1891,6 +1930,98 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   } catch (error: any) {
                     result = { error: error.message };
                   }
+                } else if (tc.name === "manage_calendar") {
+                  const args = JSON.parse(tc.arguments);
+                  const action = args.action;
+                  const queryStr = (args.query || "").toLowerCase();
+
+                  // Helper pro určení data hledání
+                  const resolveDate = (ref: string): string => {
+                    const d = new Date();
+                    const r = (ref || "").toLowerCase();
+                    if (r.includes("zítra") || r.includes("zitra")) d.setDate(d.getDate() + 1);
+                    else if (r.includes("pozítří") || r.includes("pozitri")) d.setDate(d.getDate() + 2);
+                    else if (r.match(/^\d{4}-\d{2}-\d{2}/)) return r.substring(0, 10);
+                    return d.toISOString().split('T')[0];
+                  };
+
+                  const dateForSearch = resolveDate(args.date_ref);
+
+                  try {
+                    // 1. Najít události
+                    const listResp = await callEdgeFunction("list-calendar-events", { date: dateForSearch });
+                    if (listResp.error) throw new Error(listResp.error.message);
+
+                    const items = (listResp.data as any)?.items || [];
+
+                    // 2. Filtrovat
+                    const matches = items.filter((ev: any) =>
+                      (ev.summary || "").toLowerCase().includes(queryStr)
+                    );
+
+                    if (matches.length === 0) {
+                      result = { message: `Nenašel jsem žádnou událost obsahující "${args.query}" pro datum ${dateForSearch}.` };
+                    } else if (matches.length > 1) {
+                      const names = matches.map((m: any) => m.summary).join(", ");
+                      result = { message: `Našel jsem více událostí (${names}). Prosím upřesni název.` };
+                    } else {
+                      // Přesně 1 shoda
+                      const eventId = matches[0].id;
+
+                      if (action === "delete") {
+                        const delResp = await callEdgeFunction("delete-calendar-event", { eventId });
+                        if (delResp.error) {
+                          result = { error: delResp.error.message };
+                        } else {
+                          result = { success: true, message: `Událost "${matches[0].summary}" byla úspěšně smazána.` };
+                        }
+                      } else if (action === "update" || action === "move") {
+                        const updateBody: any = { eventId };
+                        if (args.new_summary) updateBody.summary = args.new_summary;
+                        if (args.new_start) updateBody.start = args.new_start;
+                        if (args.new_end) updateBody.end = args.new_end;
+
+                        const upResp = await callEdgeFunction("update-calendar-event", updateBody);
+                        if (upResp.error) {
+                          result = { error: upResp.error.message };
+                        } else {
+                          result = { success: true, message: `Událost "${matches[0].summary}" byla upravena.` };
+                        }
+                      }
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
+                  }
+                } else if (tc.name === "web_search") {
+                  const args = JSON.parse(tc.arguments);
+                  try {
+                    const searchResp = await callEdgeFunction("search-web", {
+                      query: args.query
+                    });
+
+                    if (searchResp.error) {
+                      result = { error: searchResp.error.message };
+                    } else {
+                      const data = searchResp.data as any;
+                      const answer = data.answer;
+                      const items = data.results || [];
+
+                      let text = "";
+                      if (answer) {
+                        text += `💡 Odpověď: ${answer}\n\n`;
+                      }
+
+                      if (items.length > 0) {
+                        text += "🔍 Zdroje:\n" + items.map((i: any) => `- [${i.title}](${i.url}): ${i.content.substring(0, 150)}...`).join("\n");
+                      } else {
+                        text += "Nebyly nalezeny žádné relevantní výsledky.";
+                      }
+
+                      result = { message: text };
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
+                  }
                 } else if (tc.name === "get_strava_activities") {
                   const args = JSON.parse(tc.arguments);
                   try {
@@ -2241,45 +2372,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                     console.log("Exception when searching Gmail:", error);
                     result = { error: `Chyba: ${error.message}` };
                   }
-                } else if (tc.name === "web_search") {
-                  const args = JSON.parse(tc.arguments);
-                  const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
 
-                  if (!TAVILY_API_KEY) {
-                    result = { error: "Vyhledávání není nakonfigurováno" };
-                  } else {
-                    try {
-                      const searchResponse = await fetch("https://api.tavily.com/search", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          api_key: TAVILY_API_KEY,
-                          query: args.query,
-                          search_depth: "basic",
-                          max_results: 5,
-                          include_answer: true,
-                        }),
-                      });
-
-                      const searchData = await searchResponse.json();
-
-                      if (searchData.results && searchData.results.length > 0) {
-                        let summary = searchData.answer ? `${searchData.answer}\n\n` : "";
-                        summary += "📰 Nalezené zdroje:\n\n";
-                        searchData.results.forEach((item: any, idx: number) => {
-                          summary += `${idx + 1}. ${item.title}\n   ${item.content}\n   🔗 ${item.url}\n\n`;
-                        });
-                        result = { message: summary };
-                      } else {
-                        result = { message: "Nenašel jsem žádné relevantní výsledky." };
-                      }
-                    } catch (searchError) {
-                      console.error("Search error:", searchError);
-                      result = { error: "Chyba při vyhledávání" };
-                    }
-                  }
                 }
 
                 toolMessages.push({
