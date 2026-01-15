@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     const { summaryType } = await req.json();
-    
+
     const authHeader = req.headers.get('Authorization')!;
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -158,7 +158,7 @@ Převýšení: ${latestActivity.elevation_gain || 0} m`;
         const stravaDistance = stravaWeek?.reduce((sum, a) => sum + (a.distance_meters || 0), 0) || 0;
         const garminDistance = garminWeek?.reduce((sum, a) => sum + ((a.distance_km || 0) * 1000), 0) || 0;
         const totalDistance = (stravaDistance + garminDistance) / 1000;
-        
+
         const stravaCalories = stravaWeek?.reduce((sum, a) => sum + (a.calories || 0), 0) || 0;
         const garminCalories = garminWeek?.reduce((sum, a) => sum + (a.calories || 0), 0) || 0;
         const totalCalories = stravaCalories + garminCalories;
@@ -188,7 +188,7 @@ Převýšení: ${latestActivity.elevation_gain || 0} m`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: summaryData }

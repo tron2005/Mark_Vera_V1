@@ -11,7 +11,7 @@ console.log("⏰ Current time:", new Date().toISOString());
 
 serve(async (req) => {
   console.log("🔵 REQUEST RECEIVED - Method:", req.method, "URL:", req.url);
-  
+
   if (req.method === "OPTIONS") {
     console.log("✅ OPTIONS request - returning CORS");
     return new Response(null, { headers: corsHeaders });
@@ -32,7 +32,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    
+
     // Service role klient pro databázové operace
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -57,7 +57,7 @@ serve(async (req) => {
     console.log("🔑 Auth header present:", !!authHeader);
     const token = authHeader?.replace("Bearer ", "");
     console.log("🔑 Token extracted:", token ? `${token.substring(0, 20)}...` : "NO TOKEN");
-    
+
     const callEdgeFunction = async (functionName: string, body: Record<string, unknown>) => {
       const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
         method: "POST",
@@ -86,7 +86,7 @@ serve(async (req) => {
 
       return { data, error: null };
     };
-    
+
     // Vytvoříme klienta s Authorization headerem pro ověření uživatele
     const supabaseAuth = createClient(
       supabaseUrl,
@@ -102,12 +102,12 @@ serve(async (req) => {
         },
       }
     );
-    
+
     const {
       data: { user },
       error: authError,
     } = await supabaseAuth.auth.getUser();
-    
+
     if (authError) {
       console.error("❌ Auth error from getUser:", authError);
     }
@@ -134,7 +134,7 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
+
     console.log("✅ User authenticated:", userId);
     await logToDb('info', 'User authenticated successfully', { userId }, userId);
 
@@ -238,54 +238,54 @@ serve(async (req) => {
       {
         type: "function",
         function: {
-              name: "log_food_item",
-              description: "Zaznamená snědené jídlo do deníku. Použij VŽDY, když uživatel zmiňuje jídlo, kalorie nebo importuje jídelníček. NIKDY nepoužívej add_note pro jídlo.",
-              parameters: {
-                type: "object",
-                properties: {
-                  name: { type: "string", description: "Název jídla" },
-                  calories: { type: "number", description: "Kalorie (kcal)" },
-                  protein: { type: "number", description: "Bílkoviny (g)" },
-                  carbs: { type: "number", description: "Sacharidy (g)" },
-                  fat: { type: "number", description: "Tuky (g)" },
-                  meal_type: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"], description: "Typ jídla" }
-                },
-                required: ["name"],
-                additionalProperties: false
-              }
-            }
-          },
-          {
-            type: "function",
-            function: {
-              name: "get_nutrition_summary",
-              description: "Získá souhrn nutričních dat (kalorie, makra) pro konkrétní den nebo období. Použij, když se uživatel ptá na svůj jídelníček, příjem živin nebo chce bilanci.",
-              parameters: {
-                type: "object",
-                properties: {
-                  date: { type: "string", description: "Konkrétní datum (YYYY-MM-DD)" },
-                  start_date: { type: "string", description: "Počáteční datum období (YYYY-MM-DD)" },
-                  end_date: { type: "string", description: "Koncové datum období (YYYY-MM-DD)" }
-                },
-                additionalProperties: false
-              }
-            }
-          },
-          {
-            type: "function",
-            function: {
-              name: "search_training_library",
-              description: "Vyhledá informace v tréninkové knihovně. Použij pro dotazy na cviky, běžecké plány, suplementaci nebo BodyCombat.",
-              parameters: {
-                type: "object",
-                properties: {
-                  query: { type: "string", description: "Hledaný termín (např. 'kreatin', 'běh 10k', 'plank')" }
-                },
-                required: ["query"],
-                additionalProperties: false
-              }
-            }
-          },
+          name: "log_food_item",
+          description: "Zaznamená snědené jídlo do deníku. Použij VŽDY, když uživatel zmiňuje jídlo, kalorie nebo importuje jídelníček. NIKDY nepoužívej add_note pro jídlo.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Název jídla" },
+              calories: { type: "number", description: "Kalorie (kcal)" },
+              protein: { type: "number", description: "Bílkoviny (g)" },
+              carbs: { type: "number", description: "Sacharidy (g)" },
+              fat: { type: "number", description: "Tuky (g)" },
+              meal_type: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"], description: "Typ jídla" }
+            },
+            required: ["name"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_nutrition_summary",
+          description: "Získá souhrn nutričních dat (kalorie, makra) pro konkrétní den nebo období. Použij, když se uživatel ptá na svůj jídelníček, příjem živin nebo chce bilanci.",
+          parameters: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Konkrétní datum (YYYY-MM-DD)" },
+              start_date: { type: "string", description: "Počáteční datum období (YYYY-MM-DD)" },
+              end_date: { type: "string", description: "Koncové datum období (YYYY-MM-DD)" }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "search_training_library",
+          description: "Vyhledá informace v tréninkové knihovně. Použij pro dotazy na cviky, běžecké plány, suplementaci nebo BodyCombat.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Hledaný termín (např. 'kreatin', 'běh 10k', 'plank')" }
+            },
+            required: ["query"],
+            additionalProperties: false
+          }
+        }
+      },
       {
         type: "function",
         function: {
@@ -960,8 +960,33 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     };
 
     // hasGoogleCalendar už je definované výše (na začátku funkce)
-    
+
     const shouldForceCalendar = !!lastUserText && hasGoogleCalendar && normIncludes(lastUserText, calendarKeywords);
+    const scheduleQuestion = !!lastUserText && (
+      lastUserTextNorm.includes("co mam") ||
+      lastUserTextNorm.includes("co mam zitra") ||
+      lastUserTextNorm.includes("co mam dnes") ||
+      lastUserTextNorm.includes("mam zitra") ||
+      lastUserTextNorm.includes("mam dnes") ||
+      lastUserTextNorm.includes("jaky mam plan") ||
+      lastUserTextNorm.includes("jaky mam zitra") ||
+      lastUserTextNorm.includes("co za udalosti") ||
+      lastUserTextNorm.includes("co mam za udalosti") ||
+      lastUserTextNorm.includes("na zitrek") ||
+      lastUserTextNorm.includes("zitr") ||
+      lastUserTextNorm.includes("plan") ||
+      lastUserTextNorm.includes("rozvrh") ||
+      lastUserTextNorm.includes("agenda") ||
+      lastUserTextNorm.includes("program") ||
+      lastUserTextNorm.includes("naplanov") ||
+      lastUserTextNorm.includes("co me ceka") ||
+      lastUserTextNorm.includes("cek") ||
+      (
+        (lastUserTextNorm.includes("zitr") || lastUserTextNorm.includes("dnes") || lastUserTextNorm.includes("plan") || lastUserTextNorm.includes("tyden") || lastUserTextNorm.includes("vikend")) &&
+        (lastUserTextNorm.includes("udalost") || lastUserTextNorm.includes("kalendar") || lastUserTextNorm.includes("schuzk") || lastUserTextNorm.includes("program") || lastUserTextNorm.includes("rozvrh"))
+      )
+    );
+    const shouldForceCalendarList = !!lastUserText && hasGoogleCalendar && scheduleQuestion && !shouldForceCalendar;
     const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
     const shouldForceStrava =
       !!lastUserText &&
@@ -987,22 +1012,78 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
 
     let toolChoiceLog = "auto";
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
+    else if (shouldForceCalendarList) toolChoiceLog = "force:list_calendar_events";
     else if (shouldForceRaceGoal) toolChoiceLog = "force:add_race_goal";
     else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
     else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
     else if (shouldForceGmail) toolChoiceLog = "force:search_gmail";
     console.log("AI tool_choice:", toolChoiceLog, {
       shouldForceCalendar,
+      shouldForceCalendarList,
       shouldForceSleep,
       shouldForceStrava,
       shouldForceGmail,
       shouldForceRaceGoal,
+      scheduleQuestion,
     });
 
-    await logToDb('info', 'Starting OpenAI API call', { 
-      model: 'gpt-4o',
+    // Přímý dotaz na kalendář bez LLM (např. "co mám zítra")
+    if (scheduleQuestion && hasGoogleCalendar) {
+      const lowerText = lastUserText.toLowerCase();
+      const d = new Date();
+      if (lowerText.includes("zitra") || lowerText.includes("zítra")) d.setDate(d.getDate() + 1);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const date = `${yyyy}-${mm}-${dd}`;
+
+      const listResp = await callEdgeFunction("list-calendar-events", { date });
+      let text = "";
+      if (listResp.error) {
+        text = `Chyba při načítání kalendáře: ${listResp.error.message}`;
+      } else {
+        const items = (listResp.data as any)?.items || [];
+        if (items.length === 0) {
+          text = "Nemáš žádné události.";
+        } else {
+          const formatted = items.map((ev: any, i: number) => {
+            const start = ev.start?.dateTime || ev.start?.date;
+            const time = start ? new Date(start).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }) : "";
+            return `${i + 1}. ${time} ${ev.summary || "Bez názvu"}`.trim();
+          }).join("\n");
+          text = `📅 Události:\n${formatted}`;
+        }
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          const delta = {
+            id: `gen-${Date.now()}`,
+            model: "internal",
+            object: "chat.completion.chunk",
+            created: Date.now(),
+            choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: "stop" }]
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(delta)}\n\n`));
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        }
+      });
+
+      await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        content: `${text} [Provedeno 1 akcí]`
+      });
+
+      return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+    }
+
+    await logToDb('info', 'Starting OpenAI API call', {
+      model: 'gpt-4o-mini',
       messageCount: formattedMessages.length,
-      hasTools: tools.length > 0 
+      hasTools: tools.length > 0
     }, userId);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1012,7 +1093,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           ...formattedMessages,
@@ -1020,15 +1101,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
         tools,
         tool_choice: shouldForceCalendar
           ? { type: "function", function: { name: "create_calendar_event" } }
-          : shouldForceRaceGoal
-            ? { type: "function", function: { name: "add_race_goal" } }
-            : shouldForceStrava
-              ? { type: "function", function: { name: "get_strava_activities" } }
-              : shouldForceSleep
-                ? { type: "function", function: { name: "get_sleep_data" } }
-                : shouldForceGmail
-                  ? { type: "function", function: { name: "search_gmail" } }
-                  : "auto",
+          : shouldForceCalendarList
+            ? { type: "function", function: { name: "list_calendar_events" } }
+            : shouldForceRaceGoal
+              ? { type: "function", function: { name: "add_race_goal" } }
+              : shouldForceStrava
+                ? { type: "function", function: { name: "get_strava_activities" } }
+                : shouldForceSleep
+                  ? { type: "function", function: { name: "get_sleep_data" } }
+                  : shouldForceGmail
+                    ? { type: "function", function: { name: "search_gmail" } }
+                    : "auto",
         stream: true,
       }),
     });
@@ -1418,10 +1501,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
               let result: any;
               try {
                 const args = JSON.parse(tc.arguments);
-                
-                await logToDb('info', `Executing tool: ${tc.name}`, { 
+
+                await logToDb('info', `Executing tool: ${tc.name}`, {
                   toolName: tc.name,
-                  arguments: args 
+                  arguments: args
                 }, userId);
 
                 if (tc.name === "add_note") {
@@ -2208,9 +2291,9 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
 
               } catch (e) {
                 console.error("Tool execution error:", e);
-                await logToDb('error', `Tool execution failed: ${tc.name}`, { 
+                await logToDb('error', `Tool execution failed: ${tc.name}`, {
                   toolName: tc.name,
-                  error: e instanceof Error ? e.message : String(e) 
+                  error: e instanceof Error ? e.message : String(e)
                 }, userId);
                 toolMessages.push({
                   role: "tool",
@@ -2284,7 +2367,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "gpt-4o",
+                model: "gpt-4o-mini",
                 messages: followUpMessages,
                 stream: true,
               }),
@@ -2294,7 +2377,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
               console.error("AI follow-up error:", followUpResponse.status);
               const errorText = await followUpResponse.text();
               console.error("AI follow-up error details:", errorText);
-              
+
               // Namísto vyhození chyby, pošleme uživateli informativní zprávu
               const errorMsg = `Omlouvám se, došlo k chybě při zpracování odpovědi. Zkuste to prosím znovu.`;
               const errorDelta = {
@@ -2307,7 +2390,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorDelta)}\n\n`));
               controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
               controller.close();
-              
+
               // Uložit chybovou zprávu do databáze
               await supabase.from("messages").insert({
                 conversation_id: conversationId,
@@ -2377,13 +2460,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     });
   } catch (error) {
     console.error("Chat error:", error);
-    
+
     // Try to log to database (best effort, userId might not be available)
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
       await supabase.from('logs').insert({
         user_id: null,
         level: 'error',
@@ -2398,7 +2481,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     } catch (logError) {
       console.error('Failed to log critical error:', logError);
     }
-    
+
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Neznámá chyba" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
