@@ -2,6 +2,14 @@
 
 ## ✅ Spuštění serveru (doporučeno)
 
+### Varianta A: Dvojklik (nejjednodušší)
+
+V Finderu otevři složku projektu a **dvojklikni** na:
+
+`START_MARKVERA.command`
+
+Tím se spustí server automaticky.
+
 ### Krok 1: Otevři terminál
 
 **V Antigravity (nebo v Terminálu) otevři nový terminál**

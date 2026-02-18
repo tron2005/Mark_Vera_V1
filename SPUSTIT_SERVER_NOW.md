@@ -8,6 +8,12 @@
 
 ## 🚀 TEĎ SPUSŤ SERVER (stabilní režim)
 
+### Varianta A: Dvojklik (nejjednodušší)
+
+V Finderu otevři složku projektu a **dvojklikni** na:
+
+`START_MARKVERA.command`
+
 ### V terminálu zadej:
 
 ```bash
