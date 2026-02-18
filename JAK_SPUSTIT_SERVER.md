@@ -1,6 +1,6 @@
 # 🚀 Jak spustit server - JEDNODUCHÉ INSTRUKCE
 
-## ✅ Spuštění serveru
+## ✅ Spuštění serveru (doporučeno)
 
 ### Krok 1: Otevři terminál
 
@@ -13,24 +13,23 @@
 cd /Users/zdeneksailer/Documents/Antigravity_Projekty/markvera
 ```
 
-### Krok 3: Spusť server
+### Krok 3: Spusť server (stabilní režim)
 
 **Zadej:**
 ```bash
-npm run dev
+npm run start:stable
 ```
 
 ### Krok 4: Počkej na zprávu
 
 **Měla by se zobrazit zpráva:**
 ```
-VITE v5.x.x  ready in xxx ms
-➜  Local:   http://localhost:3000/
+Serving HTTP on :: port 5173 (http://[::]:5173/) ...
 ```
 
 ### Krok 5: Otevři v prohlížeči
 
-**Otevři v prohlížeči port, který vidíš v terminálu** (např. `http://localhost:3000`)
+**Otevři:** `http://127.0.0.1:5173`
 
 ## 🛑 Zastavení serveru
 
@@ -44,8 +43,16 @@ Ctrl+C
 **Zkus tento skript:**
 ```bash
 cd /Users/zdeneksailer/Documents/Antigravity_Projekty/markvera
-./scripts/spustit-server.sh
+npm run start:stable
 ```
+
+## ℹ️ Dev režim (pouze pro vývojáře)
+
+Pokud chceš hot‑reload, můžeš zkusit:
+```bash
+npm run dev
+```
+Ale stabilní režim je spolehlivější.
 
 ## ✅ Hotovo!
 

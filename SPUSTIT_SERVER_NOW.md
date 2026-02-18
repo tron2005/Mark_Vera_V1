@@ -6,25 +6,24 @@
 2. ✅ Vyčistil všechny porty
 3. ✅ Smazal cache
 
-## 🚀 TEĎ SPUSŤ SERVER
+## 🚀 TEĎ SPUSŤ SERVER (stabilní režim)
 
 ### V terminálu zadej:
 
 ```bash
 cd /Users/zdeneksailer/Documents/Antigravity_Projekty/markvera
-npm run dev
+npm run start:stable
 ```
 
 ### Počkej na zprávu:
 
 ```
-VITE v5.x.x  ready in xxx ms
-➜  Local:   http://localhost:3000/
+Serving HTTP on :: port 5173 (http://[::]:5173/) ...
 ```
 
 ### Otevři v prohlížeči:
 
-**Otevři port, který vidíš v terminálu** (např. `http://localhost:3000`)
+**Otevři:** `http://127.0.0.1:5173`
 
 ## ✅ Hotovo!
 
