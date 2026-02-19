@@ -1,8 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Activity, Heart, TrendingUp, Sparkles, Moon, Cloud, Loader2 } from "lucide-react";
+import { Activity, Heart, TrendingUp, Sparkles, Moon, Cloud, Loader2, Dumbbell, Footprints, Bike, Waves, User, Brain, Zap } from "lucide-react";
 
 import { FitnessStats } from "../FitnessStats";
 import { SleepCharts } from "../SleepCharts";
@@ -27,12 +26,12 @@ interface TrainerPerformanceProps {
   activities: any[];
   showStats: boolean;
   setShowStats: (show: boolean) => void;
-  
+
   // Dialog States
   summaryDialog: { open: boolean; type: string; content: string; loading: boolean };
   setSummaryDialog: React.Dispatch<React.SetStateAction<{ open: boolean; type: string; content: string; loading: boolean }>>;
   generateSummary: (type: 'sleep' | 'last_workout' | 'weekly_overview') => void;
-  
+
   weatherDialog: { open: boolean; data: any; recommendation: string; loading: boolean };
   setWeatherDialog: React.Dispatch<React.SetStateAction<{ open: boolean; data: any; recommendation: string; loading: boolean }>>;
   getWeatherRecommendation: () => void;
@@ -61,63 +60,79 @@ export const TrainerPerformance = ({
     }
   };
 
+  const getActivityInfo = (type: string) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('run') || t.includes('jog')) return { label: 'Běh', badge: 'activity-badge-run', icon: Activity };
+    if (t.includes('walk') || t.includes('hike')) return { label: 'Chůze', badge: 'activity-badge-walk', icon: Footprints };
+    if (t.includes('ride') || t.includes('cycling') || t.includes('bike')) return { label: 'Cyklistika', badge: 'activity-badge-ride', icon: Bike };
+    if (t.includes('weight') || t.includes('strength') || t.includes('crossfit')) return { label: 'Posilování', badge: 'activity-badge-weight', icon: Dumbbell };
+    if (t.includes('swim')) return { label: 'Plavání', badge: 'activity-badge-swim', icon: Waves };
+    return { label: type, badge: 'activity-badge-default', icon: Activity };
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         {/* User Profile */}
         {userProfile && (
-          <Card>
+          <Card className="card-hover animate-fade-in animate-fade-in-delay-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
                 Váš profil
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {userProfile.weight_kg && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Váha</span>
-                  <span className="text-lg font-bold">{userProfile.weight_kg} kg</span>
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="font-medium text-muted-foreground">Váha</span>
+                  <span className="stat-value">{userProfile.weight_kg} kg</span>
                 </div>
               )}
               {userProfile.height_cm && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Výška</span>
-                  <span className="text-lg font-bold">{userProfile.height_cm} cm</span>
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="font-medium text-muted-foreground">Výška</span>
+                  <span className="stat-value">{userProfile.height_cm} cm</span>
                 </div>
               )}
               {userProfile.age && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Věk</span>
-                  <span className="text-lg font-bold">{userProfile.age} let</span>
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="font-medium text-muted-foreground">Věk</span>
+                  <span className="stat-value">{userProfile.age} let</span>
                 </div>
               )}
               {userProfile.bmi && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">BMI</span>
-                  <span className="text-lg font-bold">{Number(userProfile.bmi).toFixed(1)}</span>
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="font-medium text-muted-foreground">BMI</span>
+                  <span className="stat-value">{Number(userProfile.bmi).toFixed(1)}</span>
                 </div>
               )}
               {userProfile.bmr && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">BMR</span>
-                  <span className="text-lg font-bold">{Math.round(userProfile.bmr)} kcal/den</span>
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <span className="font-medium text-muted-foreground">BMR</span>
+                  <span className="stat-value">{Math.round(userProfile.bmr)} kcal/den</span>
                 </div>
               )}
               {!userProfile.weight_kg && !userProfile.height_cm && !userProfile.age && (
-                <p className="text-sm text-muted-foreground">
-                  Profil se doplní automaticky ze Stravy nebo můžete přidat údaje v Nastavení.
-                </p>
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    💡 Doplňte svůj profil v Nastavení pro přesnější analýzy a doporučení.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
         )}
-        
+
         {/* AI Coach Section */}
-        <Card>
+        <Card className="card-hover animate-fade-in animate-fade-in-delay-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-purple-500/20">
+                <Brain className="h-4 w-4 text-primary" />
+              </div>
               AI Trenér
             </CardTitle>
             <CardDescription>
@@ -128,12 +143,12 @@ export const TrainerPerformance = ({
             <p className="text-sm text-muted-foreground">
               Váš asistent má přístup k vašim fitness datům a může:
             </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-              <li>Analyzovat kvalitu spánku</li>
-              <li>Vyhodnotit vaše tréninky</li>
-              <li>Doporučit trénink podle počasí</li>
-              <li>Sledovat zdravotní stav (bolesti, únava)</li>
-              <li>Poskytovat personalizované sportovní rady</li>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2"><Moon className="h-3.5 w-3.5 text-indigo-500" /> <span>Analyzovat kvalitu spánku</span></li>
+              <li className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-green-500" /> <span>Vyhodnotit vaše tréninky</span></li>
+              <li className="flex items-center gap-2"><Cloud className="h-3.5 w-3.5 text-sky-500" /> <span>Doporučit trénink podle počasí</span></li>
+              <li className="flex items-center gap-2"><Heart className="h-3.5 w-3.5 text-red-500" /> <span>Sledovat zdravotní stav (bolesti, únava)</span></li>
+              <li className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-amber-500" /> <span>Poskytovat personalizované sportovní rady</span></li>
             </ul>
           </CardContent>
         </Card>
@@ -210,12 +225,14 @@ export const TrainerPerformance = ({
       {/* Recent Activities */}
       {stravaConnected && activities.length > 0 && (
         <>
-          <Card>
+          <Card className="animate-fade-in animate-fade-in-delay-3">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
+                    <div className="p-1.5 rounded-lg bg-green-500/10">
+                      <Activity className="h-4 w-4 text-green-600" />
+                    </div>
                     Poslední aktivity ze Stravy
                   </CardTitle>
                   <CardDescription>
@@ -225,39 +242,49 @@ export const TrainerPerformance = ({
                 <Button
                   variant="outline"
                   onClick={() => setShowStats(!showStats)}
+                  className="transition-all hover:border-primary/50"
                 >
                   {showStats ? "Skrýt statistiky" : "Zobrazit statistiky"}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {activities.slice(0, 5).map((activity) => (
-                  <div key={activity.id} className="p-3 border rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{activity.name}</h3>
-                        <div className="text-sm text-muted-foreground">
-                          {activity.type} · {new Date(activity.start_date).toLocaleDateString('cs-CZ')}
+              <div className="space-y-2">
+                {activities.slice(0, 5).map((activity, index) => {
+                  const info = getActivityInfo(activity.type);
+                  const IconComponent = info.icon;
+                  return (
+                    <div key={activity.id} className="activity-item p-3 rounded-lg" style={{ animationDelay: `${index * 0.05}s` }}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className={`p-1.5 rounded-lg ${info.badge.replace('activity-badge-', 'bg-').split(' ')[0]}`} style={{ background: 'inherit' }}>
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{activity.name}</h3>
+                            <div className="text-sm text-muted-foreground">
+                              <span>{info.label}</span> · <span>{new Date(activity.start_date).toLocaleDateString('cs-CZ')}</span>
+                            </div>
+                          </div>
                         </div>
+                        <span className={`activity-badge ${info.badge}`}>{info.label}</span>
                       </div>
-                      <Badge variant="outline">{activity.type}</Badge>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap ml-10">
+                        <span className="font-semibold text-foreground">{(activity.distance / 1000).toFixed(2)} km</span>
+                        <span>{Math.round(activity.moving_time / 60)} min</span>
+                        {activity.average_heartrate && (
+                          <span className="flex items-center gap-1 text-red-500">
+                            <Heart className="h-3 w-3" />
+                            <span>{Math.round(activity.average_heartrate)} bpm</span>
+                          </span>
+                        )}
+                        {activity.calories && (
+                          <span className="font-medium">🔥 {Math.round(activity.calories)} kcal</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                      <span className="font-medium">{(activity.distance / 1000).toFixed(2)} km</span>
-                      <span>{Math.round(activity.moving_time / 60)} min</span>
-                      {activity.average_heartrate && (
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" />
-                          {Math.round(activity.average_heartrate)} bpm
-                        </span>
-                      )}
-                      {activity.calories && (
-                        <span>{Math.round(activity.calories)} kcal</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -342,7 +369,7 @@ export const TrainerPerformance = ({
               Počasí a doporučení pro běh
             </DialogTitle>
           </DialogHeader>
-          
+
           {weatherDialog.loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -351,8 +378,8 @@ export const TrainerPerformance = ({
           ) : weatherDialog.data ? (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                <img 
-                  src={`https://openweathermap.org/img/wn/${weatherDialog.data.icon}@2x.png`} 
+                <img
+                  src={`https://openweathermap.org/img/wn/${weatherDialog.data.icon}@2x.png`}
                   alt={weatherDialog.data.description}
                   className="w-16 h-16"
                 />

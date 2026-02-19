@@ -107,5 +107,163 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+}
+
+/* ===== ACTIVITY TYPE COLORS ===== */
+.activity-badge {
+  @apply px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+}
+
+.activity-badge-run {
+  background: linear-gradient(135deg, hsl(142 71% 45% / 0.15), hsl(142 71% 45% / 0.25));
+  color: hsl(142 71% 35%);
+  border: 1px solid hsl(142 71% 45% / 0.3);
+}
+
+.activity-badge-walk {
+  background: linear-gradient(135deg, hsl(25 95% 53% / 0.15), hsl(25 95% 53% / 0.25));
+  color: hsl(25 95% 40%);
+  border: 1px solid hsl(25 95% 53% / 0.3);
+}
+
+.activity-badge-ride {
+  background: linear-gradient(135deg, hsl(217 91% 60% / 0.15), hsl(217 91% 60% / 0.25));
+  color: hsl(217 91% 45%);
+  border: 1px solid hsl(217 91% 60% / 0.3);
+}
+
+.activity-badge-weight, .activity-badge-strength {
+  background: linear-gradient(135deg, hsl(262 83% 58% / 0.15), hsl(262 83% 58% / 0.25));
+  color: hsl(262 83% 45%);
+  border: 1px solid hsl(262 83% 58% / 0.3);
+}
+
+.activity-badge-swim {
+  background: linear-gradient(135deg, hsl(195 83% 50% / 0.15), hsl(195 83% 50% / 0.25));
+  color: hsl(195 83% 38%);
+  border: 1px solid hsl(195 83% 50% / 0.3);
+}
+
+.activity-badge-default {
+  background: linear-gradient(135deg, hsl(215 16% 47% / 0.1), hsl(215 16% 47% / 0.2));
+  color: hsl(215 16% 40%);
+  border: 1px solid hsl(215 16% 47% / 0.2);
+}
+
+/* Dark mode badge adjustments */
+.dark .activity-badge-run { color: hsl(142 71% 65%); }
+.dark .activity-badge-walk { color: hsl(25 95% 65%); }
+.dark .activity-badge-ride { color: hsl(217 91% 72%); }
+.dark .activity-badge-weight, .dark .activity-badge-strength { color: hsl(262 83% 72%); }
+.dark .activity-badge-swim { color: hsl(195 83% 65%); }
+.dark .activity-badge-default { color: hsl(215 16% 65%); }
+
+/* ===== HERO GRADIENT ===== */
+.hero-gradient {
+  background: linear-gradient(135deg, 
+    hsl(217 91% 60% / 0.08) 0%, 
+    hsl(262 83% 58% / 0.06) 40%, 
+    hsl(142 71% 45% / 0.04) 100%
+  );
+  border: 1px solid hsl(217 91% 60% / 0.15);
+}
+
+.dark .hero-gradient {
+  background: linear-gradient(135deg, 
+    hsl(217 91% 60% / 0.15) 0%, 
+    hsl(262 83% 58% / 0.1) 40%, 
+    hsl(142 71% 45% / 0.06) 100%
+  );
+  border: 1px solid hsl(217 91% 60% / 0.2);
+}
+
+/* ===== CARD HOVER EFFECTS ===== */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.15), 
+              0 4px 10px -5px hsl(217 91% 60% / 0.1);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.25), 
+              0 4px 10px -5px hsl(0 0% 0% / 0.3);
+}
+
+/* ===== ACTIVITY LIST ITEM ===== */
+.activity-item {
+  transition: all 0.2s ease;
+  border: 1px solid hsl(var(--border));
+}
+
+.activity-item:hover {
+  background: hsl(var(--accent) / 0.5);
+  border-color: hsl(var(--primary) / 0.2);
+  transform: translateX(4px);
+}
+
+/* ===== ANIMATED PROGRESS BARS ===== */
+.progress-animated {
+  transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-green {
+  background: linear-gradient(90deg, hsl(142 71% 45%), hsl(142 71% 55%));
+}
+
+.progress-orange {
+  background: linear-gradient(90deg, hsl(25 95% 53%), hsl(38 95% 55%));
+}
+
+.progress-red {
+  background: linear-gradient(90deg, hsl(0 84% 60%), hsl(340 82% 52%));
+}
+
+.progress-blue {
+  background: linear-gradient(90deg, hsl(217 91% 55%), hsl(217 91% 65%));
+}
+
+/* ===== FADE-IN ANIMATION ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.animate-fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.animate-fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
+.animate-fade-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
+/* ===== SYNC PULSE ===== */
+@keyframes syncPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-sync-pulse {
+  animation: syncPulse 1.5s ease-in-out infinite;
+}
+
+/* ===== STAT VALUE GLOW ===== */
+.stat-value {
+  @apply text-lg font-bold;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(262 83% 58%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

@@ -29,7 +29,6 @@ export const MotivationalQuote = () => {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    // Select random quote on mount
     const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
     setQuote(MOTIVATIONAL_QUOTES[randomIndex]);
   }, []);
@@ -44,25 +43,29 @@ export const MotivationalQuote = () => {
   };
 
   return (
-    <div 
+    <div
       onClick={getNewQuote}
-      className="group relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 border border-primary/20 cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+      className="hero-gradient group relative overflow-hidden rounded-xl p-5 cursor-pointer transition-all duration-300 hover:shadow-lg animate-fade-in"
     >
-      <div className="flex items-start gap-3">
-        <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-purple-500/5 translate-y-1/2 -translate-x-1/2" />
+
+      <div className="flex items-start gap-3 relative z-10">
+        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 text-primary shrink-0">
           <Sparkles className="h-5 w-5" />
         </div>
-        <div className={`flex-1 transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
-          <p className="text-base font-medium italic text-foreground">
-            "{quote.text}"
+        <div className={`flex-1 transition-all duration-300 ${isAnimating ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+          <p className="text-base font-medium italic text-foreground leading-relaxed">
+            <span>"{quote.text}"</span>
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            — {quote.author}
+          <p className="text-sm text-muted-foreground mt-1.5 font-medium">
+            <span>— {quote.author}</span>
           </p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        Klikni pro další motivaci
+      <p className="text-xs text-muted-foreground mt-3 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
+        <span>Klikni pro další motivaci ✨</span>
       </p>
     </div>
   );

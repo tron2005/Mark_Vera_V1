@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Volume2 } from "lucide-react";
+import { Volume2, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import StravaTesterManager from "./StravaTesterManager";
 import { SystemLogs } from "./SystemLogs";
 
 export default function Settings() {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
@@ -32,26 +34,26 @@ export default function Settings() {
   const [bmr, setBmr] = useState<number | null>(null);
   const [location, setLocation] = useState("");
 
-   // Test Google Calendar fields
-   const [testingCalendar, setTestingCalendar] = useState(false);
-   const [testSummary, setTestSummary] = useState("Hruboskalský půlmaraton");
-   const [testDate, setTestDate] = useState<string>("");
-   const [testTime, setTestTime] = useState<string>("08:00");
+  // Test Google Calendar fields
+  const [testingCalendar, setTestingCalendar] = useState(false);
+  const [testSummary, setTestSummary] = useState("Hruboskalský půlmaraton");
+  const [testDate, setTestDate] = useState<string>("");
+  const [testTime, setTestTime] = useState<string>("08:00");
 
   useEffect(() => {
     loadSettings();
     loadVoices();
-    
+
     // Refresh settings every 2 seconds to catch OAuth callback updates
     const intervalId = setInterval(() => {
       loadSettings();
     }, 2000);
-    
+
     // Also refresh on window focus
     const handleFocus = () => {
       loadSettings();
     };
-    
+
     window.addEventListener('focus', handleFocus);
     return () => {
       clearInterval(intervalId);
@@ -107,7 +109,7 @@ export default function Settings() {
         setTrainerEnabled(profile.trainer_enabled ?? true);
         setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
         setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
-        
+
         // Use latest body composition weight if available, otherwise profile weight
         const currentWeight = latestBodyComp?.weight_kg ?? profile.weight_kg;
         setWeightKg(currentWeight?.toString() || "");
@@ -161,7 +163,7 @@ export default function Settings() {
     const weight = parseFloat(value);
     const height = parseFloat(heightCm);
     const ageYears = parseFloat(age);
-    
+
     if (weight && height) {
       const calculatedBMI = calculateBMI(weight, height);
       if (ageYears) {
@@ -175,7 +177,7 @@ export default function Settings() {
     const weight = parseFloat(weightKg);
     const height = parseFloat(value);
     const ageYears = parseFloat(age);
-    
+
     if (weight && height) {
       const calculatedBMI = calculateBMI(weight, height);
       if (ageYears) {
@@ -189,7 +191,7 @@ export default function Settings() {
     const weight = parseFloat(weightKg);
     const height = parseFloat(heightCm);
     const ageYears = parseFloat(value);
-    
+
     if (weight && height && ageYears) {
       calculateBMR(weight, height, ageYears, gender);
     }
@@ -200,7 +202,7 @@ export default function Settings() {
     const weight = parseFloat(weightKg);
     const height = parseFloat(heightCm);
     const ageYears = parseFloat(age);
-    
+
     if (weight && height && ageYears) {
       calculateBMR(weight, height, ageYears, value);
     }
@@ -290,23 +292,23 @@ export default function Settings() {
 
   const testVoice = (voiceName: string, mode: 'mark' | 'vera') => {
     const utterance = new SpeechSynthesisUtterance(
-      mode === 'mark' 
-        ? "Ahoj, jsem Mark, váš sportovní trenér" 
+      mode === 'mark'
+        ? "Ahoj, jsem Mark, váš sportovní trenér"
         : "Ahoj, jsem Vera, vaše wellness asistentka"
     );
     utterance.lang = 'cs-CZ';
     utterance.rate = 0.85;
-    
+
     const voice = availableVoices.find(v => v.name === voiceName);
     if (voice) {
       utterance.voice = voice;
     }
-    
+
     utterance.pitch = mode === 'mark' ? 0.9 : 1.1;
-    
+
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-    
+
     toast({
       title: "Test hlasu",
       description: `Přehrávám hlas pro ${mode === 'mark' ? 'Marka' : 'Veru'}...`,
@@ -315,7 +317,7 @@ export default function Settings() {
 
   const connectGoogleCalendar = () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    
+
     if (!clientId) {
       toast({
         title: "Chyba konfigurace",
@@ -324,7 +326,7 @@ export default function Settings() {
       });
       return;
     }
-    
+
     const redirectUri = `${window.location.origin}/auth/callback`;
     const scope = [
       "https://www.googleapis.com/auth/calendar.events",      // Vytváření/editace událostí
@@ -332,7 +334,7 @@ export default function Settings() {
       "https://www.googleapis.com/auth/gmail.readonly",       // Čtení Gmail
       "https://www.googleapis.com/auth/tasks",                // Google Tasks
     ].join(" ");
-    
+
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -341,7 +343,7 @@ export default function Settings() {
       access_type: "offline",
       prompt: "consent",
     })}`;
-    
+
     window.location.href = authUrl;
   };
 
@@ -476,10 +478,10 @@ export default function Settings() {
         });
         return;
       }
-      
+
       const redirectUri = `${window.location.origin}/auth/strava-callback`;
       const scope = "read,activity:read_all,profile:read_all";
-      
+
       const authUrl = `https://www.strava.com/oauth/authorize?${new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
@@ -487,7 +489,7 @@ export default function Settings() {
         scope: scope,
         approval_prompt: "force",
       })}`;
-      
+
       window.location.href = authUrl;
     } catch (error) {
       console.error("Error connecting Strava:", error);
@@ -544,6 +546,40 @@ export default function Settings() {
           <CardTitle>Nastavení</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Dark Mode */}
+          <div className="space-y-3">
+            <Label>🎨 Vzhled aplikace</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={theme === 'light' ? 'default' : 'outline'}
+                onClick={() => setTheme('light')}
+                className="flex items-center gap-2 w-full"
+              >
+                <Sun className="h-4 w-4" />
+                Světlý
+              </Button>
+              <Button
+                variant={theme === 'dark' ? 'default' : 'outline'}
+                onClick={() => setTheme('dark')}
+                className="flex items-center gap-2 w-full"
+              >
+                <Moon className="h-4 w-4" />
+                Tmavý
+              </Button>
+              <Button
+                variant={theme === 'system' ? 'default' : 'outline'}
+                onClick={() => setTheme('system')}
+                className="flex items-center gap-2 w-full"
+              >
+                <Monitor className="h-4 w-4" />
+                Systém
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Zvolte si světlý, tmavý nebo systémový režim
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -577,15 +613,15 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">
               Vyberte různé hlasy pro každého asistenta. Kvalita závisí na prohlížeči - Chrome a Edge mají nejlepší české hlasy (např. Zuzana od Microsoft).
             </p>
-            
+
             <div className="space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="mark-voice">🔧 M.A.R.K. (Sportovní trenér)</Label>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => testVoice(markVoice, 'mark')}
                     disabled={!markVoice}
                   >
@@ -599,10 +635,10 @@ export default function Settings() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableVoices.map((voice) => (
-                        <SelectItem key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </SelectItem>
-                      ))}
+                      <SelectItem key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -610,10 +646,10 @@ export default function Settings() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="vera-voice">🤖 V.E.R.A. (Wellness asistentka)</Label>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => testVoice(veraVoice, 'vera')}
                     disabled={!veraVoice}
                   >
@@ -627,10 +663,10 @@ export default function Settings() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableVoices.map((voice) => (
-                        <SelectItem key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </SelectItem>
-                      ))}
+                      <SelectItem key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -746,7 +782,7 @@ export default function Settings() {
               </Button>
             )}
             <p className="text-sm text-muted-foreground">
-              Umožní asistentovi vytvářet události v Google Calendar a exportovat poznámky do Google Tasks (Keep alternativa). 
+              Umožní asistentovi vytvářet události v Google Calendar a exportovat poznámky do Google Tasks (Keep alternativa).
               <span className="block mt-1 text-xs">Poznámka: V testovacím režimu platí tokeny 7 dní. Pro trvalé připojení je potřeba publikovat aplikaci v Google Cloud Console.</span>
             </p>
           </div>
@@ -804,22 +840,22 @@ export default function Settings() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="testSummary">Název</Label>
-              <Input id="testSummary" value={testSummary} onChange={(e)=>setTestSummary(e.target.value)} />
+              <Input id="testSummary" value={testSummary} onChange={(e) => setTestSummary(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="testDate">Datum</Label>
-              <Input id="testDate" type="date" value={testDate} onChange={(e)=>setTestDate(e.target.value)} />
+              <Input id="testDate" type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="testTime">Čas (pro 1h událost)</Label>
-              <Input id="testTime" type="time" value={testTime} onChange={(e)=>setTestTime(e.target.value)} />
+              <Input id="testTime" type="time" value={testTime} onChange={(e) => setTestTime(e.target.value)} />
             </div>
           </div>
           <div className="flex flex-col md:flex-row gap-2">
-            <Button disabled={testingCalendar || !testDate} onClick={()=>createTestCalendarEvent(true)}>
+            <Button disabled={testingCalendar || !testDate} onClick={() => createTestCalendarEvent(true)}>
               {testingCalendar ? 'Vytvářím…' : 'Vytvořit celodenní událost'}
             </Button>
-            <Button variant="outline" disabled={testingCalendar || !testDate || !testTime} onClick={()=>createTestCalendarEvent(false)}>
+            <Button variant="outline" disabled={testingCalendar || !testDate || !testTime} onClick={() => createTestCalendarEvent(false)}>
               {testingCalendar ? 'Vytvářím…' : 'Vytvořit 1h událost'}
             </Button>
           </div>
@@ -835,7 +871,7 @@ export default function Settings() {
           <p className="text-sm text-muted-foreground">
             Tyto URL musí být nastaveny v OAuth konzolích pro správné fungování integrace:
           </p>
-          
+
           <div className="space-y-3">
             <div>
               <Label className="text-sm font-medium">Google OAuth Redirect URI</Label>
@@ -843,8 +879,8 @@ export default function Settings() {
                 <code className="flex-1 bg-muted px-3 py-2 rounded text-sm break-all">
                   {googleRedirectUri}
                 </code>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(googleRedirectUri);
@@ -865,8 +901,8 @@ export default function Settings() {
                 <code className="flex-1 bg-muted px-3 py-2 rounded text-sm break-all">
                   {window.location.host}
                 </code>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.host);
@@ -883,7 +919,7 @@ export default function Settings() {
 
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground">
-                <strong>Google:</strong> Uživatelé musí být přidáni jako Test Users v OAuth Consent Screen, nebo aplikace musí být publikovaná.<br/>
+                <strong>Google:</strong> Uživatelé musí být přidáni jako Test Users v OAuth Consent Screen, nebo aplikace musí být publikovaná.<br />
                 <strong>Strava:</strong> Callback domain musí obsahovat produkční doménu (bez https://).
               </p>
             </div>
@@ -990,7 +1026,7 @@ export default function Settings() {
 
           <div>
             <h3 className="font-semibold mb-2">🚀 Plánované funkce (Roadmapa)</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium text-sm mb-1">📥 Import a správa dat</h4>
