@@ -117,6 +117,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [ ] 3D vizualizace svalových skupin.
 - [ ] Správa vozového parku (servis, STK).
 - [ ] Zálohování: stabilní tag + lokální archiv po každé funkční verzi.
+- [ ] **Email doména**: Ověřit `markvera.cz` v Resend → emaily budou chodit všem uživatelům z `noreply@markvera.cz`.
 - [x] **Supabase Sleep/Resume**: jak zabránit uspání projektu a jak ho obnovit.
   - **Obnova**: Supabase Dashboard → Project → Resume (nebo otevřít projekt v dashboardu a potvrdit).
   - **Prevence**: GitHub Actions cron každé 3 dny pinguje `/functions/v1/keep-alive` (edge funkce deploynutá).
