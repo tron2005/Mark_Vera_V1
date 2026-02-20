@@ -16,7 +16,7 @@ jobs:
           echo "Pinging keep-alive at $(date)"
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dWN6am9iZnBxbXB0Zm9mZ2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMjcxMTIsImV4cCI6MjA4MzcwMzExMn0.h2WJIuNfurxjsIv6zb_QV4KiruJ0f6Kk1zedwnf1h2o" \
             -H "Content-Type: application/json" \
             "https://rtuczjobfpqmptfofgkt.supabase.co/functions/v1/keep-alive")
           echo "Response code: $RESPONSE"
