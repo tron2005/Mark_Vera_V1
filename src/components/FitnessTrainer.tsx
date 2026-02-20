@@ -110,6 +110,7 @@ export const FitnessTrainer = () => {
 
       const stravaActivities = (data || []).map((activity: any) => ({
         id: activity.id,
+        strava_id: activity.strava_activity_id,
         name: activity.name,
         type: activity.activity_type,
         start_date: activity.start_date,
@@ -119,6 +120,8 @@ export const FitnessTrainer = () => {
         max_heartrate: activity.max_heartrate,
         calories: activity.calories,
         total_elevation_gain: activity.total_elevation_gain,
+        average_speed: activity.average_speed,
+        max_speed: activity.max_speed,
         source: 'strava'
       }));
 

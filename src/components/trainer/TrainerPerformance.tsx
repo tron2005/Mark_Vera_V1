@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Activity, Heart, TrendingUp, Sparkles, Moon, Cloud, Loader2, Dumbbell, Footprints, Bike, Waves, User, Brain, Zap } from "lucide-react";
+import { Activity, Heart, TrendingUp, Sparkles, Moon, Cloud, Loader2, Dumbbell, Footprints, Bike, Waves, User, Brain, Zap, ChevronRight } from "lucide-react";
+import { ActivityDetailDialog } from "../ActivityDetailDialog";
 
 import { FitnessStats } from "../FitnessStats";
 import { SleepCharts } from "../SleepCharts";
@@ -50,6 +52,7 @@ export const TrainerPerformance = ({
   setWeatherDialog,
   getWeatherRecommendation
 }: TrainerPerformanceProps) => {
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
 
   const getSummaryTitle = () => {
     switch (summaryDialog.type) {
@@ -254,20 +257,28 @@ export const TrainerPerformance = ({
                   const info = getActivityInfo(activity.type);
                   const IconComponent = info.icon;
                   return (
-                    <div key={activity.id} className="activity-item p-3 rounded-lg" style={{ animationDelay: `${index * 0.05}s` }}>
+                    <div
+                      key={activity.id}
+                      className="activity-item p-3 rounded-lg cursor-pointer group"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                      onClick={() => setSelectedActivity(activity)}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-3 flex-1">
                           <div className={`p-1.5 rounded-lg ${info.badge.replace('activity-badge-', 'bg-').split(' ')[0]}`} style={{ background: 'inherit' }}>
                             <IconComponent className="h-4 w-4" />
                           </div>
                           <div>
-                            <h3 className="font-medium">{activity.name}</h3>
+                            <h3 className="font-medium group-hover:text-primary transition-colors">{activity.name}</h3>
                             <div className="text-sm text-muted-foreground">
                               <span>{info.label}</span> · <span>{new Date(activity.start_date).toLocaleDateString('cs-CZ')}</span>
                             </div>
                           </div>
                         </div>
-                        <span className={`activity-badge ${info.badge}`}>{info.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`activity-badge ${info.badge}`}>{info.label}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap ml-10">
                         <span className="font-semibold text-foreground">{(activity.distance / 1000).toFixed(2)} km</span>
@@ -425,6 +436,12 @@ export const TrainerPerformance = ({
           ) : null}
         </DialogContent>
       </Dialog>
+      {/* Activity Detail Dialog */}
+      <ActivityDetailDialog
+        activity={selectedActivity}
+        open={!!selectedActivity}
+        onOpenChange={(open) => !open && setSelectedActivity(null)}
+      />
     </div>
   );
 };
