@@ -51,7 +51,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [x] **Stabilní Start**: Robustní start skript s auto-cleanup (viz výše).
 - [x] **Strava Integrace**: Plně funkční OAuth + synchronizace aktivit (32 aktivit ✅).
 - [x] **Error Boundary**: Auto-recovery pro DOM chyby způsobené browser extensions.
-- [ ] **Verzování**: Zavedení striktního verzování (package.json).
+- [x] **Verzování**: Zavedení striktního verzování (package.json) + CHANGELOG.md.
 
 ## 🎨 Fáze 2A: Design Refresh - ✅ HOTOVO (20.2.2026)
 *Cíl: Přeměnit čistou ale jednobarevnou aplikaci na vizuálně premium produkt.*
@@ -91,14 +91,14 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [x] **Opraveno**: Tlačítko "Počasí pro běh" (OPENWEATHER_API_KEY + deploy edge funkce).
 
 ## 🧠 Fáze 3: Pokročilá Inteligence (Cloud Bridge)
-- [ ] **Context Awareness**: Asistent si před odpovědí přečte souhrn dat z karty Trenér.
+- [x] **Context Awareness**: Asistent si před odpovědí přečte 5 posledních aktivit, dnešní výživu a týdenní průměry makroživin.
 - [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
 - [ ] **Dlouhodobá Paměť**: Vylepšení `create_summary` pro denní přehledy.
 - [ ] **Kalendář & Mail**: Plná integrace nástrojů Google Calendar a Gmail.
   - [x] Čtení událostí (dotaz "co mám zítra")
   - [x] Vytváření událostí z chatu
   - [x] Čtení Gmailu (dnes / poslední hodina)
-  - [ ] Mazání událostí (podle názvu a data)
+  - [x] Mazání událostí (podle názvu a data)
   - [ ] Přesun událostí (změna času/dne)
   - [ ] Stabilní souhrny Gmailu (kratší výstupy, bez rate-limit)
   - [ ] Vyhledání událostí podle názvu/časového okna

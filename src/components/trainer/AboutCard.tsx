@@ -11,10 +11,10 @@ export const AboutCard = () => {
                         <Info className="h-5 w-5" />
                         O aplikaci & Roadmapa
                     </CardTitle>
-                    <Badge variant="outline" className="text-sm px-3 py-1 bg-primary/10">Verze 1.1.0</Badge>
+                    <Badge variant="outline" className="text-sm px-3 py-1 bg-primary/10">Verze 1.2.0</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Rozšířená verze s multi-user podporou a správou Strava testerů
+                    Vizualizace makroživin, chytřejší AI a opravy Google Calendar
                 </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -47,6 +47,8 @@ export const AboutCard = () => {
                         <li>🍽️ Import kalorií z Kalorických Tabulek</li>
                         <li>📉 Plán hubnutí s vizualizací pokroku</li>
                         <li>📚 Tréninková knihovna (BodyCombat, Běh)</li>
+                        <li>📊 Vizualizace makroživin - týdenní trendy a cíle</li>
+                        <li>🧠 AI s kontextem - vidí aktivity, výživu a kondici</li>
                     </ul>
                 </div>
 
