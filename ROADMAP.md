@@ -101,7 +101,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - [x] Mazání událostí (podle názvu a data)
   - [x] Přesun událostí (změna času/dne) - včetně českých názvů dnů
   - [ ] Stabilní souhrny Gmailu (kratší výstupy, bez rate-limit)
-  - [ ] Vyhledání událostí podle názvu/časového okna
+  - [x] Vyhledání událostí podle názvu/časového okna (search_calendar_events, Google Calendar q param)
   - [x] **Web Search**: Vyhledávání aktuálních informací na internetu (Tavily).
   - [ ] **File Workspace**: Pracovní prostor pro soubory (PDF, CSV, obrázky) a jejich analýza.
 - [x] **Závody a cíle – vylepšení**:
