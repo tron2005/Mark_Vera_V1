@@ -58,8 +58,7 @@ export const RaceGoalsWidget = () => {
         .eq("user_id", user.id)
         .eq("completed", false)
         .gte("race_date", new Date().toISOString())
-        .order("race_date", { ascending: true })
-        .limit(3);
+        .order("race_date", { ascending: true });
 
       if (error) throw error;
       setUpcomingRaces(data || []);

@@ -459,6 +459,40 @@ serve(async (req) => {
           }
         }
       },
+      {
+        type: "function",
+        function: {
+          name: "update_race_goal",
+          description: "Upraví existující závod nebo cíl – datum, typ, cílový čas nebo poznámku. Použij když uživatel řekne 'přesuň závod', 'změň datum', 'uprav cílový čas', 'oprav závod' apod.",
+          parameters: {
+            type: "object",
+            properties: {
+              race_name: {
+                type: "string",
+                description: "Název závodu k úpravě (může být část názvu)"
+              },
+              new_race_date: {
+                type: "string",
+                description: "Nové datum závodu (YYYY-MM-DD) – volitelné"
+              },
+              new_race_type: {
+                type: "string",
+                description: "Nový typ závodu – volitelné"
+              },
+              new_target_time: {
+                type: "string",
+                description: "Nový cílový čas (např. '3:30:00') – volitelné"
+              },
+              new_notes: {
+                type: "string",
+                description: "Nová poznámka k závodu – volitelné"
+              }
+            },
+            required: ["race_name"],
+            additionalProperties: false
+          }
+        }
+      },
       // Kalendářový tool - pouze pokud je Google Calendar připojený
       ...(hasGoogleCalendar ? [{
         type: "function",
@@ -757,6 +791,18 @@ serve(async (req) => {
         fat: Math.round(weekTotals.fat / 7),
       } : null;
 
+      // Načíst nadcházející závody a cíle (do 12 měsíců dopředu)
+      const twelveMonthsAhead = new Date();
+      twelveMonthsAhead.setMonth(twelveMonthsAhead.getMonth() + 12);
+      const { data: upcomingRaces } = await supabase
+        .from("race_goals")
+        .select("race_name, race_type, race_date, target_time, notes")
+        .eq("user_id", userId)
+        .eq("completed", false)
+        .gte("race_date", new Date().toISOString())
+        .lte("race_date", twelveMonthsAhead.toISOString())
+        .order("race_date", { ascending: true });
+
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
       let profileInfo = "";
       if (userWeight || userAge || userHeight || userBmi || userBmr) {
@@ -774,8 +820,8 @@ serve(async (req) => {
         : '';
 
       const availableTools = hasStravaConnected
-        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email, get_nutrition_summary, search_training_library'
-        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, send_stats_email, get_nutrition_summary, search_training_library';
+        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library'
+        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library';
 
       fitnessContext = `
       
@@ -807,6 +853,17 @@ INTERPRETACE TSB (Forma = Fitness - Únava):
 ` : ''}
 
 ${profileInfo}
+
+${upcomingRaces && upcomingRaces.length > 0 ? `
+🏆 PLÁNOVANÉ ZÁVODY A CÍLE (${upcomingRaces.length} celkem):
+${upcomingRaces.map((r: any) => {
+  const rDate = new Date(r.race_date);
+  const daysUntil = Math.ceil((rDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const dateStr = rDate.toLocaleDateString('cs-CZ');
+  return `- ${r.race_name} (${r.race_type}): ${dateStr} — za ${daysUntil} dní${r.target_time ? `, cíl: ${r.target_time}` : ''}${r.notes ? `, poznámka: ${r.notes}` : ''}`;
+}).join('\n')}
+⚠️ DŮLEŽITÉ: Při tréninkových doporučeních vždy zohledni tyto závody a zbývající čas do nich!
+` : ''}
 
 ${recentActivities && recentActivities.length > 0 ? `
 🏃 POSLEDNÍ AKTIVITY (5 nejnovějších):
@@ -841,7 +898,9 @@ DŮLEŽITÉ:
 - Když se uživatel ptá na spánek, HRV, klidový tep nebo složení těla, AKTIVNĚ použij příslušné nástroje (get_sleep_data, get_hrv_data, get_resting_heart_rate, get_body_composition) pro získání aktuálních dat!
 - Když uživatel chce poslat statistiky emailem (např. "pošli mi jak jsem spal poslední týden", "pošli mi HRV data", "pošli mi statistiky běhů"), použij send_stats_email s příslušným statsType (sleep/hrv/heart_rate/body_composition/fitness)
 - Když uživatel chce přidat závod nebo cíl (např. "přidej závod", "chci běžet maraton", "naplánuj mi závod", "mám závod v květnu"), VŽDY použij add_race_goal – tyto závody se uloží do race_goals a zobrazí se na kartě "Trenér" v části "Závody a cíle"
+- Když uživatel chce UPRAVIT závod (datum, typ, cílový čas, poznámku), použij update_race_goal
 - Pro zobrazení plánovaných závodů použij get_race_goals a popiš je tak, jak jsou vidět na kartě "Trenér"
+- Plánované závody jsou dostupné přímo v kontextu výše – VŽDY je zohledni při tréninkových doporučeních!
 `;
     }
 
@@ -2426,6 +2485,28 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                     : count && count > 0
                       ? { success: true, message: `Závod "${args.race_name}" byl odstraněn z plánu` }
                       : { error: `Závod "${args.race_name}" nebyl nalezen` };
+                } else if (tc.name === "update_race_goal") {
+                  const args = JSON.parse(tc.arguments);
+                  const updates: any = {};
+                  if (args.new_race_date) updates.race_date = args.new_race_date;
+                  if (args.new_race_type) updates.race_type = args.new_race_type;
+                  if (args.new_target_time) updates.target_time = args.new_target_time;
+                  if (args.new_notes !== undefined) updates.notes = args.new_notes;
+                  if (Object.keys(updates).length === 0) {
+                    result = { error: "Žádné změny nebyly zadány" };
+                  } else {
+                    const { error, count } = await supabase
+                      .from("race_goals")
+                      .update(updates)
+                      .eq("user_id", userId)
+                      .ilike("race_name", `%${args.race_name}%`)
+                      .eq("completed", false);
+                    result = error
+                      ? { error: error.message }
+                      : count && count > 0
+                        ? { success: true, message: `Závod "${args.race_name}" byl upraven` }
+                        : { error: `Závod "${args.race_name}" nebyl nalezen` };
+                  }
                 } else if (tc.name === "search_gmail") {
                   const args = JSON.parse(tc.arguments);
                   console.log("search_gmail called with args:", args);
