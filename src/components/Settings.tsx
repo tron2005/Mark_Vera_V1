@@ -29,7 +29,7 @@ export default function Settings() {
   const [weightKg, setWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [age, setAge] = useState("");
-  const [birthDate, setBirthDate] = useState(() => localStorage.getItem("markvera_birth_date") || "");
+  const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("male");
   const [bmi, setBmi] = useState<number | null>(null);
   const [bmr, setBmr] = useState<number | null>(null);
@@ -100,7 +100,7 @@ export default function Settings() {
       const [profileResult, bodyCompResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr")
+          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, birth_date")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -131,10 +131,10 @@ export default function Settings() {
         setHeightCm(profile.height_cm?.toString() || "");
         setGender(profile.gender || "male");
 
-        // Věk: preferuj výpočet z data narození, jinak použij uloženou hodnotu
-        const savedBirthDate = localStorage.getItem("markvera_birth_date");
-        if (savedBirthDate) {
-          const birth = new Date(savedBirthDate);
+        // Věk: preferuj výpočet z data narození
+        if (profile.birth_date) {
+          setBirthDate(profile.birth_date);
+          const birth = new Date(profile.birth_date);
           const today = new Date();
           let years = today.getFullYear() - birth.getFullYear();
           const m = today.getMonth() - birth.getMonth();
@@ -226,7 +226,6 @@ export default function Settings() {
 
   const handleBirthDateChange = (value: string) => {
     setBirthDate(value);
-    localStorage.setItem("markvera_birth_date", value);
     if (!value) return;
     const birth = new Date(value);
     const today = new Date();
@@ -288,6 +287,7 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
+            birth_date: birthDate || null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -314,6 +314,7 @@ export default function Settings() {
             gender: gender,
             bmi: calculatedBMI,
             bmr: calculatedBMR,
+            birth_date: birthDate || null,
           });
         error = insertError;
       }
