@@ -100,7 +100,7 @@ export default function Settings() {
       const [profileResult, bodyCompResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, birth_date")
+          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, birth_date, location")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -122,6 +122,7 @@ export default function Settings() {
         setCustomInstructions(profile.custom_instructions || "");
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);
+        setLocation(profile.location || "");
         setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
         setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
 
@@ -288,6 +289,7 @@ export default function Settings() {
             bmi: calculatedBMI,
             bmr: calculatedBMR,
             birth_date: birthDate || null,
+            location: location || null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -315,6 +317,7 @@ export default function Settings() {
             bmi: calculatedBMI,
             bmr: calculatedBMR,
             birth_date: birthDate || null,
+            location: location || null,
           });
         error = insertError;
       }
