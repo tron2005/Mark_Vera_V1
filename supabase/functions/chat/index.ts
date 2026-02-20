@@ -547,6 +547,35 @@ serve(async (req) => {
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "search_calendar_events",
+          description: "Vyhledá události v Google Kalendáři podle klíčového slova a/nebo časového rozsahu. Použij pro dotazy jako 'kdy mám Gladiator', 'najdi schůzku s Alicí', 'kdy mám zubaře', 'co mám příští měsíc', 'hledej v kalendáři'. Hledá v názvu, popisu i místě událostí.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "Klíčové slovo pro vyhledání v názvech/popisech událostí (např. 'Gladiator', 'zubař', 'porada'). Volitelné – pokud není, vrátí všechny události v daném rozsahu."
+              },
+              timeMin: {
+                type: "string",
+                description: "Hledat od tohoto data (YYYY-MM-DD). Výchozí: dnes."
+              },
+              timeMax: {
+                type: "string",
+                description: "Hledat do tohoto data (YYYY-MM-DD). Výchozí: 6 měsíců dopředu."
+              },
+              maxResults: {
+                type: "number",
+                description: "Maximální počet výsledků (výchozí 10, max 50)."
+              }
+            },
+            additionalProperties: false
+          }
+        }
       }] : []),
       {
         type: "function",
@@ -968,7 +997,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       
       DŮLEŽITÉ PRAVIDLA PRO NÁSTROJE:
       - POČASÍ A ZPRÁVY: Když se uživatel ptá na POČASÍ ("jak bude zítra", "prší dnes?", "předpověď") nebo ZPRÁVY/NOVINKY ("co se děje ve světě"), MUSÍŠ použít 'web_search'. NIKDY nepoužívej kalendář pro tyto dotazy!
-      - KALENDÁŘ: 'list_calendar_events' nebo 'get_notes_by_date' použij POUZE, když se uživatel ptá na SVŮJ OSOBNÍ PROGRAM, schůzky nebo plány ("co mám zítra v plánu", "kdy mám zubaře").
+      - KALENDÁŘ: 'list_calendar_events' použij pro dotaz na program konkrétního dne ("co mám zítra"). 'search_calendar_events' použij pro hledání podle názvu nebo časového okna ("kdy mám Gladiator", "najdi schůzku s Alicí", "co mám příští měsíc").
       
       Pro odeslání poznámek emailem použij send_notes_email. Pro odeslání fitness/wellness statistik emailem použij send_stats_email. Pro vytvoření události v kalendáři použij create_calendar_event. Pro vyhledání v emailech použij search_gmail. Pro jídlo použij log_food_item.`;
 
@@ -1161,6 +1190,14 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       )
     ) && !lastUserTextNorm.includes("pocasi") && !lastUserTextNorm.includes("zpravy");
     const shouldForceCalendarList = !!lastUserText && hasGoogleCalendar && scheduleQuestion && !shouldForceCalendar;
+
+    // Vyhledávání v kalendáři podle klíčového slova / časového okna
+    const calendarSearchKeywords = ["kdy mam", "kdy mas", "hledej v kalendar", "najdi v kalendar", "najdi udalost", "hledej udalost", "kdy je", "kdy prob", "prirozeni", "kdy bude"];
+    const isCalendarSearch = !!lastUserText && hasGoogleCalendar && !shouldForceCalendar && !shouldForceCalendarList && (
+      calendarSearchKeywords.some(kw => lastUserTextNorm.includes(kw)) ||
+      (lastUserTextNorm.includes("kalendar") && (lastUserTextNorm.includes("hledej") || lastUserTextNorm.includes("najdi") || lastUserTextNorm.includes("kdy")))
+    );
+
     const shouldForceSleep = !!lastUserText && normIncludes(lastUserText, sleepKeywords);
     const shouldForceStrava =
       !!lastUserText &&
@@ -1187,6 +1224,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     let toolChoiceLog = "auto";
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
     else if (shouldForceCalendarList) toolChoiceLog = "force:list_calendar_events";
+    else if (isCalendarSearch) toolChoiceLog = "force:search_calendar_events";
     else if (shouldForceRaceGoal) toolChoiceLog = "force:add_race_goal";
     else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
     else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
@@ -1277,6 +1315,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
           ? { type: "function", function: { name: "create_calendar_event" } }
           : shouldForceCalendarList
             ? { type: "function", function: { name: "list_calendar_events" } }
+            : isCalendarSearch
+              ? { type: "function", function: { name: "search_calendar_events" } }
             : shouldForceRaceGoal
               ? { type: "function", function: { name: "add_race_goal" } }
               : shouldForceStrava
@@ -2060,6 +2100,43 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                           return `${i + 1}. ${time} ${ev.summary || 'Bez názvu'}`.trim();
                         }).join("\n");
                         result = { message: `📅 Dnešní události:\n${formatted}` };
+                      }
+                    }
+                  } catch (error: any) {
+                    result = { error: error.message };
+                  }
+                } else if (tc.name === "search_calendar_events") {
+                  const args = JSON.parse(tc.arguments);
+                  try {
+                    const searchResp = await callEdgeFunction("search-calendar-events", {
+                      query: args.query,
+                      timeMin: args.timeMin,
+                      timeMax: args.timeMax,
+                      maxResults: args.maxResults || 10,
+                    });
+
+                    if (searchResp.error) {
+                      result = { error: searchResp.error.message };
+                    } else {
+                      const items = (searchResp.data as any)?.items || [];
+                      if (items.length === 0) {
+                        result = { message: args.query
+                          ? `Žádné události odpovídající "${args.query}" nebyly nalezeny.`
+                          : "Žádné nadcházející události nebyly nalezeny." };
+                      } else {
+                        const formatted = items.map((ev: any, i: number) => {
+                          const start = ev.start?.dateTime || ev.start?.date;
+                          const startDate = start ? new Date(start) : null;
+                          const dateStr = startDate
+                            ? startDate.toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric", year: "numeric" })
+                            : "";
+                          const timeStr = ev.start?.dateTime
+                            ? startDate!.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })
+                            : "celý den";
+                          const location = ev.location ? ` 📍 ${ev.location}` : "";
+                          return `${i + 1}. **${ev.summary || 'Bez názvu'}** — ${dateStr} ${timeStr}${location}`;
+                        }).join("\n");
+                        result = { message: `🔍 Nalezené události (${items.length}):\n${formatted}` };
                       }
                     }
                   } catch (error: any) {
