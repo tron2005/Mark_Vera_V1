@@ -1,4 +1,4 @@
-# MarkVera Roadmap v1.1.0 🚀
+# MarkVera Roadmap v1.3.0 🚀
 
 Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R.K. & V.E.R.A. s cílem běžet lokálně na Raspberry Pi 5.
 
@@ -105,6 +105,48 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - [x] **Web Search**: Vyhledávání aktuálních informací na internetu (Tavily).
   - [ ] **File Workspace**: Pracovní prostor pro soubory (PDF, CSV, obrázky) a jejich analýza.
 
+## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0)
+*Cíl: AI zná kalendář dopředu (1 měsíc) a sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
+
+### Kalendář dopředu
+- [ ] AI načítá Google Calendar 1 měsíc dopředu (ne jen dnes) – detekuje závody, события jako "Gladiator Run", volné dny, pracovní vytížení.
+- [ ] Periodická kontrola kalendáře (1x denně) – asistent proaktivně upozorní na blížící se závod / cíl.
+
+### Databáze a datový model
+- [ ] Tabulka `training_plans` (id, user_id, title, goal, start_date, end_date, phases, status, created_by_ai).
+- [ ] Tabulka `plan_exercises` (id, plan_id, phase, day, exercise_name, sets, reps, rest, alternatives, notes).
+- [ ] Knihovna cviků s popisy a náhradami (fitko, doma, venku) – základní seed data.
+
+### UI – karta "Individuální plán" v Trenérovi
+- [ ] Zobrazení aktivního plánu: název, cíl, postup (dny zbývají do závodu).
+- [ ] Týdenní přehled tréninků s detailem (cviky, série, opakování, alternativy).
+- [ ] Fázové zobrazení plánu (příprava → rozvoj → špička → tapering).
+- [ ] Editace plánu: přidání/odebrání cviku, změna dne, poznámka.
+- [ ] Rychlé přepnutí: "Dnes mám plán" / "Přeskočit dnešek" / "Zranění – upravit plán".
+
+### AI generování a adaptace
+- [ ] Chat příkaz: "Připrav plán na Gladiator Run 15.3." → AI vygeneruje strukturovaný plán s fázemi.
+- [ ] Chat příkaz: "Bolí mě rameno" → AI upraví plán (náhrady cviků, vynechání horní části těla).
+- [ ] Plan utilizes: CTL/ATL/TSB, VO2max, věk, BMR, váha, spánkové záznamy, výživa (makra).
+- [ ] Predikce pokroku: "Za 6 týdnů s tímto plánem dosáhneš CTL ~65 a VO2max ~52."
+- [ ] Podpora typů plánů:
+  - Závod / výkon (běh, cyklistika, triathlon, Gladiator Run)
+  - Posilování a fitko (fázový trénink: hypertrofie → síla → deload)
+  - Cviky s popisem a náhradami (bench press → tlaky s jednoručkami / kliky)
+  - Rehabilitace / zranění (omezení pohybů, šetrný trénink)
+  - Longevity (zdravé stárnutí, pohyblivost, kardio, síla, stres)
+
+### Longevity (v rámci plánů i jako standalone karta)
+- [ ] Karta "Longevity" v Trenérovi: přehled klíčových indikátorů zdravého stárnutí.
+  - Průměrná délka spánku (trend posledních 7 dní)
+  - HRV (variabilita srdeční frekvence) pokud dostupná ze Stravy
+  - VO2max trend (zlepšení / stagnace / pokles za posledních 30 dní)
+  - TSB (stres balance) – přetrénovanost vs. podtrénovanost
+  - BMI + tělesné složení (váha / výška z profilu)
+  - Kalorická bilance (průměr týdne z výživy)
+  - "Longevity score" – jednoduchý agregovaný ukazatel 0–100
+- [ ] Doporučení AI na základě longevity dat: "Tvůj VO2max klesá – přidej 2x týdně zónový běh."
+
 ## 🏠 Fáze 4: Lokální Mozek (MarkVera Offline)
 *Cílový stav: Běh na RPi 5 bez závislosti na cloudu.*
 - [ ] **Hardware**: RPi 5 + NVMe SSD + Coral TPU (volitelně).
@@ -113,7 +155,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [ ] **Voice Client**: Mikrofon + Reproduktor ovládaný lokálně.
 
 ## 📦 Backlog vylepšení
-- [ ] Vizualizace makroživin (navazuje na opravu jídla).
+- [x] Vizualizace makroživin – MacroNutritionCharts (hotovo v 1.2.0).
 - [ ] 3D vizualizace svalových skupin.
 - [ ] Správa vozového parku (servis, STK).
 - [ ] Zálohování: stabilní tag + lokální archiv po každé funkční verzi.
