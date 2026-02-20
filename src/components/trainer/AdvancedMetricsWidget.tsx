@@ -15,9 +15,9 @@ interface AdvancedMetricsProps {
 export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetricsProps) => {
   const metrics = useMemo(() => {
     // Determine max HR (default 190) and Resting HR (default 60)
-    const maxHR = userProfile?.max_heart_rate || 190; 
+    const maxHR = userProfile?.max_heart_rate || 190;
     const restingHR = userProfile?.resting_heart_rate || 60;
-    
+
     return calculateFitnessMetrics(activities, maxHR, restingHR, 'male');
   }, [activities, userProfile]);
 
@@ -70,7 +70,7 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
   };
 
   return (
-    <Card className="col-span-full">
+    <Card className="col-span-full card-hover animate-fade-in animate-fade-in-delay-4">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -84,9 +84,9 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs text-xs">
-                  Model založený na tepové frekvenci (TRIMP):<br/>
-                  ATL = Únava (7 dní)<br/>
-                  CTL = Kondice (42 dní)<br/>
+                  Model založený na tepové frekvenci (TRIMP):<br />
+                  ATL = Únava (7 dní)<br />
+                  CTL = Kondice (42 dní)<br />
                   TSB = Forma (CTL - ATL)
                 </p>
               </TooltipContent>
@@ -95,17 +95,17 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        
+
         {/* Top Grid: VO2max | Marathon | Fatigue | Fitness | Form */}
         <div className="space-y-4">
-          
+
           {/* VO2 Max */}
           <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
             <div className="flex items-center gap-2 font-medium text-sm">
               <Activity className="h-4 w-4 text-purple-500" />
               Efektivní VO2max
             </div>
-            <Progress value={Math.min(100, (metrics.currentVO2max / 70) * 100)} className="h-2" />
+            <Progress value={Math.min(100, (metrics.currentVO2max / 70) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-purple-500" />
             <div className="text-right font-bold text-sm">{metrics.currentVO2max} ml/kg</div>
           </div>
 
@@ -115,7 +115,7 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
               <TrendingUp className="h-4 w-4 text-green-500" />
               Maratónská forma
             </div>
-            <Progress value={metrics.marathonShape} className="h-2" />
+            <Progress value={metrics.marathonShape} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-green-500 [&>div]:to-emerald-400" />
             <div className="text-right font-bold text-sm">{metrics.marathonShape} %</div>
           </div>
 
@@ -128,7 +128,7 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
               Únava (ATL)
               <span className="text-xs text-muted-foreground font-normal ml-1">7 dní</span>
             </div>
-            <Progress value={Math.min(100, (metrics.currentATL / 150) * 100)} className="h-2" />
+            <Progress value={Math.min(100, (metrics.currentATL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-400" />
             <div className="text-right font-bold text-sm">{metrics.currentATL}</div>
           </div>
 
@@ -139,44 +139,44 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
               Kondice (CTL)
               <span className="text-xs text-muted-foreground font-normal ml-1">42 dní</span>
             </div>
-            <Progress value={Math.min(100, (metrics.currentCTL / 150) * 100)} className="h-2" />
+            <Progress value={Math.min(100, (metrics.currentCTL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-600 [&>div]:to-cyan-400" />
             <div className="text-right font-bold text-sm">{metrics.currentCTL}</div>
           </div>
 
           {/* TSB (Form) - Custom Visualization */}
           <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-             <div className="flex items-center gap-2 font-medium text-sm">
+            <div className="flex items-center gap-2 font-medium text-sm">
               <Gauge className="h-4 w-4 text-primary" />
               Stresová rovnováha (TSB)
             </div>
-            
+
             {/* Custom Bar for Negative/Positive values */}
             <div className="relative h-2 bg-secondary rounded-full overflow-hidden flex">
-               {/* Center marker */}
-               <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-black/20 z-10" />
-               
-               {/* The Bar */}
-               {metrics.currentTSB >= 0 ? (
-                 <div 
-                   className="absolute left-1/2 top-0 bottom-0 bg-green-500 transition-all" 
-                   style={{ width: `${Math.min(50, metrics.currentTSB)}%` }} 
-                 />
-               ) : (
-                 <div 
-                   className="absolute right-1/2 top-0 bottom-0 bg-orange-500 transition-all" 
-                   style={{ width: `${Math.min(50, Math.abs(metrics.currentTSB))}%` }} 
-                 />
-               )}
+              {/* Center marker */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-black/20 z-10" />
+
+              {/* The Bar */}
+              {metrics.currentTSB >= 0 ? (
+                <div
+                  className="absolute left-1/2 top-0 bottom-0 bg-green-500 transition-all"
+                  style={{ width: `${Math.min(50, metrics.currentTSB)}%` }}
+                />
+              ) : (
+                <div
+                  className="absolute right-1/2 top-0 bottom-0 bg-orange-500 transition-all"
+                  style={{ width: `${Math.min(50, Math.abs(metrics.currentTSB))}%` }}
+                />
+              )}
             </div>
 
             <div className={`text-right font-bold text-sm ${getTSBColor(metrics.currentTSB)}`}>
-               {metrics.currentTSB > 0 ? '+' : ''}{metrics.currentTSB}
+              {metrics.currentTSB > 0 ? '+' : ''}{metrics.currentTSB}
             </div>
           </div>
-          
-           {/* TSB Label Interpretation */}
+
+          {/* TSB Label Interpretation */}
           <div className="flex justify-end text-xs text-muted-foreground -mt-3">
-             {getTSBLabel(metrics.currentTSB)}
+            {getTSBLabel(metrics.currentTSB)}
           </div>
 
           <div className="h-px bg-border my-2" />
@@ -190,13 +190,13 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
             <Progress value={Math.min(100, (metrics.monotony / 2.5) * 100)} className={`h-2 ${metrics.monotony > 2 ? 'bg-red-200 [&>div]:bg-red-500' : ''}`} />
             <div className="text-right font-bold text-sm">{metrics.monotony}</div>
           </div>
-          
-           {/* Strain */}
+
+          {/* Strain */}
           <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
             <div className="flex items-center gap-2 font-medium text-sm">
               Zátěž tréninku (Strain)
             </div>
-             {/* Strain scale roughly 0-4000? */}
+            {/* Strain scale roughly 0-4000? */}
             <Progress value={Math.min(100, (metrics.trainingStrain / 4000) * 100)} className="h-2" />
             <div className="text-right font-bold text-sm">{metrics.trainingStrain}</div>
           </div>

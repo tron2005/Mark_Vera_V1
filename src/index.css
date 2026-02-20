@@ -134,7 +134,8 @@ All colors MUST be HSL.
   border: 1px solid hsl(217 91% 60% / 0.3);
 }
 
-.activity-badge-weight, .activity-badge-strength {
+.activity-badge-weight,
+.activity-badge-strength {
   background: linear-gradient(135deg, hsl(262 83% 58% / 0.15), hsl(262 83% 58% / 0.25));
   color: hsl(262 83% 45%);
   border: 1px solid hsl(262 83% 58% / 0.3);
@@ -153,29 +154,45 @@ All colors MUST be HSL.
 }
 
 /* Dark mode badge adjustments */
-.dark .activity-badge-run { color: hsl(142 71% 65%); }
-.dark .activity-badge-walk { color: hsl(25 95% 65%); }
-.dark .activity-badge-ride { color: hsl(217 91% 72%); }
-.dark .activity-badge-weight, .dark .activity-badge-strength { color: hsl(262 83% 72%); }
-.dark .activity-badge-swim { color: hsl(195 83% 65%); }
-.dark .activity-badge-default { color: hsl(215 16% 65%); }
+.dark .activity-badge-run {
+  color: hsl(142 71% 65%);
+}
+
+.dark .activity-badge-walk {
+  color: hsl(25 95% 65%);
+}
+
+.dark .activity-badge-ride {
+  color: hsl(217 91% 72%);
+}
+
+.dark .activity-badge-weight,
+.dark .activity-badge-strength {
+  color: hsl(262 83% 72%);
+}
+
+.dark .activity-badge-swim {
+  color: hsl(195 83% 65%);
+}
+
+.dark .activity-badge-default {
+  color: hsl(215 16% 65%);
+}
 
 /* ===== HERO GRADIENT ===== */
 .hero-gradient {
-  background: linear-gradient(135deg, 
-    hsl(217 91% 60% / 0.08) 0%, 
-    hsl(262 83% 58% / 0.06) 40%, 
-    hsl(142 71% 45% / 0.04) 100%
-  );
+  background: linear-gradient(135deg,
+      hsl(217 91% 60% / 0.08) 0%,
+      hsl(262 83% 58% / 0.06) 40%,
+      hsl(142 71% 45% / 0.04) 100%);
   border: 1px solid hsl(217 91% 60% / 0.15);
 }
 
 .dark .hero-gradient {
-  background: linear-gradient(135deg, 
-    hsl(217 91% 60% / 0.15) 0%, 
-    hsl(262 83% 58% / 0.1) 40%, 
-    hsl(142 71% 45% / 0.06) 100%
-  );
+  background: linear-gradient(135deg,
+      hsl(217 91% 60% / 0.15) 0%,
+      hsl(262 83% 58% / 0.1) 40%,
+      hsl(142 71% 45% / 0.06) 100%);
   border: 1px solid hsl(217 91% 60% / 0.2);
 }
 
@@ -186,13 +203,13 @@ All colors MUST be HSL.
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.15), 
-              0 4px 10px -5px hsl(217 91% 60% / 0.1);
+  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.15),
+    0 4px 10px -5px hsl(217 91% 60% / 0.1);
 }
 
 .dark .card-hover:hover {
-  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.25), 
-              0 4px 10px -5px hsl(0 0% 0% / 0.3);
+  box-shadow: 0 8px 25px -5px hsl(217 91% 60% / 0.25),
+    0 4px 10px -5px hsl(0 0% 0% / 0.3);
 }
 
 /* ===== ACTIVITY LIST ITEM ===== */
@@ -234,6 +251,7 @@ All colors MUST be HSL.
     opacity: 0;
     transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -244,15 +262,37 @@ All colors MUST be HSL.
   animation: fadeInUp 0.5s ease-out forwards;
 }
 
-.animate-fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
-.animate-fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
-.animate-fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
-.animate-fade-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
+.animate-fade-in-delay-1 {
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-2 {
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-3 {
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-4 {
+  animation-delay: 0.4s;
+  opacity: 0;
+}
 
 /* ===== SYNC PULSE ===== */
 @keyframes syncPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .animate-sync-pulse {
@@ -266,4 +306,47 @@ All colors MUST be HSL.
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ===== MOBILE RESPONSIVITY ===== */
+@media (max-width: 640px) {
+
+  /* Compact padding on mobile */
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Smaller hero section */
+  .hero-gradient {
+    padding: 1rem !important;
+  }
+
+  /* Stack cards on mobile */
+  .card-hover:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Activity items – no slide on mobile (tap-friendly) */
+  .activity-item:hover {
+    transform: none;
+  }
+
+  /* Stat values slightly smaller */
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  /* Rechart containers smaller */
+  .recharts-responsive-container {
+    min-height: 200px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .hero-gradient {
+    padding: 1.25rem !important;
+  }
 }

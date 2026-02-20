@@ -59,19 +59,19 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 ### Barvy a vizuální identita
 - [x] Barevné rozlišení typů aktivit (Run=zelená, Walk=oranžová, Strength=fialová, Ride=modrá)
 - [x] Gradient hero sekce nahoře (motivační citát)
-- [ ] Barevné progress bary VO2max/Maratón (zelená/oranž/červená podle úrovně)
+- [x] Barevné progress bary VO2max/Maratón (zelená/oranž/červená podle úrovně)
 - [x] České překlady typů aktivit v UI (Run→Běh, Walk→Chůze, WeightTraining→Posilování)
 
 ### Micro-animace a interakce
 - [x] Fade-in animace karet při scrollu
 - [x] Hover efekty na kartách aktivit (zvětšení, stín)
-- [ ] Animované progress bary (plynulé vyplňování)
-- [ ] Pulsující ikona při synchronizaci
+- [x] Animované progress bary (plynulé vyplňování)
+- [x] Pulsující ikona při synchronizaci
 
 ### Layout a UX
 - [x] Prázdný profil → výzva k doplnění údajů ("Doplňte svůj profil pro přesnější analýzy")
 - [x] Karta "AI Trenér" – přidat ikony k odrážkám
-- [ ] Lepší mobilní responzivita
+- [x] Lepší mobilní responzivita
 
 ### Dark Mode
 - [x] Implementace dark mode (přepínač v nastavení)

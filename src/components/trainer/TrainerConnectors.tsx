@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart } from "lucide-react";
+import { Heart, RefreshCw, Loader2, Link2 } from "lucide-react";
 import { GarminImport } from "../GarminImport";
 import { SleepImport } from "../SleepImport";
 import { RunalyzeBackupAnalyzer } from "../RunalyzeBackupAnalyzer";
@@ -31,10 +31,12 @@ export const TrainerConnectors = ({
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         {/* Connection Status */}
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5" />
+              <div className="p-1.5 rounded-lg bg-red-500/10">
+                <Heart className="h-4 w-4 text-red-500" />
+              </div>
               Stav připojení
             </CardTitle>
           </CardHeader>
@@ -53,14 +55,24 @@ export const TrainerConnectors = ({
               </div>
             )}
             {stravaConnected && (
-              <Button 
-                onClick={onSyncStrava} 
+              <Button
+                onClick={onSyncStrava}
                 disabled={syncing}
                 variant="outline"
                 size="sm"
                 className="w-full"
               >
-                {syncing ? "Synchronizuji..." : "Synchronizovat Strava data"}
+                {syncing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <span className="animate-sync-pulse">Synchronizuji...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Synchronizovat Strava data
+                  </>
+                )}
               </Button>
             )}
             <div className="flex items-center justify-between">
@@ -95,13 +107,13 @@ export const TrainerConnectors = ({
 
         {/* RingConn Import */}
         <RingConnImport onComplete={onRefreshData} />
-        
+
         {/* Calorie Import */}
         <CalorieImport />
 
         {/* About & Roadmap */}
         <div className="md:col-span-2">
-            <AboutCard />
+          <AboutCard />
         </div>
       </div>
     </div>
