@@ -53,7 +53,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [x] **Error Boundary**: Auto-recovery pro DOM chyby způsobené browser extensions.
 - [ ] **Verzování**: Zavedení striktního verzování (package.json).
 
-## 🎨 Fáze 2A: Design Refresh - **CURRENT FOCUS** (19.2.2026)
+## 🎨 Fáze 2A: Design Refresh - ✅ HOTOVO (20.2.2026)
 *Cíl: Přeměnit čistou ale jednobarevnou aplikaci na vizuálně premium produkt.*
 
 ### Barvy a vizuální identita
@@ -72,20 +72,23 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 - [x] Prázdný profil → výzva k doplnění údajů ("Doplňte svůj profil pro přesnější analýzy")
 - [x] Karta "AI Trenér" – přidat ikony k odrážkám
 - [x] Lepší mobilní responzivita
+- [x] Klikatelné aktivity → detail s metrikami (vzdálenost, tempo, tep, kalorie)
 
 ### Dark Mode
 - [x] Implementace dark mode (přepínač v nastavení)
 - [x] Tmavé barevné schéma konzistentní s modrým brandem
 
-## 📊 Fáze 2B: Pokročilá Analytika (Runalyze-style)
-- [ ] **Advanced Metrics Widget**:
+## 📊 Fáze 2B: Pokročilá Analytika (Runalyze-style) - ✅ HOTOVO (20.2.2026)
+- [x] **Advanced Metrics Widget**:
     - Výpočet TRIMP (Training Impulse).
     - ATL (Únava - 7 dní).
     - CTL (Kondice - 42 dní).
     - TSB (Stress Balance).
     - VO2max odhad z HR dat.
-    - Monotónnost tréninku.
-- [ ] **Automatická synchronizace**: Strava webhook / periodický sync.
+    - Monotónnost tréninku + Strain.
+- [x] **PMC Chart**: Performance Management Chart (ATL/CTL/TSB + TRIMP barový graf).
+- [x] **Automatická synchronizace**: Denní auto-sync ze Stravy (1x za 24h + ruční).
+- [x] **Opraveno**: Tlačítko "Počasí pro běh" (OPENWEATHER_API_KEY + deploy edge funkce).
 
 ## 🧠 Fáze 3: Pokročilá Inteligence (Cloud Bridge)
 - [ ] **Context Awareness**: Asistent si před odpovědí přečte souhrn dat z karty Trenér.

@@ -33,6 +33,25 @@ export const FitnessTrainer = () => {
     checkConnections();
   }, []);
 
+  // Auto-sync: respect user-configured interval from Settings
+  useEffect(() => {
+    if (!stravaConnected || syncing || loading) return;
+
+    const intervalHours = parseInt(localStorage.getItem('strava-sync-interval-hours') || '24', 10);
+    if (intervalHours === 0) return; // Manual only
+
+    const shouldAutoSync = () => {
+      if (!lastSync) return true; // Never synced
+      const threshold = new Date(Date.now() - intervalHours * 60 * 60 * 1000);
+      return lastSync < threshold;
+    };
+
+    if (shouldAutoSync()) {
+      console.log(`[AutoSync] Strava sync triggered (interval: ${intervalHours}h, last sync: ${lastSync?.toISOString() || "never"})`);
+      syncStravaActivities(true);
+    }
+  }, [stravaConnected, lastSync, loading]);
+
   const checkConnections = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -136,7 +155,7 @@ export const FitnessTrainer = () => {
     }
   };
 
-  const syncStravaActivities = async () => {
+  const syncStravaActivities = async (silent = false) => {
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-strava-activities', {
@@ -145,25 +164,25 @@ export const FitnessTrainer = () => {
 
       if (error) {
         if (error.message?.includes('rate limit') || error.message?.includes('Rate Limit')) {
-          toast.error("Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
+          if (!silent) toast.error("Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
           return;
         }
         throw error;
       }
 
       if (data?.rateLimitExceeded) {
-        toast.error(data.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
+        if (!silent) toast.error(data.error || "Strava API rate limit překročen. Zkuste to prosím za 15 minut.");
         return;
       }
 
       if (data?.synced) {
-        toast.success(`Synchronizováno ${data.activities?.length || 0} aktivit ze Stravy`);
+        if (!silent) toast.success(`Synchronizováno ${data.activities?.length || 0} aktivit ze Stravy`);
         await loadStravaActivitiesFromDB();
         await loadLastSyncTime();
       }
     } catch (error: any) {
       console.error("Chyba při synchronizaci aktivit:", error);
-      toast.error("Nepodařilo se synchronizovat aktivity ze Stravy");
+      if (!silent) toast.error("Nepodařilo se synchronizovat aktivity ze Stravy");
     } finally {
       setSyncing(false);
     }

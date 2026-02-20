@@ -580,6 +580,37 @@ export default function Settings() {
             </p>
           </div>
 
+          {/* Sync Frequency */}
+          <div className="space-y-3">
+            <Label>🔄 Automatická synchronizace Stravy</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={localStorage.getItem('strava-sync-interval-hours') === '0' ? 'default' : 'outline'}
+                onClick={() => { localStorage.setItem('strava-sync-interval-hours', '0'); window.dispatchEvent(new Event('storage')); }}
+                className="flex items-center gap-2 w-full text-xs"
+              >
+                Pouze ručně
+              </Button>
+              <Button
+                variant={(!localStorage.getItem('strava-sync-interval-hours') || localStorage.getItem('strava-sync-interval-hours') === '24') ? 'default' : 'outline'}
+                onClick={() => { localStorage.setItem('strava-sync-interval-hours', '24'); window.dispatchEvent(new Event('storage')); }}
+                className="flex items-center gap-2 w-full text-xs"
+              >
+                1× denně
+              </Button>
+              <Button
+                variant={localStorage.getItem('strava-sync-interval-hours') === '6' ? 'default' : 'outline'}
+                onClick={() => { localStorage.setItem('strava-sync-interval-hours', '6'); window.dispatchEvent(new Event('storage')); }}
+                className="flex items-center gap-2 w-full text-xs"
+              >
+                Každých 6h
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Jak často se mají automaticky stahovat nové aktivity ze Stravy
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

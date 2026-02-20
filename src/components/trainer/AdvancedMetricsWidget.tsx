@@ -2,10 +2,11 @@ import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress"; // Assumes standard shadcn Progress
 import { Badge } from "@/components/ui/badge";
-import { Activity, Battery, Gauge, TrendingUp, Info } from "lucide-react";
+import { Activity, Battery, Gauge, TrendingUp, Info, Repeat, Zap, AlertTriangle } from "lucide-react";
 import { calculateFitnessMetrics } from "@/utils/fitnessMetrics";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { PMCChart } from "../PMCChart";
 
 interface AdvancedMetricsProps {
   activities: any[];
@@ -70,139 +71,165 @@ export const AdvancedMetricsWidget = ({ activities, userProfile }: AdvancedMetri
   };
 
   return (
-    <Card className="col-span-full card-hover animate-fade-in animate-fade-in-delay-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Gauge className="h-5 w-5 text-primary" />
-            Pokročilé výpočty (Analýza zátěže)
-          </CardTitle>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs text-xs">
-                  Model založený na tepové frekvenci (TRIMP):<br />
-                  ATL = Únava (7 dní)<br />
-                  CTL = Kondice (42 dní)<br />
-                  TSB = Forma (CTL - ATL)
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-
-        {/* Top Grid: VO2max | Marathon | Fatigue | Fitness | Form */}
-        <div className="space-y-4">
-
-          {/* VO2 Max */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <Activity className="h-4 w-4 text-purple-500" />
-              Efektivní VO2max
-            </div>
-            <Progress value={Math.min(100, (metrics.currentVO2max / 70) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-purple-500" />
-            <div className="text-right font-bold text-sm">{metrics.currentVO2max} ml/kg</div>
+    <>
+      <Card className="col-span-full card-hover animate-fade-in animate-fade-in-delay-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Gauge className="h-5 w-5 text-primary" />
+              Pokročilé výpočty (Analýza zátěže)
+            </CardTitle>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs text-xs">
+                    Model založený na tepové frekvenci (TRIMP):<br />
+                    ATL = Únava (7 dní)<br />
+                    CTL = Kondice (42 dní)<br />
+                    TSB = Forma (CTL - ATL)
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
 
-          {/* Marathon Shape */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              Maratónská forma
+          {/* Top Grid: VO2max | Marathon | Fatigue | Fitness | Form */}
+          <div className="space-y-4">
+
+            {/* VO2 Max */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Activity className="h-4 w-4 text-purple-500" />
+                Efektivní VO2max
+              </div>
+              <Progress value={Math.min(100, (metrics.currentVO2max / 70) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-purple-500" />
+              <div className="text-right font-bold text-sm">{metrics.currentVO2max} ml/kg</div>
             </div>
-            <Progress value={metrics.marathonShape} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-green-500 [&>div]:to-emerald-400" />
-            <div className="text-right font-bold text-sm">{metrics.marathonShape} %</div>
+
+            {/* Marathon Shape */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                Maratónská forma
+              </div>
+              <Progress value={metrics.marathonShape} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-green-500 [&>div]:to-emerald-400" />
+              <div className="text-right font-bold text-sm">{metrics.marathonShape} %</div>
+            </div>
+
+            <div className="h-px bg-border my-2" />
+
+            {/* ATL (Fatigue) */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Battery className="h-4 w-4 text-orange-500" />
+                Únava (ATL)
+                <span className="text-xs text-muted-foreground font-normal ml-1">7 dní</span>
+              </div>
+              <Progress value={Math.min(100, (metrics.currentATL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-400" />
+              <div className="text-right font-bold text-sm">{metrics.currentATL}</div>
+            </div>
+
+            {/* CTL (Fitness) */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Activity className="h-4 w-4 text-blue-600" />
+                Kondice (CTL)
+                <span className="text-xs text-muted-foreground font-normal ml-1">42 dní</span>
+              </div>
+              <Progress value={Math.min(100, (metrics.currentCTL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-600 [&>div]:to-cyan-400" />
+              <div className="text-right font-bold text-sm">{metrics.currentCTL}</div>
+            </div>
+
+            {/* TSB (Form) - Custom Visualization */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Gauge className="h-4 w-4 text-primary" />
+                Stresová rovnováha (TSB)
+              </div>
+
+              {/* Custom Bar for Negative/Positive values */}
+              <div className="relative h-2 bg-secondary rounded-full overflow-hidden flex">
+                {/* Center marker */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-black/20 z-10" />
+
+                {/* The Bar */}
+                {metrics.currentTSB >= 0 ? (
+                  <div
+                    className="absolute left-1/2 top-0 bottom-0 bg-green-500 transition-all"
+                    style={{ width: `${Math.min(50, metrics.currentTSB)}%` }}
+                  />
+                ) : (
+                  <div
+                    className="absolute right-1/2 top-0 bottom-0 bg-orange-500 transition-all"
+                    style={{ width: `${Math.min(50, Math.abs(metrics.currentTSB))}%` }}
+                  />
+                )}
+              </div>
+
+              <div className={`text-right font-bold text-sm ${getTSBColor(metrics.currentTSB)}`}>
+                {metrics.currentTSB > 0 ? '+' : ''}{metrics.currentTSB}
+              </div>
+            </div>
+
+            {/* TSB Label Interpretation */}
+            <div className="flex justify-end text-xs text-muted-foreground -mt-3">
+              {getTSBLabel(metrics.currentTSB)}
+            </div>
+
+            <div className="h-px bg-border my-2" />
+
+            {/* Monotony */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Repeat className={`h-4 w-4 ${metrics.monotony > 2 ? 'text-red-500' : 'text-yellow-500'}`} />
+                Monotónnost
+                {metrics.monotony > 2 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger><AlertTriangle className="h-3.5 w-3.5 text-red-500" /></TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Monotónnost &gt; 2.0 zvyšuje riziko přetrénování!</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+              <Progress
+                value={Math.min(100, (metrics.monotony / 2.5) * 100)}
+                className={`h-2.5 ${metrics.monotony > 2
+                  ? '[&>div]:bg-gradient-to-r [&>div]:from-red-500 [&>div]:to-rose-400'
+                  : '[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-amber-400'}`}
+              />
+              <div className={`text-right font-bold text-sm ${metrics.monotony > 2 ? 'text-red-500' : ''}`}>
+                {metrics.monotony}
+              </div>
+            </div>
+
+            {/* Strain */}
+            <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
+              <div className="flex items-center gap-2 font-medium text-sm">
+                <Zap className="h-4 w-4 text-violet-500" />
+                Zátěž tréninku (Strain)
+              </div>
+              <Progress
+                value={Math.min(100, (metrics.trainingStrain / 4000) * 100)}
+                className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-fuchsia-400"
+              />
+              <div className="text-right font-bold text-sm">{metrics.trainingStrain}</div>
+            </div>
+
           </div>
-
-          <div className="h-px bg-border my-2" />
-
-          {/* ATL (Fatigue) */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <Battery className="h-4 w-4 text-orange-500" />
-              Únava (ATL)
-              <span className="text-xs text-muted-foreground font-normal ml-1">7 dní</span>
-            </div>
-            <Progress value={Math.min(100, (metrics.currentATL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-400" />
-            <div className="text-right font-bold text-sm">{metrics.currentATL}</div>
-          </div>
-
-          {/* CTL (Fitness) */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <Activity className="h-4 w-4 text-blue-600" />
-              Kondice (CTL)
-              <span className="text-xs text-muted-foreground font-normal ml-1">42 dní</span>
-            </div>
-            <Progress value={Math.min(100, (metrics.currentCTL / 150) * 100)} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-blue-600 [&>div]:to-cyan-400" />
-            <div className="text-right font-bold text-sm">{metrics.currentCTL}</div>
-          </div>
-
-          {/* TSB (Form) - Custom Visualization */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <Gauge className="h-4 w-4 text-primary" />
-              Stresová rovnováha (TSB)
-            </div>
-
-            {/* Custom Bar for Negative/Positive values */}
-            <div className="relative h-2 bg-secondary rounded-full overflow-hidden flex">
-              {/* Center marker */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-black/20 z-10" />
-
-              {/* The Bar */}
-              {metrics.currentTSB >= 0 ? (
-                <div
-                  className="absolute left-1/2 top-0 bottom-0 bg-green-500 transition-all"
-                  style={{ width: `${Math.min(50, metrics.currentTSB)}%` }}
-                />
-              ) : (
-                <div
-                  className="absolute right-1/2 top-0 bottom-0 bg-orange-500 transition-all"
-                  style={{ width: `${Math.min(50, Math.abs(metrics.currentTSB))}%` }}
-                />
-              )}
-            </div>
-
-            <div className={`text-right font-bold text-sm ${getTSBColor(metrics.currentTSB)}`}>
-              {metrics.currentTSB > 0 ? '+' : ''}{metrics.currentTSB}
-            </div>
-          </div>
-
-          {/* TSB Label Interpretation */}
-          <div className="flex justify-end text-xs text-muted-foreground -mt-3">
-            {getTSBLabel(metrics.currentTSB)}
-          </div>
-
-          <div className="h-px bg-border my-2" />
-
-          {/* Monotony */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              Monotónnost
-            </div>
-            {/* Monotony scale roughly 0-2 (above 2 is dangerous) */}
-            <Progress value={Math.min(100, (metrics.monotony / 2.5) * 100)} className={`h-2 ${metrics.monotony > 2 ? 'bg-red-200 [&>div]:bg-red-500' : ''}`} />
-            <div className="text-right font-bold text-sm">{metrics.monotony}</div>
-          </div>
-
-          {/* Strain */}
-          <div className="grid grid-cols-[1.5fr,2fr,1fr] gap-4 items-center">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              Zátěž tréninku (Strain)
-            </div>
-            {/* Strain scale roughly 0-4000? */}
-            <Progress value={Math.min(100, (metrics.trainingStrain / 4000) * 100)} className="h-2" />
-            <div className="text-right font-bold text-sm">{metrics.trainingStrain}</div>
-          </div>
-
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      {/* PMC Trend Chart */}
+      {metrics.history.length > 0 && (
+        <PMCChart history={metrics.history} />
+      )}
+    </>
   );
 };
