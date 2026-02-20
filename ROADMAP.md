@@ -108,6 +108,13 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - Widget zobrazuje všechny závody bez limitu (bylo max 3)
   - AI má závody automaticky v kontextu (12 měsíců dopředu) – zohledňuje je v tréninkových radách
   - Nový tool `update_race_goal` – úprava data/typu/cíle přes chat
+- [x] **Hlasový výstup (TTS)**: OpenAI TTS – Mark = Onyx (mužský hlas), Vera = Nova (ženský hlas). Klik na ikonu reproduktoru přehraje odpověď, druhý klik zastaví.
+- [ ] **Voice Chat (obousměrný)**: Plnohodnotný hlasový chat bez psaní.
+  - Jedno tlačítko pro zachycení hlasu → STT (Whisper) → AI odpověď → TTS přehrání
+  - Push-to-talk nebo voice-activity detection (VAD)
+  - Podpora češtiny (Whisper je přesný pro češtinu)
+  - Implementace: Whisper edge funkce (`whisper-stt`) + úprava ChatInterface
+  - Možné rozšíření: wake word ("Hej Marku" / "Hej Vero") pro hands-free provoz na RPi
 
 ## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0)
 *Cíl: AI zná kalendář dopředu (1 měsíc) a sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
