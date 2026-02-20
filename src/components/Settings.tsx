@@ -29,6 +29,7 @@ export default function Settings() {
   const [weightKg, setWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [age, setAge] = useState("");
+  const [birthDate, setBirthDate] = useState(() => localStorage.getItem("markvera_birth_date") || "");
   const [gender, setGender] = useState("male");
   const [bmi, setBmi] = useState<number | null>(null);
   const [bmr, setBmr] = useState<number | null>(null);
@@ -44,14 +45,14 @@ export default function Settings() {
     loadSettings();
     loadVoices();
 
-    // Refresh settings every 2 seconds to catch OAuth callback updates
+    // Refresh only connection status every 2 seconds (catches OAuth callbacks)
     const intervalId = setInterval(() => {
-      loadSettings();
+      loadSettings(true);
     }, 2000);
 
-    // Also refresh on window focus
+    // Also refresh connections on window focus
     const handleFocus = () => {
-      loadSettings();
+      loadSettings(true);
     };
 
     window.addEventListener('focus', handleFocus);
@@ -76,10 +77,24 @@ export default function Settings() {
     }
   };
 
-  const loadSettings = async () => {
+  const loadSettings = async (onlyConnections = false) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      if (onlyConnections) {
+        // Při periodickém refreshi aktualizujeme jen stav připojení (Google/Strava)
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("google_refresh_token, google_access_token, strava_refresh_token, strava_access_token")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profile) {
+          setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
+          setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
+        }
+        return;
+      }
 
       // Load profile and latest body composition in parallel
       const [profileResult, bodyCompResult] = await Promise.all([
@@ -114,8 +129,20 @@ export default function Settings() {
         const currentWeight = latestBodyComp?.weight_kg ?? profile.weight_kg;
         setWeightKg(currentWeight?.toString() || "");
         setHeightCm(profile.height_cm?.toString() || "");
-        setAge(profile.age?.toString() || "");
         setGender(profile.gender || "male");
+
+        // Věk: preferuj výpočet z data narození, jinak použij uloženou hodnotu
+        const savedBirthDate = localStorage.getItem("markvera_birth_date");
+        if (savedBirthDate) {
+          const birth = new Date(savedBirthDate);
+          const today = new Date();
+          let years = today.getFullYear() - birth.getFullYear();
+          const m = today.getMonth() - birth.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) years--;
+          setAge(years.toString());
+        } else {
+          setAge(profile.age?.toString() || "");
+        }
 
         if (profile.bmr) {
           setBmr(profile.bmr);
@@ -194,6 +221,24 @@ export default function Settings() {
 
     if (weight && height && ageYears) {
       calculateBMR(weight, height, ageYears, gender);
+    }
+  };
+
+  const handleBirthDateChange = (value: string) => {
+    setBirthDate(value);
+    localStorage.setItem("markvera_birth_date", value);
+    if (!value) return;
+    const birth = new Date(value);
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) years--;
+    const calculatedAge = years.toString();
+    setAge(calculatedAge);
+    const weight = parseFloat(weightKg);
+    const height = parseFloat(heightCm);
+    if (weight && height && years > 0) {
+      calculateBMR(weight, height, years, gender);
     }
   };
 
@@ -737,15 +782,16 @@ export default function Settings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="age">Věk</Label>
+                  <Label htmlFor="birthdate">Datum narození</Label>
                   <Input
-                    id="age"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="30"
-                    value={age}
-                    onChange={(e) => handleAgeChange(e.target.value)}
+                    id="birthdate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => handleBirthDateChange(e.target.value)}
                   />
+                  {age && (
+                    <p className="text-xs text-muted-foreground">Věk: {age} let</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gender">Pohlaví</Label>
