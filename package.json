@@ -11,7 +11,11 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "version:patch": "npm version patch -m 'Bump version to %s'",
+    "version:minor": "npm version minor -m 'Bump version to %s'",
+    "version:major": "npm version major -m 'Bump version to %s'",
+    "version:tag": "git push && git push --tags"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

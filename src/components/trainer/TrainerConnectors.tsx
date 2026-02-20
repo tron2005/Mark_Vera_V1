@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, RefreshCw, Loader2, Link2 } from "lucide-react";
+import { Heart, RefreshCw, Loader2, Link2, Clock } from "lucide-react";
 import { GarminImport } from "../GarminImport";
 import { SleepImport } from "../SleepImport";
 import { RunalyzeBackupAnalyzer } from "../RunalyzeBackupAnalyzer";
@@ -11,6 +11,8 @@ import { RingConnImport } from "../RingConnImport";
 import { BodyCombatTracker } from "../BodyCombatTracker";
 import { CalorieImport } from "../CalorieImport";
 import { AboutCard } from "./AboutCard";
+import { formatDistanceToNow } from "date-fns";
+import { cs } from "date-fns/locale";
 
 interface TrainerConnectorsProps {
   stravaConnected: boolean;
@@ -49,11 +51,38 @@ export const TrainerConnectors = ({
                 <Badge variant="secondary">Nepřipojeno</Badge>
               )}
             </div>
-            {stravaConnected && lastSync && (
-              <div className="text-xs text-muted-foreground">
-                Poslední sync: {lastSync.toLocaleString('cs-CZ')}
+
+            {/* Poslední synchronizace - výrazné zobrazení */}
+            {stravaConnected && (
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <span>Poslední synchronizace</span>
+                </div>
+                {lastSync ? (
+                  <>
+                    <div className="text-base font-semibold text-foreground">
+                      {lastSync.toLocaleString('cs-CZ', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(lastSync, { addSuffix: true, locale: cs })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Ještě nebyla provedena synchronizace
+                  </div>
+                )}
               </div>
             )}
+
             {stravaConnected && (
               <Button
                 onClick={onSyncStrava}

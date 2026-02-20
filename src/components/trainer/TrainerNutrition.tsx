@@ -1,8 +1,9 @@
 import { CalorieTracker } from "../CalorieTracker";
 import { CalorieImport } from "../CalorieImport";
 import { CalorieMigration } from "../CalorieMigration";
+import { MacroNutritionCharts } from "../MacroNutritionCharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Apple, AlertCircle } from "lucide-react";
+import { Apple } from "lucide-react";
 
 export const TrainerNutrition = () => {
   return (
@@ -21,12 +22,17 @@ export const TrainerNutrition = () => {
              <CalorieTracker />
         </div>
 
+        {/* Macro Visualization Charts */}
+        <div className="md:col-span-2">
+             <MacroNutritionCharts />
+        </div>
+
         {/* Import Tools */}
         <div className="md:col-span-2 space-y-6">
             <CalorieImport />
             <CalorieMigration />
         </div>
-        
+
         {/* Info Card */}
         <div className="md:col-span-2">
             <Card className="bg-muted/30 border-dashed">

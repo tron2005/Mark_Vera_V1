@@ -102,14 +102,35 @@ export const FitnessTrainer = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    // Pokusíme se načíst z strava_sync_log
+    const { data: syncLog, error: syncError } = await supabase
       .from("strava_sync_log")
       .select("last_sync_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (data) {
-      setLastSync(new Date(data.last_sync_at));
+    console.log("[loadLastSyncTime] strava_sync_log:", syncLog, "Error:", syncError);
+
+    if (syncLog?.last_sync_at) {
+      setLastSync(new Date(syncLog.last_sync_at));
+      console.log("[loadLastSyncTime] Set lastSync from sync_log:", new Date(syncLog.last_sync_at));
+      return;
+    }
+
+    // Fallback: pokud sync_log není k dispozici, použij updated_at z nejnovější aktivity
+    const { data: latestActivity } = await supabase
+      .from("strava_activities")
+      .select("updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestActivity?.updated_at) {
+      setLastSync(new Date(latestActivity.updated_at));
+      console.log("[loadLastSyncTime] Set lastSync from latest activity:", new Date(latestActivity.updated_at));
+    } else {
+      console.log("[loadLastSyncTime] No sync data found anywhere");
     }
   };
 
@@ -177,8 +198,13 @@ export const FitnessTrainer = () => {
 
       if (data?.synced) {
         if (!silent) toast.success(`Synchronizováno ${data.activities?.length || 0} aktivit ze Stravy`);
+
+        // Nastavit lastSync přímo z odpovědi (rychlejší než dotaz do DB)
+        if (data.lastSyncAt) {
+          setLastSync(new Date(data.lastSyncAt));
+        }
+
         await loadStravaActivitiesFromDB();
-        await loadLastSyncTime();
       }
     } catch (error: any) {
       console.error("Chyba při synchronizaci aktivit:", error);

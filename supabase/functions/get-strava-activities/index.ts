@@ -254,12 +254,13 @@ serve(async (req) => {
         }
 
         // Log the sync using admin client
+        const syncTime = new Date().toISOString();
         await supabaseAdmin.from("strava_sync_log").upsert(
             {
                 user_id: user.id,
                 activities_synced: savedCount,
                 status: "success",
-                last_sync_at: new Date().toISOString(),
+                last_sync_at: syncTime,
             },
             { onConflict: "user_id" }
         );
@@ -274,6 +275,7 @@ serve(async (req) => {
                 activities: savedActivities,
                 activitiesCount: activities.length,
                 savedCount,
+                lastSyncAt: syncTime, // Přidáno pro frontend
             }),
             {
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
