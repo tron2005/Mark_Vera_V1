@@ -674,19 +674,6 @@ export default function Settings() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">📍 Vaše lokace</Label>
-            <Input
-              id="location"
-              type="text"
-              placeholder="Přísovice"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground">
-              Město pro doporučení počasí při běhání
-            </p>
-          </div>
 
           <div className="space-y-4">
             <Label>Hlasy asistentů</Label>
@@ -809,6 +796,17 @@ export default function Settings() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location">📍 Město (pro počasí při běhání)</Label>
+                <Input
+                  id="location"
+                  type="text"
+                  placeholder="Přísovice"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
               </div>
 
               {/* Vypočítané hodnoty */}
