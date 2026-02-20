@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Send, Volume2, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Mic, Send, Volume2, VolumeX, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     loadMessages();
@@ -294,52 +295,71 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     }
   };
 
-  const speakText = (text: string) => {
-    if (!text || isSpeaking) return;
-    
-    setIsSpeaking(true);
-    
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.85; // Zpomalení řeči
-    
-    // Select voice based on mode
-    const voices = window.speechSynthesis.getVoices();
-    const czechVoices = voices.filter(voice => voice.lang.startsWith('cs'));
-    
-    if (mode === 'mark') {
-      // Pro Marka: hledáme mužský hlas (lower pitch)
-      const maleVoice = czechVoices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('muž'));
-      if (maleVoice) {
-        utterance.voice = maleVoice;
-      } else if (czechVoices[0]) {
-        utterance.voice = czechVoices[0];
-      }
-      utterance.pitch = 0.9; // Nižší tón pro mužský hlas
-    } else {
-      // Pro Veru: hledáme ženský hlas (higher pitch)
-      const femaleVoice = czechVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('žen'));
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      } else if (czechVoices[1] || czechVoices[0]) {
-        utterance.voice = czechVoices[1] || czechVoices[0];
-      }
-      utterance.pitch = 1.1; // Vyšší tón pro ženský hlas
+  // Mark = onyx (hluboký mužský), Vera = nova (přátelský ženský)
+  const VOICE_MAP = { mark: "onyx", vera: "nova" } as const;
+
+  const stopSpeech = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
     }
-    
-    utterance.onend = () => {
+    setIsSpeaking(false);
+  };
+
+  const speakText = async (text: string) => {
+    if (!text) return;
+    // Pokud už hraje, zastav
+    if (isSpeaking) { stopSpeech(); return; }
+
+    // Zkrátit na max 500 znaků (úspora tokenů, rychlejší odpověď)
+    const truncated = text.length > 500 ? text.substring(0, 500) + "…" : text;
+
+    setIsSpeaking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Není přihlášen");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ text: truncated, voice: VOICE_MAP[mode] }),
+        }
+      );
+
+      if (!response.ok) throw new Error("TTS chyba");
+      const { audioContent } = await response.json();
+      if (!audioContent) throw new Error("Prázdná audio odpověď");
+
+      // Přehraj base64 MP3
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      audioRef.current = audio;
+      audio.onended = () => { setIsSpeaking(false); audioRef.current = null; };
+      audio.onerror = () => { setIsSpeaking(false); audioRef.current = null; };
+      await audio.play();
+    } catch (err: any) {
+      console.error("TTS error:", err);
       setIsSpeaking(false);
-    };
-    
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      toast.error("Nepodařilo se přečíst text");
-    };
-    
-    window.speechSynthesis.speak(utterance);
+      // Fallback na browser TTS
+      try {
+        const utterance = new SpeechSynthesisUtterance(truncated);
+        utterance.lang = "cs-CZ";
+        utterance.pitch = mode === "mark" ? 0.8 : 1.15;
+        utterance.rate = 0.9;
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+        setIsSpeaking(true);
+      } catch {
+        toast.error("Přečtení textu se nezdařilo");
+      }
+    }
   };
 
   return (
@@ -379,10 +399,10 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
                     variant="ghost"
                     className="h-6 w-6 shrink-0"
                     onClick={() => speakText(msg.content)}
-                    disabled={isSpeaking}
+                    title={isSpeaking ? "Zastavit přehrávání" : `Přečíst hlasem ${mode === "mark" ? "M.A.R.K." : "V.E.R.A."}`}
                   >
                     {isSpeaking ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <VolumeX className="h-4 w-4 text-primary" />
                     ) : (
                       <Volume2 className="h-4 w-4" />
                     )}

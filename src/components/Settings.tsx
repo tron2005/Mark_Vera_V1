@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Volume2, Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import StravaTesterManager from "./StravaTesterManager";
 import { SystemLogs } from "./SystemLogs";
@@ -18,9 +18,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
-  const [markVoice, setMarkVoice] = useState("");
-  const [veraVoice, setVeraVoice] = useState("");
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [preferredMode, setPreferredMode] = useState<"mark" | "vera">("mark");
   const [customInstructions, setCustomInstructions] = useState("");
   const [userDescription, setUserDescription] = useState("");
   const [trainerEnabled, setTrainerEnabled] = useState(true);
@@ -43,7 +41,6 @@ export default function Settings() {
 
   useEffect(() => {
     loadSettings();
-    loadVoices();
 
     // Refresh only connection status every 2 seconds (catches OAuth callbacks)
     const intervalId = setInterval(() => {
@@ -61,21 +58,6 @@ export default function Settings() {
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
-
-  const loadVoices = () => {
-    const voices = window.speechSynthesis.getVoices();
-    console.log('Dostupné hlasy:', voices.map(v => `${v.name} (${v.lang})`));
-    if (voices.length > 0) {
-      setAvailableVoices(voices);
-    } else {
-      // Chrome needs a bit of time to load voices
-      window.speechSynthesis.onvoiceschanged = () => {
-        const newVoices = window.speechSynthesis.getVoices();
-        console.log('Hlasy načteny:', newVoices.map(v => `${v.name} (${v.lang})`));
-        setAvailableVoices(newVoices);
-      };
-    }
-  };
 
   const loadSettings = async (onlyConnections = false) => {
     try {
@@ -100,7 +82,7 @@ export default function Settings() {
       const [profileResult, bodyCompResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, birth_date, location")
+          .select("email, custom_instructions, user_description, trainer_enabled, google_refresh_token, google_access_token, strava_refresh_token, strava_access_token, weight_kg, height_cm, age, gender, bmi, bmr, birth_date, location, preferred_mode")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -123,6 +105,9 @@ export default function Settings() {
         setUserDescription(profile.user_description || "");
         setTrainerEnabled(profile.trainer_enabled ?? true);
         setLocation(profile.location || "");
+        if (profile.preferred_mode === "mark" || profile.preferred_mode === "vera") {
+          setPreferredMode(profile.preferred_mode);
+        }
         setGoogleCalendarConnected(!!(profile.google_refresh_token || profile.google_access_token));
         setStravaConnected(!!(profile.strava_refresh_token || profile.strava_access_token));
 
@@ -290,6 +275,7 @@ export default function Settings() {
             bmr: calculatedBMR,
             birth_date: birthDate || null,
             location: location || null,
+            preferred_mode: preferredMode,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -337,31 +323,6 @@ export default function Settings() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const testVoice = (voiceName: string, mode: 'mark' | 'vera') => {
-    const utterance = new SpeechSynthesisUtterance(
-      mode === 'mark'
-        ? "Ahoj, jsem Mark, váš sportovní trenér"
-        : "Ahoj, jsem Vera, vaše wellness asistentka"
-    );
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.85;
-
-    const voice = availableVoices.find(v => v.name === voiceName);
-    if (voice) {
-      utterance.voice = voice;
-    }
-
-    utterance.pitch = mode === 'mark' ? 0.9 : 1.1;
-
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-
-    toast({
-      title: "Test hlasu",
-      description: `Přehrávám hlas pro ${mode === 'mark' ? 'Marka' : 'Veru'}...`,
-    });
   };
 
   const connectGoogleCalendar = () => {
@@ -675,69 +636,45 @@ export default function Settings() {
           </div>
 
 
+          {/* Osobnost a hlas */}
           <div className="space-y-4">
-            <Label>Hlasy asistentů</Label>
+            <Label>Osobnost asistenta</Label>
             <p className="text-sm text-muted-foreground">
-              Vyberte různé hlasy pro každého asistenta. Kvalita závisí na prohlížeči - Chrome a Edge mají nejlepší české hlasy (např. Zuzana od Microsoft).
+              Vyberte, kdo s vámi bude komunikovat. Volba ovlivňuje styl odpovědí i hlas při přehrávání.
             </p>
-
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="mark-voice">🔧 M.A.R.K. (Sportovní trenér)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => testVoice(markVoice, 'mark')}
-                    disabled={!markVoice}
-                  >
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    Test
-                  </Button>
-                </div>
-                <Select value={markVoice} onValueChange={setMarkVoice}>
-                  <SelectTrigger id="mark-voice">
-                    <SelectValue placeholder="Vyberte hlas pro Marka" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableVoices.map((voice) => (
-                      <SelectItem key={voice.name} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="vera-voice">🤖 V.E.R.A. (Wellness asistentka)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => testVoice(veraVoice, 'vera')}
-                    disabled={!veraVoice}
-                  >
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    Test
-                  </Button>
-                </div>
-                <Select value={veraVoice} onValueChange={setVeraVoice}>
-                  <SelectTrigger id="vera-voice">
-                    <SelectValue placeholder="Vyberte hlas pro Veru" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableVoices.map((voice) => (
-                      <SelectItem key={voice.name} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPreferredMode("mark")}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  preferredMode === "mark"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                <div className="text-2xl mb-1">🔧</div>
+                <div className="font-semibold text-sm">M.A.R.K.</div>
+                <div className="text-xs text-muted-foreground mt-1">Technik · Analytický · Přímý</div>
+                <div className="text-xs text-muted-foreground mt-1">Hlas: <span className="font-medium">Onyx</span> (mužský)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreferredMode("vera")}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  preferredMode === "vera"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                <div className="text-2xl mb-1">🤖</div>
+                <div className="font-semibold text-sm">V.E.R.A.</div>
+                <div className="text-xs text-muted-foreground mt-1">Empatie · Podpora · Wellness</div>
+                <div className="text-xs text-muted-foreground mt-1">Hlas: <span className="font-medium">Nova</span> (ženský)</div>
+              </button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Přepínač M.A.R.K. / V.E.R.A. v záhlaví aplikace se aktualizuje po uložení nastavení a obnovení stránky.
+            </p>
           </div>
 
           {/* Fyzický profil */}

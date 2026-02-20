@@ -73,6 +73,16 @@ const Index = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Načíst uložený preferred_mode z profilu
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("preferred_mode")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profile?.preferred_mode === "mark" || profile?.preferred_mode === "vera") {
+      setMode(profile.preferred_mode);
+    }
+
     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
 
     // Zkusit najít poslední konverzaci v tomto režimu za posledních 5 dní
@@ -118,6 +128,9 @@ const Index = () => {
     setMode(newMode);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // Uložit volbu do DB
+    await supabase.from("profiles").update({ preferred_mode: newMode }).eq("user_id", user.id);
 
     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
 
