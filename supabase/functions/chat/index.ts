@@ -1585,18 +1585,19 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
 
               const { data: gmailData, error: gmailError } = await callEdgeFunction("search-gmail", {
                 query: fallbackQuery,
-                maxResults: 10
+                maxResults: 5
               });
               if (gmailError) {
                 console.error("Gmail fallback error:", gmailError);
               } else if ((gmailData as any)?.messages?.length) {
                 const cnt = (gmailData as any).count || (gmailData as any).messages.length;
-                const items = (gmailData as any).messages.slice(0, 5).map((m: any, idx: number) => {
+                const items = (gmailData as any).messages.map((m: any, idx: number) => {
                   const from = m.from ? m.from.replace(/<[^>]+>/g, "").trim() : "Neznámý odesílatel";
                   const subject = m.subject || "Bez předmětu";
-                  return `${idx + 1}. ${from} — ${subject}`;
+                  const snippet = m.snippet ? ` — "${m.snippet.substring(0, 80)}"` : "";
+                  return `${idx + 1}. **${subject}** od ${from}${snippet}`;
                 }).join("\n");
-                const note = `Nalezeno ${cnt} e-mailů.\n${items}`;
+                const note = `📧 Nalezeno ${cnt} e-mailů:\n${items}`;
                 fullResponse += `\n\n${note}`;
                 const delta = {
                   id: `gen-${Date.now()}`,
@@ -2605,10 +2606,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                       subject: args.subject,
                       after: args.after,
                       before: args.before,
-                      maxResults: args.maxResults || 10
+                      maxResults: Math.min(args.maxResults || 5, 5)
                     });
-
-                    console.log("Gmail search response:", JSON.stringify(gmailResponse));
 
                     if (gmailResponse.error) {
                       console.log("Gmail search error:", gmailResponse.error);
@@ -2616,27 +2615,20 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                     } else {
                       const data = gmailResponse.data as any;
                       if (data.messages && data.messages.length > 0) {
-                        const items = data.messages.slice(0, 8).map((m: any, idx: number) => {
+                        const items = data.messages.map((m: any, idx: number) => {
                           const from = m.from ? m.from.replace(/<[^>]+>/g, "").trim() : "Neznámý odesílatel";
                           const subject = m.subject || "Bez předmětu";
-                          const date = m.date ? new Date(m.date).toLocaleString("cs-CZ") : "";
-                          const when = date ? ` (${date})` : "";
-                          return `${idx + 1}. ${from} — ${subject}${when}`;
-                        }).join("\n");
+                          const date = m.date ? new Date(m.date).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+                          const snippet = m.snippet ? `\n   "${m.snippet}"` : "";
+                          return `${idx + 1}. **${subject}**\n   Od: ${from}${date ? ` · ${date}` : ""}${snippet}`;
+                        }).join("\n\n");
                         result = {
                           success: true,
-                          messages: data.messages.map((m: any) => ({
-                            id: m.id,
-                            from: m.from,
-                            subject: m.subject,
-                            date: m.date,
-                            snippet: m.snippet,
-                          })),
                           count: data.count,
-                          summary: `Nalezeno ${data.count} emailů.\n${items}`
+                          summary: `📧 Nalezeno ${data.count} emailů:\n\n${items}`
                         };
                       } else {
-                        result = { success: true, messages: [], count: 0, summary: "Nenalezeny žádné emaily" };
+                        result = { success: true, count: 0, summary: "Nenalezeny žádné emaily." };
                       }
                     }
                   } catch (error: any) {
