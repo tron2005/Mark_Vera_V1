@@ -715,7 +715,8 @@ export default function Settings() {
                   <Label htmlFor="weight">Váha (kg)</Label>
                   <Input
                     id="weight"
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="75"
                     value={weightKg}
                     onChange={(e) => handleWeightChange(e.target.value)}
@@ -725,7 +726,8 @@ export default function Settings() {
                   <Label htmlFor="height">Výška (cm)</Label>
                   <Input
                     id="height"
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="180"
                     value={heightCm}
                     onChange={(e) => handleHeightChange(e.target.value)}
@@ -738,7 +740,8 @@ export default function Settings() {
                   <Label htmlFor="age">Věk</Label>
                   <Input
                     id="age"
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="30"
                     value={age}
                     onChange={(e) => handleAgeChange(e.target.value)}
@@ -785,6 +788,10 @@ export default function Settings() {
                   </p>
                 </div>
               )}
+
+              <Button onClick={saveSettings} disabled={saving} className="w-full mt-2">
+                {saving ? "Ukládání..." : "Uložit profil"}
+              </Button>
             </CardContent>
           </Card>
 
