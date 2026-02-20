@@ -1073,16 +1073,56 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>O aplikaci & Roadmapa</CardTitle>
+          <CardTitle>O aplikaci & Nápověda</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-semibold mb-2">Verze 1.2.0</h3>
+            <h3 className="font-semibold mb-1">M.A.R.K. & V.E.R.A. <span className="text-sm font-normal text-muted-foreground">– verze 1.2.0</span></h3>
             <p className="text-sm text-muted-foreground">
-              Vizualizace makroživin, chytřejší AI a opravy Google Calendar
+              Tvůj osobní AI fitness a wellness asistent. M.A.R.K. se stará o trénink a výkon, V.E.R.A. o pohodu, výživu a životní styl.
             </p>
           </div>
 
+          <div>
+            <h3 className="font-semibold mb-3">💬 Jak mluvit s asistentem</h3>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="p-2 bg-muted rounded-md"><span className="font-medium text-foreground">Trénink:</span> „Jak se mi dařilo tento týden?" · „Jaký mám TSB?" · „Mám dnes trénovat?"</div>
+              <div className="p-2 bg-muted rounded-md"><span className="font-medium text-foreground">Výživa:</span> „Kolik jsem dnes snědl kalorií?" · „Splňuji cíle makroživin?"</div>
+              <div className="p-2 bg-muted rounded-md"><span className="font-medium text-foreground">Kalendář:</span> „Co mám zítra?" · „Přidej schůzku v pátek v 15:00" · „Přesuň Zubáře na pondělí"</div>
+              <div className="p-2 bg-muted rounded-md"><span className="font-medium text-foreground">Gmail:</span> „Jaké mám dnes emaily?" · „Shrň emaily za poslední hodinu"</div>
+              <div className="p-2 bg-muted rounded-md"><span className="font-medium text-foreground">Web:</span> „Jaké bude počasí?" · „Jaký je světový rekord na maraton?"</div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-3">🔌 Připojení služeb</h3>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li><span className="font-medium text-foreground">Strava</span> – synchronizuje aktivity automaticky 1× za 24h, nebo ručně tlačítkem</li>
+              <li><span className="font-medium text-foreground">Google Calendar & Gmail</span> – propoj výše v tomto nastavení</li>
+              <li><span className="font-medium text-foreground">Garmin / Runalyze / RingConn</span> – import souborů na záložce Konektory</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-3">⚙️ Tipy</h3>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Vyplň <span className="font-medium text-foreground">fyzický profil</span> výše – asistent pak zná tvůj věk, váhu a BMR</li>
+              <li>Vyplň pole <span className="font-medium text-foreground">O tobě</span> – asistent bude personalizovanější</li>
+              <li>Vlastní instrukce: nastav jak se má asistent chovat, jaký tón používat</li>
+              <li>Hlasy M.A.R.K. a V.E.R.A. lze změnit výše – tlačítko ▶ přehraje ukázku</li>
+            </ul>
+          </div>
+
+          <div className="pt-4 border-t">
+            <p className="text-xs text-muted-foreground">
+              Máš nápad na novou funkci nebo narázíš na chybu? Napiš to přímo asistentovi! 💡
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      {/* TOTO JE ZASTARALÁ KARTA - zachovávám jen seznam funkcí skrytý */}
+      {false && <Card>
+        <CardContent className="space-y-6">
           <div>
             <h3 className="font-semibold mb-2">✅ Aktuální funkce</h3>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
@@ -1218,7 +1258,7 @@ export default function Settings() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Systémové logy */}
       <SystemLogs />
