@@ -104,6 +104,10 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - [ ] Vyhledání událostí podle názvu/časového okna
   - [x] **Web Search**: Vyhledávání aktuálních informací na internetu (Tavily).
   - [ ] **File Workspace**: Pracovní prostor pro soubory (PDF, CSV, obrázky) a jejich analýza.
+- [x] **Závody a cíle – vylepšení**:
+  - Widget zobrazuje všechny závody bez limitu (bylo max 3)
+  - AI má závody automaticky v kontextu (12 měsíců dopředu) – zohledňuje je v tréninkových radách
+  - Nový tool `update_race_goal` – úprava data/typu/cíle přes chat
 
 ## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0)
 *Cíl: AI zná kalendář dopředu (1 měsíc) a sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
