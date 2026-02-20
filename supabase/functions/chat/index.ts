@@ -2014,10 +2014,46 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   // Helper pro určení data hledání
                   const resolveDate = (ref: string): string => {
                     const d = new Date();
-                    const r = (ref || "").toLowerCase();
-                    if (r.includes("zítra") || r.includes("zitra")) d.setDate(d.getDate() + 1);
-                    else if (r.includes("pozítří") || r.includes("pozitri")) d.setDate(d.getDate() + 2);
-                    else if (r.match(/^\d{4}-\d{2}-\d{2}/)) return r.substring(0, 10);
+                    const r = (ref || "").toLowerCase().trim();
+                    if (!r || r.includes("dnes") || r.includes("today")) {
+                      // today - default
+                    } else if (r.includes("zítra") || r.includes("zitra")) {
+                      d.setDate(d.getDate() + 1);
+                    } else if (r.includes("pozítří") || r.includes("pozitri")) {
+                      d.setDate(d.getDate() + 2);
+                    } else if (r.match(/^\d{4}-\d{2}-\d{2}/)) {
+                      return r.substring(0, 10);
+                    } else {
+                      // Česká jména dnů
+                      const dayMap: Record<string, number> = {
+                        'pondělí': 1, 'pondeli': 1,
+                        'úterý': 2, 'utery': 2, 'uterk': 2,
+                        'středa': 3, 'streda': 3,
+                        'čtvrtek': 4, 'ctvrtek': 4,
+                        'pátek': 5, 'patek': 5,
+                        'sobota': 6, 'sobotu': 6,
+                        'neděle': 0, 'nedele': 0, 'neděli': 0,
+                      };
+                      let matched = false;
+                      for (const [name, dayNum] of Object.entries(dayMap)) {
+                        if (r.includes(name)) {
+                          const today = d.getDay();
+                          let diff = dayNum - today;
+                          if (diff <= 0) diff += 7;
+                          // "příští" → přidat další týden
+                          if (r.includes("příštím") || r.includes("pristim") ||
+                              r.includes("příštím") || r.includes("pristi")) diff += 7;
+                          d.setDate(d.getDate() + diff);
+                          matched = true;
+                          break;
+                        }
+                      }
+                      // "za X dní/dnů"
+                      if (!matched) {
+                        const dniMatch = r.match(/za\s+(\d+)\s+dn/);
+                        if (dniMatch) d.setDate(d.getDate() + parseInt(dniMatch[1]));
+                      }
+                    }
                     return d.toISOString().split('T')[0];
                   };
 
@@ -2061,7 +2097,8 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                         if (upResp.error) {
                           result = { error: upResp.error.message };
                         } else {
-                          result = { success: true, message: `Událost "${matches[0].summary}" byla upravena.` };
+                          const newTimeStr = args.new_start ? ` na ${args.new_start}` : "";
+                          result = { success: true, message: `Událost "${matches[0].summary}" byla přesunuta${newTimeStr}. ${(upResp.data as any)?.eventLink ? `[Zobrazit](${(upResp.data as any).eventLink})` : ""}` };
                         }
                       }
                     }
