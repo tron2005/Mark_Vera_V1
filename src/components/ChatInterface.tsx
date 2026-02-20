@@ -346,19 +346,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     } catch (err: any) {
       console.error("TTS error:", err);
       setIsSpeaking(false);
-      // Fallback na browser TTS
-      try {
-        const utterance = new SpeechSynthesisUtterance(truncated);
-        utterance.lang = "cs-CZ";
-        utterance.pitch = mode === "mark" ? 0.8 : 1.15;
-        utterance.rate = 0.9;
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.speak(utterance);
-        setIsSpeaking(true);
-      } catch {
-        toast.error("Přečtení textu se nezdařilo");
-      }
+      toast.error(`Hlasový výstup selhal: ${err.message || "neznámá chyba"}`);
     }
   };
 

@@ -96,3 +96,6 @@ verify_jwt = false
 
 [functions.get-weather-recommendation]
 verify_jwt = true
+
+[functions.text-to-speech]
+verify_jwt = false
