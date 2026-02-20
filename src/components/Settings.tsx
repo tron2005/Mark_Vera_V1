@@ -1022,9 +1022,9 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-semibold mb-2">Verze 1.1.0</h3>
+            <h3 className="font-semibold mb-2">Verze 1.2.0</h3>
             <p className="text-sm text-muted-foreground">
-              Rozšířená verze s multi-user podporou a správou Strava testerů
+              Vizualizace makroživin, chytřejší AI a opravy Google Calendar
             </p>
           </div>
 
