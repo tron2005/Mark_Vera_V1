@@ -100,7 +100,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - [x] Čtení Gmailu (dnes / poslední hodina)
   - [x] Mazání událostí (podle názvu a data)
   - [x] Přesun událostí (změna času/dne) - včetně českých názvů dnů
-  - [ ] Stabilní souhrny Gmailu (kratší výstupy, bez rate-limit)
+  - [x] Stabilní souhrny Gmailu (metadata-only, max 5 emailů, 100ms pauza, bez rate-limit)
   - [x] Vyhledání událostí podle názvu/časového okna (search_calendar_events, Google Calendar q param)
   - [x] **Web Search**: Vyhledávání aktuálních informací na internetu (Tavily).
   - [ ] **File Workspace**: Pracovní prostor pro soubory (PDF, CSV, obrázky) a jejich analýza.
