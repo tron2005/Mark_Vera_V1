@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Send, Volume2, VolumeX, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Mic, MicOff, Send, Volume2, VolumeX, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -26,10 +26,13 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     loadMessages();
@@ -101,7 +104,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     }
   };
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, autoSpeak = false) => {
     if (!text.trim() && !selectedImage) return;
 
     setIsLoading(true);
@@ -235,6 +238,11 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
 
       // Po dokončení streamu smazat dočasnou zprávu a nechat realtime subscription načíst finální
       setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
+
+      // Voice chat: automaticky přečíst odpověď
+      if (autoSpeak && assistantContent) {
+        await speakText(assistantContent);
+      }
     } catch (error: any) {
       toast.error(error.message || "Chyba při odesílání zprávy");
       // Odstranit dočasnou zprávu při chybě
@@ -246,52 +254,80 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
     }
   };
 
-  const handleVoiceInput = () => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
-      toast.error("Rozpoznávání řeči vyžaduje Chrome/Edge prohlížeč a HTTPS");
+  const startVoiceChat = async () => {
+    if (isRecording) {
+      // Zastavit nahrávání → spustit přepis
+      mediaRecorderRef.current?.stop();
       return;
     }
 
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = "cs-CZ";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      toast.info("Poslouchám...");
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-      toast.success("Rozpoznáno: " + transcript);
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      console.error("Speech recognition error:", event.error);
-      
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        toast.error("Povolte přístup k mikrofonu v nastavení prohlížeče");
-      } else if (event.error === "no-speech") {
-        toast.error("Nebylo zachyceno žádné slovo");
-      } else {
-        toast.error("Chyba při rozpoznávání řeči: " + event.error);
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
     try {
-      recognition.start();
-    } catch (error) {
-      setIsListening(false);
-      toast.error("Nelze spustit rozpoznávání řeči");
-      console.error("Recognition start error:", error);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setIsRecording(false);
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (audioBlob.size < 1000) {
+          toast.error("Příliš krátká nahrávka, zkus to znovu");
+          return;
+        }
+
+        setIsListening(true);
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error("Nejste přihlášeni");
+
+          const form = new FormData();
+          form.append("audio", audioBlob, "audio.webm");
+
+          const sttResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-stt`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              },
+              body: form,
+            }
+          );
+
+          if (!sttResponse.ok) throw new Error("STT chyba");
+          const { text, error: sttError } = await sttResponse.json();
+          if (sttError) throw new Error(sttError);
+          if (!text?.trim()) {
+            toast.error("Nic jsem neslyšel, zkus to znovu");
+            return;
+          }
+
+          setIsListening(false);
+          // Odeslat přepis jako zprávu + automaticky přečíst odpověď
+          await sendMessage(text, true);
+        } catch (err: any) {
+          toast.error("Chyba přepisu: " + (err.message || "neznámá chyba"));
+        } finally {
+          setIsListening(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast.info("🎙️ Nahrávám… klikni znovu pro odeslání");
+    } catch (err: any) {
+      if (err.name === "NotAllowedError") {
+        toast.error("Povolte přístup k mikrofonu v nastavení prohlížeče");
+      } else {
+        toast.error("Nelze spustit mikrofon: " + err.message);
+      }
     }
   };
 
@@ -438,11 +474,18 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
           <Button
             type="button"
             size="icon"
-            variant="outline"
-            onClick={handleVoiceInput}
+            variant={isRecording ? "destructive" : "outline"}
+            onClick={startVoiceChat}
             disabled={isListening || isLoading}
+            title={isRecording ? "Zastavit a odeslat" : "Hlasová zpráva (Whisper)"}
           >
-            <Mic className={isListening ? "animate-pulse" : ""} />
+            {isRecording ? (
+              <MicOff className="animate-pulse h-4 w-4" />
+            ) : isListening ? (
+              <Loader2 className="animate-spin h-4 w-4" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
           </Button>
           
           <input
