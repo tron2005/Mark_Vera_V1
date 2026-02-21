@@ -113,36 +113,35 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - Edge funkce `whisper-stt` (OpenAI Whisper, čeština), MediaRecorder v prohlížeči
   - [ ] Možné rozšíření: wake word ("Hej Marku" / "Hej Vero") pro hands-free provoz na RPi
 
-## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0)
-*Cíl: AI zná kalendář dopředu (1 měsíc) a sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
+## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0) - ✅ HOTOVO (21.2.2026)
+*Cíl: AI sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
 
 ### Kalendář dopředu
-- [ ] AI načítá Google Calendar 1 měsíc dopředu (ne jen dnes) – detekuje závody, события jako "Gladiator Run", volné dny, pracovní vytížení.
+- [ ] AI načítá Google Calendar 1 měsíc dopředu (ne jen dnes) – detekuje závody jako "Gladiator Run", volné dny, pracovní vytížení.
 - [ ] Periodická kontrola kalendáře (1x denně) – asistent proaktivně upozorní na blížící se závod / cíl.
 
 ### Databáze a datový model
-- [ ] Tabulka `training_plans` (id, user_id, title, goal, start_date, end_date, phases, status, created_by_ai).
-- [ ] Tabulka `plan_exercises` (id, plan_id, phase, day, exercise_name, sets, reps, rest, alternatives, notes).
-- [ ] Knihovna cviků s popisy a náhradami (fitko, doma, venku) – základní seed data.
+- [x] Tabulka `training_plans` (id, user_id, title, goal, start_date, end_date, status, plan_data JSONB).
+- [x] JSONB struktura: fáze → weekly_sessions → cviky se sériemi/opakováními/pauzami.
+- [x] Knihovna OCR/Gladiator Run/Spartan Race překážek v `library_data.ts`.
 
-### UI – karta "Individuální plán" v Trenérovi
-- [ ] Zobrazení aktivního plánu: název, cíl, postup (dny zbývají do závodu).
-- [ ] Týdenní přehled tréninků s detailem (cviky, série, opakování, alternativy).
-- [ ] Fázové zobrazení plánu (příprava → rozvoj → špička → tapering).
-- [ ] Editace plánu: přidání/odebrání cviku, změna dne, poznámka.
-- [ ] Rychlé přepnutí: "Dnes mám plán" / "Přeskočit dnešek" / "Zranění – upravit plán".
+### UI – karta "Plány" v Trenérovi
+- [x] Zobrazení aktivního plánu: název, cíl, stav badge, dny zbývají do závodu.
+- [x] Fázový přehled (rozbalovací) s dnešním tréninkem zvýrazněným.
+- [x] Akce: pozastavit / obnovit / dokončit / smazat (update_training_plan).
+- [x] Realtime synchronizace přes Supabase postgres_changes.
+- [ ] Editace plánu přímo v UI (přidání/odebrání cviku bez chatu).
 
 ### AI generování a adaptace
-- [ ] Chat příkaz: "Připrav plán na Gladiator Run 15.3." → AI vygeneruje strukturovaný plán s fázemi.
-- [ ] Chat příkaz: "Bolí mě rameno" → AI upraví plán (náhrady cviků, vynechání horní části těla).
-- [ ] Plan utilizes: CTL/ATL/TSB, VO2max, věk, BMR, váha, spánkové záznamy, výživa (makra).
-- [ ] Predikce pokroku: "Za 6 týdnů s tímto plánem dosáhneš CTL ~65 a VO2max ~52."
-- [ ] Podpora typů plánů:
-  - Závod / výkon (běh, cyklistika, triathlon, Gladiator Run)
-  - Posilování a fitko (fázový trénink: hypertrofie → síla → deload)
-  - Cviky s popisem a náhradami (bench press → tlaky s jednoručkami / kliky)
-  - Rehabilitace / zranění (omezení pohybů, šetrný trénink)
-  - Longevity (zdravé stárnutí, pohyblivost, kardio, síla, stres)
+- [x] "Připrav plán na Gladiator Run 15.3." → AI vygeneruje strukturovaný plán s fázemi.
+- [x] "Bolí mě rameno" → AI upraví plán (náhrady cviků, vynechání horní části těla).
+- [x] Využívá: CTL/ATL/TSB, VO2max, věk, reálné Strava tempo, výživa (makra).
+- [x] Zóny Z1–Z4 vysvětleny lidsky (HR rozsah + tempo z dat Stravy).
+- [x] Každý silový cvik s alternativou bez nářadí.
+- [x] Post-workout analýza: po tréninku načte Strava, porovná s plánem, navrhne úpravy.
+- [x] Adaptace: věk 40+, TSB monitorování, zranění/nemoc, pokrok (pravidlo 10%/týden).
+- [ ] Predikce pokroku: "Za 6 týdnů dosáhneš CTL ~65."
+- [ ] Podpora dalších typů: posilování (hypertrofie → síla → deload), longevity plán.
 
 ### Longevity (v rámci plánů i jako standalone karta)
 - [x] **Krevní tlak** – manuální zadávání, WHO klasifikace, trend, AI kontext (spánek/trénink/TSB).
