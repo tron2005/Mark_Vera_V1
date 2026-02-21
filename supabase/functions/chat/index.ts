@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
+import { libraryData } from "./library_data.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2762,6 +2763,24 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                     : count && count > 0
                       ? { success: true, message: `Plán "${args.plan_title}" byl upraven.` }
                       : { error: `Plán "${args.plan_title}" nebyl nalezen.` };
+                } else if (tc.name === "search_training_library") {
+                  const args = JSON.parse(tc.arguments);
+                  const query = (args.query || "").toLowerCase();
+                  const allItems = [
+                    ...libraryData.running,
+                    ...libraryData.bodycombat,
+                    ...libraryData.exercises,
+                    ...libraryData.supplements,
+                    ...libraryData.ocr,
+                  ];
+                  const matches = allItems.filter(
+                    (item) =>
+                      item.title.toLowerCase().includes(query) ||
+                      item.content.toLowerCase().includes(query)
+                  );
+                  result = matches.length > 0
+                    ? { results: matches.slice(0, 5) }
+                    : { message: `Žádné výsledky pro "${args.query}". Zkus jiný dotaz.` };
                 } else if (tc.name === "search_gmail") {
                   const args = JSON.parse(tc.arguments);
                   console.log("search_gmail called with args:", args);
