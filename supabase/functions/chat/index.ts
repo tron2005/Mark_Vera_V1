@@ -493,6 +493,87 @@ serve(async (req) => {
           }
         }
       },
+      {
+        type: "function",
+        function: {
+          name: "create_training_plan",
+          description: "Vytvoří nový tréninkový plán pro uživatele. Použij když uživatel říká 'připrav mi plán', 'vytvoř tréninkový plán', 'chci plán na závod' apod. Plán se zobrazí na kartě 'Plány' v aplikaci.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Název plánu (např. 'Plán na Gladiator Run')" },
+              goal: { type: "string", description: "Cíl plánu (např. 'Dokončit Gladiator Run 15km v dubnu')" },
+              start_date: { type: "string", description: "Datum začátku plánu (YYYY-MM-DD)" },
+              end_date: { type: "string", description: "Datum konce plánu nebo závodu (YYYY-MM-DD) – volitelné" },
+              notes: { type: "string", description: "Volitelné poznámky k plánu" },
+              plan_data: {
+                type: "object",
+                description: "Struktura plánu s fázemi a tréninky",
+                properties: {
+                  total_weeks: { type: "number" },
+                  sessions_per_week: { type: "number" },
+                  phases: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        weeks: { type: "number" },
+                        description: { type: "string" },
+                        weekly_sessions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              day: { type: "string" },
+                              type: { type: "string" },
+                              description: { type: "string" },
+                              duration_min: { type: "number" },
+                              exercises: { type: "array", items: { type: "string" } }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            required: ["title", "goal", "start_date", "plan_data"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_active_training_plan",
+          description: "Načte aktivní tréninkový plán uživatele. Použij když se uživatel ptá 'jaký mám plán', 'co mám dnes trénovat', 'ukaž mi plán' apod.",
+          parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "update_training_plan",
+          description: "Upraví existující tréninkový plán – může změnit status, poznámky nebo celou strukturu plánu. Použij když uživatel říká 'uprav plán', 'pozastav plán', 'dokonči plán', 'změň plán', 'bolí mě koleno, uprav plán' apod.",
+          parameters: {
+            type: "object",
+            properties: {
+              plan_title: { type: "string", description: "Název plánu k úpravě (nebo část názvu)" },
+              new_status: { type: "string", enum: ["active", "paused", "completed"], description: "Nový status plánu – volitelné" },
+              new_notes: { type: "string", description: "Nové poznámky – volitelné" },
+              new_plan_data: { type: "object", description: "Nová struktura plánu (kompletní přepsání plan_data) – volitelné" }
+            },
+            required: ["plan_title"],
+            additionalProperties: false
+          }
+        }
+      },
       // Kalendářový tool - pouze pokud je Google Calendar připojený
       ...(hasGoogleCalendar ? [{
         type: "function",
@@ -840,6 +921,16 @@ serve(async (req) => {
         .order("measured_at", { ascending: false })
         .limit(10);
 
+      // Aktivní tréninkový plán
+      const { data: activePlan } = await supabase
+        .from("training_plans")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
       let profileInfo = "";
       if (userWeight || userAge || userHeight || userBmi || userBmr) {
@@ -857,8 +948,8 @@ serve(async (req) => {
         : '';
 
       const availableTools = hasStravaConnected
-        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library'
-        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library';
+        ? 'get_strava_activities, get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library, create_training_plan, get_active_training_plan, update_training_plan'
+        : 'get_health_logs, add_health_log, get_sleep_data, get_resting_heart_rate, get_hrv_data, get_body_composition, get_race_goals, add_race_goal, update_race_goal, remove_race_goal, send_stats_email, get_nutrition_summary, search_training_library, create_training_plan, get_active_training_plan, update_training_plan';
 
       fitnessContext = `
       
@@ -917,6 +1008,16 @@ ${bpRecords.map((bp: any) => {
 Při hodnocení tlaku vezmi v úvahu poslední aktivity, spánek, stres (TSB) a výživu.
 ` : ''}
 
+${activePlan ? `
+📋 AKTIVNÍ TRÉNINKOVÝ PLÁN: ${activePlan.title}
+- Cíl: ${activePlan.goal}
+- Začátek: ${activePlan.start_date}${activePlan.end_date ? `, Konec: ${activePlan.end_date}` : ''}
+- Fáze: ${activePlan.plan_data?.phases?.length || 0} fází, ${activePlan.plan_data?.total_weeks || '?'} týdnů celkem
+- Tréninků/týden: ${activePlan.plan_data?.sessions_per_week || '?'}
+${activePlan.notes ? `- Poznámka: ${activePlan.notes}` : ''}
+⚠️ Při doporučení tréninkových úprav vždy zohledni tento aktivní plán a uprávej ho pomocí update_training_plan.
+` : ''}
+
 ${recentActivities && recentActivities.length > 0 ? `
 🏃 POSLEDNÍ AKTIVITY (5 nejnovějších):
 ${recentActivities.map((act, i) => {
@@ -953,6 +1054,9 @@ DŮLEŽITÉ:
 - Když uživatel chce UPRAVIT závod (datum, typ, cílový čas, poznámku), použij update_race_goal
 - Pro zobrazení plánovaných závodů použij get_race_goals a popiš je tak, jak jsou vidět na kartě "Trenér"
 - Plánované závody jsou dostupné přímo v kontextu výše – VŽDY je zohledni při tréninkových doporučeních!
+- Když uživatel chce tréninkový plán (např. "připrav mi plán na závod", "chci 8týdenní plán", "vytvořit plán"), VŽDY použij create_training_plan. Plán se zobrazí na kartě "Plány" v aplikaci.
+- Když uživatel chce upravit plán (bolest, zranění, dovolená, změna cíle), použij update_training_plan.
+- Aktivní tréninkový plán je dostupný v kontextu výše – zohledni ho při všech tréninkových doporučeních!
 `;
     }
 
@@ -2608,6 +2712,56 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                         ? { success: true, message: `Závod "${args.race_name}" byl upraven` }
                         : { error: `Závod "${args.race_name}" nebyl nalezen` };
                   }
+                } else if (tc.name === "create_training_plan") {
+                  const args = JSON.parse(tc.arguments);
+                  const { data, error } = await supabase
+                    .from("training_plans")
+                    .insert({
+                      user_id: userId,
+                      title: args.title,
+                      goal: args.goal,
+                      start_date: args.start_date,
+                      end_date: args.end_date || null,
+                      status: "active",
+                      plan_data: args.plan_data || null,
+                      notes: args.notes || null,
+                      created_by_ai: true,
+                    })
+                    .select("id, title")
+                    .single();
+                  result = error
+                    ? { error: error.message }
+                    : { success: true, message: `Tréninkový plán "${data.title}" byl vytvořen a zobrazí se na kartě Plány.`, plan_id: data.id };
+                } else if (tc.name === "get_active_training_plan") {
+                  const { data, error } = await supabase
+                    .from("training_plans")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .eq("status", "active")
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  result = error
+                    ? { error: error.message }
+                    : data
+                      ? { plan: data }
+                      : { message: "Žádný aktivní tréninkový plán nenalezen." };
+                } else if (tc.name === "update_training_plan") {
+                  const args = JSON.parse(tc.arguments);
+                  const updates: any = { updated_at: new Date().toISOString() };
+                  if (args.new_status) updates.status = args.new_status;
+                  if (args.new_notes !== undefined) updates.notes = args.new_notes;
+                  if (args.new_plan_data) updates.plan_data = args.new_plan_data;
+                  const { error, count } = await supabase
+                    .from("training_plans")
+                    .update(updates)
+                    .eq("user_id", userId)
+                    .ilike("title", `%${args.plan_title}%`);
+                  result = error
+                    ? { error: error.message }
+                    : count && count > 0
+                      ? { success: true, message: `Plán "${args.plan_title}" byl upraven.` }
+                      : { error: `Plán "${args.plan_title}" nebyl nalezen.` };
                 } else if (tc.name === "search_gmail") {
                   const args = JSON.parse(tc.arguments);
                   console.log("search_gmail called with args:", args);

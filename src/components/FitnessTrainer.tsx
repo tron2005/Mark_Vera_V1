@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, PlugZap, Hourglass, BookOpen } from "lucide-react";
+import { Activity, PlugZap, Hourglass, BookOpen, Target } from "lucide-react";
 
 import { MotivationalQuote } from "./MotivationalQuote";
 import { TrainerPerformance } from "./trainer/TrainerPerformance";
@@ -10,6 +10,7 @@ import { TrainerConnectors } from "./trainer/TrainerConnectors";
 import { TrainerNutrition } from "./trainer/TrainerNutrition";
 import { TrainerLongevity } from "./trainer/TrainerLongevity";
 import { TrainerLibrary } from "./trainer/TrainerLibrary";
+import { TrainerPlans } from "./trainer/TrainerPlans";
 
 export const FitnessTrainer = () => {
   const [stravaConnected, setStravaConnected] = useState(false);
@@ -302,7 +303,7 @@ export const FitnessTrainer = () => {
       </div>
 
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[900px] mb-6">
+        <TabsList className="grid w-full grid-cols-6 lg:w-[1080px] mb-6">
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Výkon
@@ -322,6 +323,10 @@ export const FitnessTrainer = () => {
           <TabsTrigger value="connectors" className="flex items-center gap-2">
             <PlugZap className="h-4 w-4" />
             Konektory
+          </TabsTrigger>
+          <TabsTrigger value="plans" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Plány
           </TabsTrigger>
         </TabsList>
 
@@ -351,6 +356,10 @@ export const FitnessTrainer = () => {
 
         <TabsContent value="library" className="space-y-6">
           <TrainerLibrary />
+        </TabsContent>
+
+        <TabsContent value="plans" className="space-y-6">
+          <TrainerPlans />
         </TabsContent>
 
         <TabsContent value="connectors" className="space-y-6">
