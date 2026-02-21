@@ -148,6 +148,12 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - Longevity (zdravé stárnutí, pohyblivost, kardio, síla, stres)
 
 ### Longevity (v rámci plánů i jako standalone karta)
+- [ ] **Krevní tlak** – manuální zadávání z domácího tlakoměru.
+  - Tabulka `blood_pressure` (systolic, diastolic, pulse, measured_at, note)
+  - Formulář v UI: horní / dolní / tep + volitelná poznámka ("ráno", "po cvičení")
+  - Barevné kódování dle WHO: optimální / normální / zvýšený / hypertenze
+  - Mini graf trendu (posledních 7–30 měření)
+  - **AI kontext**: Mark/Vera vidí poslední hodnoty a interpretuje je v kontextu spánku, tréninku, stresu (TSB), výživy a denní aktivity – např. "Tvůj tlak je vyšší v dnech po intenzivním tréninku"
 - [ ] Karta "Longevity" v Trenérovi: přehled klíčových indikátorů zdravého stárnutí.
   - Průměrná délka spánku (trend posledních 7 dní)
   - HRV (variabilita srdeční frekvence) pokud dostupná ze Stravy
@@ -155,6 +161,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - TSB (stres balance) – přetrénovanost vs. podtrénovanost
   - BMI + tělesné složení (váha / výška z profilu)
   - Kalorická bilance (průměr týdne z výživy)
+  - **Krevní tlak** – poslední hodnota + trend
   - "Longevity score" – jednoduchý agregovaný ukazatel 0–100
 - [ ] Doporučení AI na základě longevity dat: "Tvůj VO2max klesá – přidej 2x týdně zónový běh."
 
