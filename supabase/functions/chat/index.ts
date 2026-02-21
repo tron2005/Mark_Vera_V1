@@ -1341,11 +1341,13 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       !shouldForceSleep &&
       normIncludes(lastUserText, stravaKeywords);
     const shouldForceGmail = !!lastUserText && normIncludes(lastUserText, gmailKeywords);
+    const shouldForceTrainingPlan = !!lastUserText && isTrainingPlanRequest;
     const shouldForceRaceGoal =
       !!lastUserText &&
       normIncludes(lastUserText, raceKeywords) &&
       !shouldForceCalendar &&
-      !shouldForceStrava;
+      !shouldForceStrava &&
+      !shouldForceTrainingPlan;
 
     // Předpočítané timestampy pro fallback: posledních 7 dní
     let stravaAfterTs: string | null = null;
@@ -1361,6 +1363,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
     if (shouldForceCalendar) toolChoiceLog = "force:create_calendar_event";
     else if (shouldForceCalendarList) toolChoiceLog = "force:list_calendar_events";
     else if (isCalendarSearch) toolChoiceLog = "force:search_calendar_events";
+    else if (shouldForceTrainingPlan) toolChoiceLog = "force:create_training_plan";
     else if (shouldForceRaceGoal) toolChoiceLog = "force:add_race_goal";
     else if (shouldForceSleep) toolChoiceLog = "force:get_sleep_data";
     else if (shouldForceStrava) toolChoiceLog = "force:get_strava_activities";
@@ -1453,15 +1456,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
             ? { type: "function", function: { name: "list_calendar_events" } }
             : isCalendarSearch
               ? { type: "function", function: { name: "search_calendar_events" } }
-            : shouldForceRaceGoal
-              ? { type: "function", function: { name: "add_race_goal" } }
-              : shouldForceStrava
-                ? { type: "function", function: { name: "get_strava_activities" } }
-                : shouldForceSleep
-                  ? { type: "function", function: { name: "get_sleep_data" } }
-                  : shouldForceGmail
-                    ? { type: "function", function: { name: "search_gmail" } }
-                    : "auto",
+            : shouldForceTrainingPlan
+              ? { type: "function", function: { name: "create_training_plan" } }
+              : shouldForceRaceGoal
+                ? { type: "function", function: { name: "add_race_goal" } }
+                : shouldForceStrava
+                  ? { type: "function", function: { name: "get_strava_activities" } }
+                  : shouldForceSleep
+                    ? { type: "function", function: { name: "get_sleep_data" } }
+                    : shouldForceGmail
+                      ? { type: "function", function: { name: "search_gmail" } }
+                      : "auto",
         stream: true,
       }),
     });
