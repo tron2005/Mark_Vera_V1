@@ -1024,16 +1024,34 @@ ${activePlan.notes ? `- Poznámka: ${activePlan.notes}` : ''}
 ⚠️ Při doporučení tréninkových úprav vždy zohledni tento aktivní plán a uprávej ho pomocí update_training_plan.
 ` : ''}
 
-${recentActivities && recentActivities.length > 0 ? `
-🏃 POSLEDNÍ AKTIVITY (5 nejnovějších):
-${recentActivities.map((act, i) => {
+${recentActivities && recentActivities.length > 0 ? (() => {
+  // Výpočet průměrného tempa z běhů
+  const runs = recentActivities.filter((a: any) =>
+    (a.activity_type || '').toLowerCase().includes('run') && a.distance_meters > 0 && a.moving_time_seconds > 0
+  );
+  const avgPaceStr = runs.length > 0 ? (() => {
+    const avgPaceSec = runs.reduce((sum: number, r: any) => sum + (r.moving_time_seconds / (r.distance_meters / 1000)), 0) / runs.length;
+    const paceMin = Math.floor(avgPaceSec / 60);
+    const paceSec = Math.round(avgPaceSec % 60);
+    const z2Slower = avgPaceSec + 45;
+    const z2Min = Math.floor(z2Slower / 60);
+    const z2Sec = Math.round(z2Slower % 60);
+    return `\n⚡ BĚŽECKÉ TEMPO (průměr z posledních ${runs.length} běhů): ${paceMin}:${String(paceSec).padStart(2,'0')} min/km → Z2 tempo ≈ ${z2Min}:${String(z2Sec).padStart(2,'0')} min/km`;
+  })() : '';
+  return `
+🏃 POSLEDNÍ AKTIVITY (5 nejnovějších):${avgPaceStr}
+${recentActivities.map((act: any, i: number) => {
   const distance = act.distance_meters ? `${(act.distance_meters / 1000).toFixed(2)} km` : '-';
   const duration = act.moving_time_seconds ? `${Math.floor(act.moving_time_seconds / 60)} min` : '-';
   const hr = act.average_heartrate ? `${act.average_heartrate} bpm` : '-';
   const date = new Date(act.start_date).toLocaleDateString('cs-CZ');
-  return `${i + 1}. ${act.name || act.activity_type} (${date}): ${distance}, ${duration}, Tep: ${hr}, ${act.calories || 0} kcal`;
+  const pace = act.distance_meters > 0 && act.moving_time_seconds > 0 && (act.activity_type || '').toLowerCase().includes('run')
+    ? ` | tempo: ${Math.floor(act.moving_time_seconds / (act.distance_meters / 1000) / 60)}:${String(Math.round(act.moving_time_seconds / (act.distance_meters / 1000) % 60)).padStart(2,'0')} min/km`
+    : '';
+  return `${i + 1}. ${act.name || act.activity_type} (${date}): ${distance}, ${duration}, Tep: ${hr}${pace}, ${act.calories || 0} kcal`;
 }).join('\n')}
-` : ''}
+`;
+})() : ''}
 
 ${todayTotals && todayTotals.calories > 0 ? `
 🍽️ VÝŽIVA DNES (${today}):
@@ -1065,9 +1083,14 @@ DŮLEŽITÉ:
 - Aktivní tréninkový plán je dostupný v kontextu výše – zohledni ho při všech tréninkových doporučeních!
 - PŘI VYTVÁŘENÍ PLÁNU: Každý trénink musí být KONKRÉTNÍ a PODROBNÝ:
   * Silový trénink: uveď každý cvik se sériemi×opakováními a pauzou (např. "Pull-upy 4×max, pauza 90s", "Dřepy 4×12 @ 70% 1RM, pauza 60s", "Farmer carry 3×40m")
-  * Běh: uveď tempo (min/km) nebo HR zónu Z1-Z5, délku v km a strukturu (rozcvičení, hlavní část, vyklusání)
+  * Běh: VŽDY vycházej z REÁLNÝCH dat uživatele ze Stravy výše! Vypočítej průměrné tempo z posledních běhů (vzdálenost/čas) a nastav Z2 jako +30-60s/km pomalejší než závodní tempo. NIKDY nedávej generické tempo 6:00/km – použij skutečné tempo uživatele.
   * Intervaly: uveď délku intervalu, počet opakování, pauzu a způsob (chůze/klus)
   * Různé tréninky každý den – neopakuj stejné cviky v každé fázi
+- PO TRÉNINKU (kdy uživatel říká "doběhl jsem", "skončil jsem trénink", "jak to bylo", "zhodnoť trénink"):
+  * VŽDY nejprve zavolej get_strava_activities (limit 1-2) pro získání právě dokončené aktivity
+  * Porovnej ji s aktivním plánem (co bylo naplánováno vs. co uživatel skutečně běžel/dělal)
+  * Zhodnoť: tempo, vzdálenost, tep – bylo to lehčí nebo těžší než plánováno?
+  * Pokud je výrazná odchylka (tempo o >30s/km, příliš vysoký tep), navrhni update_training_plan s upraveným tempem
 `;
     }
 
