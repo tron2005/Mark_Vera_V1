@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS training_plans (
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
   plan_data JSONB,           -- celá struktura plánu (fáze, tréninky, cviky)
   notes TEXT,                -- omezení, poznámky (zranění, preference)
-  created_by_ai BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

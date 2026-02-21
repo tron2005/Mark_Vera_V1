@@ -2728,6 +2728,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                   }
                 } else if (tc.name === "create_training_plan") {
                   const args = JSON.parse(tc.arguments);
+                  console.log("create_training_plan args:", JSON.stringify({ title: args.title, goal: args.goal, start_date: args.start_date, end_date: args.end_date, has_plan_data: !!args.plan_data, phases_count: args.plan_data?.phases?.length }));
                   const { data, error } = await supabase
                     .from("training_plans")
                     .insert({
@@ -2739,10 +2740,10 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
                       status: "active",
                       plan_data: args.plan_data || null,
                       notes: args.notes || null,
-                      created_by_ai: true,
                     })
                     .select("id, title")
                     .single();
+                  console.log("create_training_plan result:", error ? `ERROR: ${error.message} (code: ${error.code})` : `OK: ${data?.id}`);
                   result = error
                     ? { error: error.message }
                     : { success: true, message: `Tréninkový plán "${data.title}" byl vytvořen a zobrazí se na kartě Plány.`, plan_id: data.id };
