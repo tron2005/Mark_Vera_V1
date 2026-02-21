@@ -832,6 +832,14 @@ serve(async (req) => {
         .lte("race_date", twelveMonthsAhead.toISOString())
         .order("race_date", { ascending: true });
 
+      // Krevní tlak – posledních 10 měření
+      const { data: bpRecords } = await supabase
+        .from("blood_pressure")
+        .select("systolic, diastolic, pulse, measured_at, note")
+        .eq("user_id", userId)
+        .order("measured_at", { ascending: false })
+        .limit(10);
+
       // Přidáme informace o profilu uživatele, pokud jsou dostupné
       let profileInfo = "";
       if (userWeight || userAge || userHeight || userBmi || userBmr) {
@@ -892,6 +900,21 @@ ${upcomingRaces.map((r: any) => {
   return `- ${r.race_name} (${r.race_type}): ${dateStr} — za ${daysUntil} dní${r.target_time ? `, cíl: ${r.target_time}` : ''}${r.notes ? `, poznámka: ${r.notes}` : ''}`;
 }).join('\n')}
 ⚠️ DŮLEŽITÉ: Při tréninkových doporučeních vždy zohledni tyto závody a zbývající čas do nich!
+` : ''}
+
+${bpRecords && bpRecords.length > 0 ? `
+❤️ KREVNÍ TLAK (posledních ${bpRecords.length} měření):
+${bpRecords.map((bp: any) => {
+  const date = new Date(bp.measured_at).toLocaleDateString('cs-CZ');
+  const time = new Date(bp.measured_at).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  const cls = bp.systolic < 120 && bp.diastolic < 80 ? 'optimální'
+    : bp.systolic < 130 && bp.diastolic < 85 ? 'normální'
+    : bp.systolic < 140 && bp.diastolic < 90 ? 'vysoký normální'
+    : bp.systolic < 160 && bp.diastolic < 100 ? 'hypertenze I.'
+    : 'hypertenze II.';
+  return `- ${date} ${time}: ${bp.systolic}/${bp.diastolic} mmHg${bp.pulse ? `, tep ${bp.pulse} bpm` : ''} (${cls})${bp.note ? `, ${bp.note}` : ''}`;
+}).join('\n')}
+Při hodnocení tlaku vezmi v úvahu poslední aktivity, spánek, stres (TSB) a výživu.
 ` : ''}
 
 ${recentActivities && recentActivities.length > 0 ? `

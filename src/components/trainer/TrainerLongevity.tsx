@@ -1,4 +1,5 @@
 import { LongevityCard } from "../LongevityCard";
+import { BloodPressureWidget } from "./BloodPressureWidget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Hourglass, HeartPulse, Dna } from "lucide-react";
 
@@ -14,6 +15,11 @@ export const TrainerLongevity = () => {
         </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Krevní tlak */}
+        <div className="md:col-span-2">
+          <BloodPressureWidget />
+        </div>
+
         {/* Main Longevity Card */}
         <div className="md:col-span-2">
              <LongevityCard />
