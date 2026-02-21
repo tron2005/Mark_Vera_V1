@@ -498,7 +498,7 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "create_training_plan",
-          description: "Vytvoří nový tréninkový plán pro uživatele. Použij když uživatel říká 'připrav mi plán', 'vytvoř tréninkový plán', 'chci plán na závod' apod. Plán se zobrazí na kartě 'Plány' v aplikaci. DŮLEŽITÉ: Každý trénink musí být DETAILNÍ – pro silový trénink uveď série×opakování+pauzu (např. 'Dřepy 4×12, pauza 60s'), pro běh uveď tempo nebo HR zónu (např. 'Výklus Z2 tempo 6:00-6:30/km') a délku. Různé tréninky každý den, neopakuj stejné.",
+          description: "Vytvoří nový tréninkový plán pro uživatele. Použij když uživatel říká 'připrav mi plán', 'vytvoř tréninkový plán', 'chci plán na závod' apod. Plán se zobrazí na kartě 'Plány' v aplikaci. POVINNÉ PRAVIDLO – LIDSKY SROZUMITELNÉ POPISY: (1) Běhové zóny VŽDY vysvětli: 'Z2 = konverzační tempo, HR 130-145, ~X:XX/km dle tvých dat' – nikdy jen 'Z2' bez vysvětlení. (2) Intervaly VŽDY s konkrétním tempem: ne 'rychle', ale 'cílové tempo X:XX/km (tvůj 5km závod)'. (3) Každý silový cvik s ALTERNATIVOU pro případ chybějícího nářadí: 'Pull-upy 4×max, pauza 90s [BEZ HRAZDY: TRX přítahy nebo přítahy pod stolem]'. (4) Předpokládej: místo vždy dostupné, nářadí nemusí být – vždy uveď variantu bez nářadí.",
           parameters: {
             type: "object",
             properties: {
@@ -529,11 +529,11 @@ serve(async (req) => {
                             properties: {
                               day: { type: "string", description: "Den v týdnu česky (Pondělí, Úterý, Středa, Čtvrtek, Pátek, Sobota, Neděle)" },
                               type: { type: "string", description: "Typ tréninku: Běh / Síla / Intervaly / Trail / Odpočinek / Regenerace" },
-                              description: { type: "string", description: "Konkrétní popis tréninku: pro běh uveď tempo nebo HR zónu a délku (např. 'Výklus 8 km, tempo 6:00-6:30/km, Z2'), pro sílu uveď zaměření (např. 'Celotělový silový trénink se zaměřením na grip a tah')" },
+                              description: { type: "string", description: "Konkrétní popis tréninku lidsky srozumitelně: pro běh uveď ZÓNU s vysvětlením + skutečné tempo + HR (např. 'Výklus 8 km, Z2 = konverzační tempo kde mluvíš, HR 130-145, tempo ~7:20/km dle tvých dat'), pro intervaly uveď konkrétní závodní tempo (např. 'Intervaly: 6× 600m v tempu 5:45/km = tvoje závodní tempo, pauza 90s klusat'), pro sílu uveď zaměření se zónovým kontextem (např. 'Celotělová síla – grip a tah pro OCR překážky')" },
                               duration_min: { type: "number", description: "Délka tréninku v minutách" },
                               exercises: {
                                 type: "array",
-                                description: "Pro silový trénink: konkrétní cviky se sériemi×opakováními a pauzou (např. 'Pull-upy 4×max, pauza 90s', 'Dřepy 4×12 @ RPE7, pauza 60s', 'Farmer carry 3×40m, pauza 60s'). Pro běh: strukturu tréninku (např. '2 km rozcvičení Z1', '4× 800m v závodním tempu, pauza 90s chůze', '1 km vyklusání Z1').",
+                                description: "Pro silový trénink: každý cvik se sériemi×opakováními, pauzou A ALTERNATIVOU bez nářadí (např. 'Pull-upy 4×max, pauza 90s [BEZ HRAZDY: TRX přítahy nebo přítahy pod stolem]', 'Dřepy 4×12 @ RPE7, pauza 60s [vždy dostupné – žádná alternativa]', 'Farmer carry 3×40m [BEZ KETTLEBELL: nákupní tašky s lahvemi nebo batoh s kameny]'). Pro běh: každý úsek s tempem + HR zónou vysvětlenou (např. '2 km rozcvičení Z1 = velmi lehce, HR pod 120', '6× 600m tempo 5:45/km = tvůj závodní výkon, pauza 90s klusat Z1', '1 km vyklusání Z1 = chůze/poklus HR pod 125').",
                                 items: { type: "string" }
                               }
                             }
@@ -1081,10 +1081,15 @@ DŮLEŽITÉ:
 - Když uživatel chce tréninkový plán (např. "připrav mi plán na závod", "chci 8týdenní plán", "vytvořit plán"), VŽDY použij create_training_plan. Plán se zobrazí na kartě "Plány" v aplikaci.
 - Když uživatel chce upravit plán (bolest, zranění, dovolená, změna cíle), použij update_training_plan.
 - Aktivní tréninkový plán je dostupný v kontextu výše – zohledni ho při všech tréninkových doporučeních!
-- PŘI VYTVÁŘENÍ PLÁNU: Každý trénink musí být KONKRÉTNÍ a PODROBNÝ:
-  * Silový trénink: uveď každý cvik se sériemi×opakováními a pauzou (např. "Pull-upy 4×max, pauza 90s", "Dřepy 4×12 @ 70% 1RM, pauza 60s", "Farmer carry 3×40m")
-  * Běh: VŽDY vycházej z REÁLNÝCH dat uživatele ze Stravy výše! Vypočítej průměrné tempo z posledních běhů (vzdálenost/čas) a nastav Z2 jako +30-60s/km pomalejší než závodní tempo. NIKDY nedávej generické tempo 6:00/km – použij skutečné tempo uživatele.
-  * Intervaly: uveď délku intervalu, počet opakování, pauzu a způsob (chůze/klus)
+- PŘI VYTVÁŘENÍ PLÁNU: Každý trénink musí být KONKRÉTNÍ, PODROBNÝ a LIDSKY SROZUMITELNÝ:
+  * Silový trénink: uveď každý cvik se sériemi×opakováními, pauzou A ALTERNATIVOU pro případ chybějícího nářadí. Předpokládej že MÍSTO je vždy dostupné (park, zahrada, místnost), ale NÁŘADÍ nemusí být. Příklad: "Pull-upy 4×max, pauza 90s [BEZ HRAZDY: TRX přítahy nebo přítahy pod stolem/nízkou lavičkou]", "Farmer carry 3×40m [BEZ KETTLEBELL: batoh s kameny nebo nákupní tašky s lahvemi]".
+  * Běh – VŽDY vycházej z REÁLNÝCH dat uživatele ze Stravy výše (viz ⚡ BĚŽECKÉ TEMPO v kontextu)! NIKDY nedávej generické tempo 6:00/km. Vypočítej zóny z průměrného tempa a VŽDY vysvětli zónu LIDSKY:
+    - Z1 (regenerace): průměrné tempo +90s/km. Popis: "velmi lehce, HR pod 120, ~X:XX/km – mluvíš v celých větách"
+    - Z2 (aerobní základ): průměrné tempo +45s/km (= Z2 tempo z kontextu). Popis: "konverzační tempo, HR 130-145, ~X:XX/km – mluvíš, ale cítíš námahu"
+    - Z3 (tempo): průměrné tempo. Popis: "mírně náročné, HR 145-160, ~X:XX/km – říkáš jen kratší věty"
+    - Z4/Intervaly: průměrné tempo −30s/km. Popis: "závodní tempo, HR 160-175, ~X:XX/km – téměř nemůžeš mluvit"
+    Pokud nemáš Strava data, odhadni realisticky a napiš "odhadované tempo – upřesnit po prvním tréninku".
+  * Intervaly: VŽDY konkrétní závodní tempo (ne "rychle"!), počet opakování, délku intervalu a pauzu. Příklad: "6× 600m v tempu 5:45/km = tvůj závodní výkon, pauza 90s klusat Z1 (HR pod 130)".
   * Různé tréninky každý den – neopakuj stejné cviky v každé fázi
 - PO TRÉNINKU (kdy uživatel říká "doběhl jsem", "skončil jsem trénink", "jak to bylo", "zhodnoť trénink"):
   * VŽDY nejprve zavolej get_strava_activities (limit 1-2) pro získání právě dokončené aktivity
