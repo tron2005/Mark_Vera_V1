@@ -533,7 +533,7 @@ serve(async (req) => {
                               duration_min: { type: "number", description: "Délka tréninku v minutách" },
                               exercises: {
                                 type: "array",
-                                description: "Pro silový trénink: každý cvik se sériemi×opakováními, pauzou A ALTERNATIVOU bez nářadí (např. 'Pull-upy 4×max, pauza 90s [BEZ HRAZDY: TRX přítahy nebo přítahy pod stolem]', 'Dřepy 4×12 @ RPE7, pauza 60s [vždy dostupné – žádná alternativa]', 'Farmer carry 3×40m [BEZ KETTLEBELL: nákupní tašky s lahvemi nebo batoh s kameny]'). Pro běh: každý úsek s tempem + HR zónou vysvětlenou (např. '2 km rozcvičení Z1 = velmi lehce, HR pod 120', '6× 600m tempo 5:45/km = tvůj závodní výkon, pauza 90s klusat Z1', '1 km vyklusání Z1 = chůze/poklus HR pod 125').",
+                                description: "Pro silový trénink: každý cvik se sériemi×opakováními a pauzou. Alternativu [BEZ X: Y] piš POUZE když cvik potřebuje nářadí – příklady: 'Pull-upy 4×max, pauza 90s [BEZ HRAZDY: přítahy pod stolem vleže]', 'Mrtvý tah 4×8 [BEZ ČINEK: jednonožný Romanian DL s batohem nebo Nordic curl 4×6]', 'Farmer carry 3×40m [BEZ ZÁVAŽÍ: batoh s lahvemi]'. Cviky bez nářadí (kliky, dřepy, výpady, plank, burpees, glute bridge) alternativu nepotřebují. Pro běh: každý úsek s konkrétním tempem a vysvětlením zóny (např. '2 km rozcvičení Z1 = velmi lehce, HR pod 120', '6× 600m tempo 5:45/km = tvůj závodní výkon, pauza 90s klusat', '1 km vyklusání Z1').",
                                 items: { type: "string" }
                               }
                             }
@@ -1082,7 +1082,17 @@ DŮLEŽITÉ:
 - Když uživatel chce upravit plán (bolest, zranění, dovolená, změna cíle), použij update_training_plan.
 - Aktivní tréninkový plán je dostupný v kontextu výše – zohledni ho při všech tréninkových doporučeních!
 - PŘI VYTVÁŘENÍ PLÁNU: Každý trénink musí být KONKRÉTNÍ, PODROBNÝ a LIDSKY SROZUMITELNÝ:
-  * Silový trénink: uveď každý cvik se sériemi×opakováními, pauzou A ALTERNATIVOU pro případ chybějícího nářadí. Předpokládej že MÍSTO je vždy dostupné (park, zahrada, místnost), ale NÁŘADÍ nemusí být. Příklad: "Pull-upy 4×max, pauza 90s [BEZ HRAZDY: TRX přítahy nebo přítahy pod stolem/nízkou lavičkou]", "Farmer carry 3×40m [BEZ KETTLEBELL: batoh s kameny nebo nákupní tašky s lahvemi]".
+  * Silový trénink: uveď každý cvik se sériemi×opakováními a pauzou. KRITICKÉ PRAVIDLO PRO ALTERNATIVY – alternativu piš JEN když cvik skutečně potřebuje nářadí. Logika:
+    CVIKY BEZ NÁŘADÍ (nikdy nepřidávej alternativu): kliky, dřepy, výpady, plank, burpees, mountain climbers, hollow body hold, dead bug, glute bridge, nordic curl, pistol squat, wall sit, box jump (na schůdek), klik na kolenou.
+    CVIKY S NÁŘADÍM → VŽDY přidej alternativu v závorce:
+    - Pull-upy / přítahy na hrazdě → "[BEZ HRAZDY: přítahy pod stolem vleže (Australian row) nebo TRX přítahy]"
+    - Mrtvý tah (deadlift) → "[BEZ ČINEK: Romanian deadlift jednonožný s batohem, nebo Nordic curl + glute bridge 4×12]"
+    - Bench press → "[BEZ LAVICE/ČINEK: kliky 4×15 nebo kliky s nohama na vyvýšení]"
+    - Farmer carry s kettlebell/činka → "[BEZ ZÁVAŽÍ: batoh naplněný knihami/lahvemi nebo nákupní tašky]"
+    - Overhead press → "[BEZ ČINEK: pike push-up nebo handstand push-up u zdi]"
+    - Bicep curl, tricep extension → "[BEZ ČINEK: kliky úzkým hmatem (triceps) nebo TRX curl]"
+    - Leg press, hack squat → "[BEZ STROJE: dřep jednonožný (pistol squat) nebo výpad s doskokem]"
+    - Cable/kladka cviky → "[BEZ KLADKY: odporová guma nebo TRX]"
   * Běh – VŽDY vycházej z REÁLNÝCH dat uživatele ze Stravy výše (viz ⚡ BĚŽECKÉ TEMPO v kontextu)! NIKDY nedávej generické tempo 6:00/km. Vypočítej zóny z průměrného tempa a VŽDY vysvětli zónu LIDSKY:
     - Z1 (regenerace): průměrné tempo +90s/km. Popis: "velmi lehce, HR pod 120, ~X:XX/km – mluvíš v celých větách"
     - Z2 (aerobní základ): průměrné tempo +45s/km (= Z2 tempo z kontextu). Popis: "konverzační tempo, HR 130-145, ~X:XX/km – mluvíš, ale cítíš námahu"
