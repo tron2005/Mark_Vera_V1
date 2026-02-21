@@ -92,7 +92,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
 
 ## 🧠 Fáze 3: Pokročilá Inteligence (Cloud Bridge)
 - [x] **Context Awareness**: Asistent si před odpovědí přečte 5 posledních aktivit, dnešní výživu a týdenní průměry makroživin.
-- [ ] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie).
+- [x] **Osobnosti**: Přepínač v nastavení pro volbu "Mark" (Technik) vs. "Vera" (Empatie), uložení do DB.
 - [ ] **Dlouhodobá Paměť**: Vylepšení `create_summary` pro denní přehledy.
 - [ ] **Kalendář & Mail**: Plná integrace nástrojů Google Calendar a Gmail.
   - [x] Čtení událostí (dotaz "co mám zítra")
@@ -109,12 +109,9 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - AI má závody automaticky v kontextu (12 měsíců dopředu) – zohledňuje je v tréninkových radách
   - Nový tool `update_race_goal` – úprava data/typu/cíle přes chat
 - [x] **Hlasový výstup (TTS)**: OpenAI TTS – Mark = Onyx (mužský hlas), Vera = Nova (ženský hlas). Klik na ikonu reproduktoru přehraje odpověď, druhý klik zastaví.
-- [ ] **Voice Chat (obousměrný)**: Plnohodnotný hlasový chat bez psaní.
-  - Jedno tlačítko pro zachycení hlasu → STT (Whisper) → AI odpověď → TTS přehrání
-  - Push-to-talk nebo voice-activity detection (VAD)
-  - Podpora češtiny (Whisper je přesný pro češtinu)
-  - Implementace: Whisper edge funkce (`whisper-stt`) + úprava ChatInterface
-  - Možné rozšíření: wake word ("Hej Marku" / "Hej Vero") pro hands-free provoz na RPi
+- [x] **Voice Chat (obousměrný)**: Push-to-talk → Whisper STT → AI → automatická TTS odpověď.
+  - Edge funkce `whisper-stt` (OpenAI Whisper, čeština), MediaRecorder v prohlížeči
+  - [ ] Možné rozšíření: wake word ("Hej Marku" / "Hej Vero") pro hands-free provoz na RPi
 
 ## 🗓️ Fáze 3.5: Individuální Tréninkové Plány (v1.3.0)
 *Cíl: AI zná kalendář dopředu (1 měsíc) a sestavuje personalizované tréninkové plány na míru – závody, zdravotní cíle, longevity.*
@@ -148,12 +145,7 @@ Projekt se transformuje z testovací aplikace na plnohodnotného asistenta M.A.R
   - Longevity (zdravé stárnutí, pohyblivost, kardio, síla, stres)
 
 ### Longevity (v rámci plánů i jako standalone karta)
-- [ ] **Krevní tlak** – manuální zadávání z domácího tlakoměru.
-  - Tabulka `blood_pressure` (systolic, diastolic, pulse, measured_at, note)
-  - Formulář v UI: horní / dolní / tep + volitelná poznámka ("ráno", "po cvičení")
-  - Barevné kódování dle WHO: optimální / normální / zvýšený / hypertenze
-  - Mini graf trendu (posledních 7–30 měření)
-  - **AI kontext**: Mark/Vera vidí poslední hodnoty a interpretuje je v kontextu spánku, tréninku, stresu (TSB), výživy a denní aktivity – např. "Tvůj tlak je vyšší v dnech po intenzivním tréninku"
+- [x] **Krevní tlak** – manuální zadávání, WHO klasifikace, trend, AI kontext (spánek/trénink/TSB).
 - [ ] Karta "Longevity" v Trenérovi: přehled klíčových indikátorů zdravého stárnutí.
   - Průměrná délka spánku (trend posledních 7 dní)
   - HRV (variabilita srdeční frekvence) pokud dostupná ze Stravy
