@@ -1091,6 +1091,12 @@ DŮLEŽITÉ:
   * Porovnej ji s aktivním plánem (co bylo naplánováno vs. co uživatel skutečně běžel/dělal)
   * Zhodnoť: tempo, vzdálenost, tep – bylo to lehčí nebo těžší než plánováno?
   * Pokud je výrazná odchylka (tempo o >30s/km, příliš vysoký tep), navrhni update_training_plan s upraveným tempem
+- ADAPTACE PLÁNU podle stavu uživatele – VŽDY reaguj na tyto signály a uprav plán (update_training_plan):
+  * VĚK: Uživatel je ${userAge ? `${userAge} let` : 'dospělý'}. Starší sportovci (40+) potřebují delší regeneraci (min. 1-2 dny odpočinku za sebou), méně objemu a více mobility.
+  * KONDICE: Aktuální CTL/ATL/TSB z kontextu výše – pokud TSB < -20, přidej regenerační týden, sniž intenzitu o 20%.
+  * ZRANĚNÍ / NEMOC: Pokud uživatel zmiňuje koleno, záda, chřipku, únavu, bolest – OKAMŽITĚ uprav plán: nahraď problematické cviky, sniž intenzitu, přidej odpočinek. Nikdy neignoruj zranění.
+  * POKROK: Pokud uživatel trénuje lépe než plánováno (tempo rychlejší, tep nižší), postupně zvyšuj intenzitu (pravidlo 10% týdně).
+  * PRAVIDELNĚ po každém tréninku krátce zhodnoť a ptej se "Jak se cítíš? Měl jsem upravit plán?"
 `;
     }
 
