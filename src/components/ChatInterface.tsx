@@ -50,6 +50,8 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
+            // User messages přidáváme optimisticky v sendMessage – realtime přeskočit
+            if ((payload.new as Message).role === "user") return;
             setMessages((prev) => [...prev, payload.new as Message]);
           }
         }
@@ -116,8 +118,39 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
       fileInputRef.current.value = "";
     }
 
+    // Zachytit historii PŘED přidáním optimistických zpráv
+    const messagesForAI = [
+      ...messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        image_url: m.image_url,
+      })),
+      { role: "user", content: userMessageContent, image_url: imageToSend },
+    ];
+
+    // Přidat userMsg + tempAssistant DOHROMADY před DB insertem
+    // Zabraňuje race condition: realtime by přidal userMsg AŽ PO tempAssistant
+    const tempUserId = `temp-${crypto.randomUUID()}`;
+    const tempAssistantId = `temp-${crypto.randomUUID()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempUserId,
+        role: "user" as const,
+        content: userMessageContent,
+        created_at: new Date().toISOString(),
+        image_url: imageToSend || undefined,
+      },
+      {
+        id: tempAssistantId,
+        role: "assistant" as const,
+        content: "",
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
     try {
-      // Uložit uživatelskou zprávu (s obrázkem, pokud existuje)
+      // Uložit uživatelskou zprávu do DB (realtime pro user role přeskakujeme)
       const { error: userError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         role: "user",
@@ -126,18 +159,6 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
       });
 
       if (userError) throw userError;
-
-      // Vytvořit dočasnou zprávu asistenta pro UI
-      const tempAssistantId = crypto.randomUUID();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: tempAssistantId,
-          role: "assistant",
-          content: "",
-          created_at: new Date().toISOString(),
-        },
-      ]);
 
       // Získat session token
       const { data: { session } } = await supabase.auth.getSession();
@@ -156,18 +177,7 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            messages: [
-              ...messages.map((m) => ({ 
-                role: m.role, 
-                content: m.content,
-                image_url: m.image_url 
-              })),
-              { 
-                role: "user", 
-                content: userMessageContent,
-                image_url: imageToSend 
-              },
-            ],
+            messages: messagesForAI,
             mode,
             conversationId,
           }),
@@ -245,9 +255,9 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
       }
     } catch (error: any) {
       toast.error(error.message || "Chyba při odesílání zprávy");
-      // Odstranit dočasnou zprávu při chybě
+      // Odstranit obě dočasné zprávy při chybě
       setMessages((prev) =>
-        prev.filter((m) => m.role !== "assistant" || m.content !== "")
+        prev.filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)
       );
     } finally {
       setIsLoading(false);
