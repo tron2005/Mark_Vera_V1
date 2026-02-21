@@ -1292,8 +1292,17 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
 
     // hasGoogleCalendar už je definované výše (na začátku funkce)
 
-    const shouldForceCalendar = !!lastUserText && hasGoogleCalendar && normIncludes(lastUserText, calendarKeywords);
-    const scheduleQuestion = !!lastUserText && (
+    // Detekce požadavku na tréninkový plán – toto NESMÍ spustit kalendář
+    const isTrainingPlanRequest = lastUserTextNorm.includes("treninkovy plan") ||
+      lastUserTextNorm.includes("treningovy plan") ||
+      lastUserTextNorm.includes("treninkovy plan") ||
+      (lastUserTextNorm.includes("priprav") && lastUserTextNorm.includes("plan")) ||
+      (lastUserTextNorm.includes("vytvor") && lastUserTextNorm.includes("plan")) ||
+      (lastUserTextNorm.includes("sestav") && lastUserTextNorm.includes("plan")) ||
+      (lastUserTextNorm.includes("plan") && (lastUserTextNorm.includes("gladiator") || lastUserTextNorm.includes("spartan") || lastUserTextNorm.includes("ocr") || lastUserTextNorm.includes("maraton") || lastUserTextNorm.includes("zavod")));
+
+    const shouldForceCalendar = !!lastUserText && hasGoogleCalendar && !isTrainingPlanRequest && normIncludes(lastUserText, calendarKeywords);
+    const scheduleQuestion = !!lastUserText && !isTrainingPlanRequest && (
       lastUserTextNorm.includes("co mam") ||
       lastUserTextNorm.includes("co mam zitra") ||
       lastUserTextNorm.includes("co mam dnes") ||
@@ -1305,7 +1314,6 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       lastUserTextNorm.includes("co mam za udalosti") ||
       lastUserTextNorm.includes("na zitrek") ||
       lastUserTextNorm.includes("zitr") ||
-      lastUserTextNorm.includes("plan") ||
       lastUserTextNorm.includes("rozvrh") ||
       lastUserTextNorm.includes("agenda") ||
       lastUserTextNorm.includes("program") ||
@@ -1313,7 +1321,7 @@ Umíš spravovat poznámky pomocí nástrojů add_note, log_food_item, get_notes
       lastUserTextNorm.includes("co me ceka") ||
       lastUserTextNorm.includes("cek") ||
       (
-        (lastUserTextNorm.includes("zitr") || lastUserTextNorm.includes("dnes") || lastUserTextNorm.includes("plan") || lastUserTextNorm.includes("tyden") || lastUserTextNorm.includes("vikend")) &&
+        (lastUserTextNorm.includes("zitr") || lastUserTextNorm.includes("dnes") || lastUserTextNorm.includes("tyden") || lastUserTextNorm.includes("vikend")) &&
         (lastUserTextNorm.includes("udalost") || lastUserTextNorm.includes("kalendar") || lastUserTextNorm.includes("schuzk") || lastUserTextNorm.includes("program") || lastUserTextNorm.includes("rozvrh"))
       )
     ) && !lastUserTextNorm.includes("pocasi") && !lastUserTextNorm.includes("zpravy");
