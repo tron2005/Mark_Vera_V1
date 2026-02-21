@@ -11,7 +11,7 @@ export const AboutCard = () => {
                         <Info className="h-5 w-5" />
                         O aplikaci & Roadmapa
                     </CardTitle>
-                    <Badge variant="outline" className="text-sm px-3 py-1 bg-primary/10">Verze 1.2.0</Badge>
+                    <Badge variant="outline" className="text-sm px-3 py-1 bg-primary/10">Verze 1.3.0</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                     Vizualizace makroživin, chytřejší AI a opravy Google Calendar
