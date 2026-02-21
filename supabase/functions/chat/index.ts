@@ -498,7 +498,7 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "create_training_plan",
-          description: "Vytvoří nový tréninkový plán pro uživatele. Použij když uživatel říká 'připrav mi plán', 'vytvoř tréninkový plán', 'chci plán na závod' apod. Plán se zobrazí na kartě 'Plány' v aplikaci.",
+          description: "Vytvoří nový tréninkový plán pro uživatele. Použij když uživatel říká 'připrav mi plán', 'vytvoř tréninkový plán', 'chci plán na závod' apod. Plán se zobrazí na kartě 'Plány' v aplikaci. DŮLEŽITÉ: Každý trénink musí být DETAILNÍ – pro silový trénink uveď série×opakování+pauzu (např. 'Dřepy 4×12, pauza 60s'), pro běh uveď tempo nebo HR zónu (např. 'Výklus Z2 tempo 6:00-6:30/km') a délku. Různé tréninky každý den, neopakuj stejné.",
           parameters: {
             type: "object",
             properties: {
@@ -509,7 +509,7 @@ serve(async (req) => {
               notes: { type: "string", description: "Volitelné poznámky k plánu" },
               plan_data: {
                 type: "object",
-                description: "Struktura plánu s fázemi a tréninky",
+                description: "Struktura plánu s fázemi a tréninky. Každý trénink musí mít detailní popis a exercises s konkrétními sériemi/opakováními/pauzami nebo tempem.",
                 properties: {
                   total_weeks: { type: "number" },
                   sessions_per_week: { type: "number" },
@@ -523,14 +523,19 @@ serve(async (req) => {
                         description: { type: "string" },
                         weekly_sessions: {
                           type: "array",
+                          description: "Seznam tréninkových dnů v týdnu. Každý den musí mít detailní popis a cvičení. Střídej různé typy tréninku.",
                           items: {
                             type: "object",
                             properties: {
-                              day: { type: "string" },
-                              type: { type: "string" },
-                              description: { type: "string" },
-                              duration_min: { type: "number" },
-                              exercises: { type: "array", items: { type: "string" } }
+                              day: { type: "string", description: "Den v týdnu česky (Pondělí, Úterý, Středa, Čtvrtek, Pátek, Sobota, Neděle)" },
+                              type: { type: "string", description: "Typ tréninku: Běh / Síla / Intervaly / Trail / Odpočinek / Regenerace" },
+                              description: { type: "string", description: "Konkrétní popis tréninku: pro běh uveď tempo nebo HR zónu a délku (např. 'Výklus 8 km, tempo 6:00-6:30/km, Z2'), pro sílu uveď zaměření (např. 'Celotělový silový trénink se zaměřením na grip a tah')" },
+                              duration_min: { type: "number", description: "Délka tréninku v minutách" },
+                              exercises: {
+                                type: "array",
+                                description: "Pro silový trénink: konkrétní cviky se sériemi×opakováními a pauzou (např. 'Pull-upy 4×max, pauza 90s', 'Dřepy 4×12 @ RPE7, pauza 60s', 'Farmer carry 3×40m, pauza 60s'). Pro běh: strukturu tréninku (např. '2 km rozcvičení Z1', '4× 800m v závodním tempu, pauza 90s chůze', '1 km vyklusání Z1').",
+                                items: { type: "string" }
+                              }
                             }
                           }
                         }
@@ -1058,6 +1063,11 @@ DŮLEŽITÉ:
 - Když uživatel chce tréninkový plán (např. "připrav mi plán na závod", "chci 8týdenní plán", "vytvořit plán"), VŽDY použij create_training_plan. Plán se zobrazí na kartě "Plány" v aplikaci.
 - Když uživatel chce upravit plán (bolest, zranění, dovolená, změna cíle), použij update_training_plan.
 - Aktivní tréninkový plán je dostupný v kontextu výše – zohledni ho při všech tréninkových doporučeních!
+- PŘI VYTVÁŘENÍ PLÁNU: Každý trénink musí být KONKRÉTNÍ a PODROBNÝ:
+  * Silový trénink: uveď každý cvik se sériemi×opakováními a pauzou (např. "Pull-upy 4×max, pauza 90s", "Dřepy 4×12 @ 70% 1RM, pauza 60s", "Farmer carry 3×40m")
+  * Běh: uveď tempo (min/km) nebo HR zónu Z1-Z5, délku v km a strukturu (rozcvičení, hlavní část, vyklusání)
+  * Intervaly: uveď délku intervalu, počet opakování, pauzu a způsob (chůze/klus)
+  * Různé tréninky každý den – neopakuj stejné cviky v každé fázi
 `;
     }
 
