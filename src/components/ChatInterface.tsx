@@ -426,8 +426,12 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
                 />
               )}
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm">{msg.content}</p>
-                {msg.role === "assistant" && (
+                {msg.role === "assistant" && !msg.content ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <p className="text-sm">{msg.content}</p>
+                )}
+                {msg.role === "assistant" && msg.content && (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -446,11 +450,6 @@ export const ChatInterface = ({ conversationId, mode }: ChatInterfaceProps) => {
             </div>
           </Card>
         ))}
-        {isLoading && (
-          <Card className="p-4 max-w-[80%] mr-auto bg-muted">
-            <Loader2 className="h-4 w-4 animate-spin" />
-          </Card>
-        )}
         <div ref={messagesEndRef} />
       </div>
 
